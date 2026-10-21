@@ -612,3 +612,22 @@ on the receive frequency.
 | **Selcall tone programming** in `fm900gen.py` | FM900.EXE selcall editor around 0x113F9. Firmware use of 0x1F67–0x1FA7 is in §7.8. |
 | **Head character set** | Find out which characters the remote head can display, by testing `patch_startup_msg.py` with letters. That would allow messages per channel or per bank. |
 | **Spare outputs on the external latches `$80`–`$86`** | Needs a schematic or board inspection; could provide A14 for 4-bank switching. |
+
+## 14. Connectors: control head DIN and microphone
+
+This pinout was supplied by the owner from radio documentation. It was **not** derived from
+the firmware.
+
+| Signal | CFA head (5/8-pin DIN) | VicPol head (8-pin DIN) | Microphone connector |
+|---|---|---|---|
+| Tx audio | Pin 1 | Pin 5 | Pin 4 |
+| Ground | Pin 2 | Pin 2 | Pin 3 |
+| PTT | Pin 3 | Pin 7 | Pin 1 |
+| Rx audio | Pin 4 | Pin 5 | Pin 6 |
+| Switched Rx audio | Pin 5 | — | — |
+
+Notes:
+
+* **Possible error in the source table.** The VicPol column lists **Pin 5 for both Tx audio and Rx audio**, which looks like a transcription error. Check with a meter before wiring anything to the VicPol connector.
+* **Head data line not listed.** The table does not include the head's **serial data line** (the ~1200 baud 8E1 link on CPU PB0, §1 and §13.3), its supply, or its power-switch line. These would sit on the remaining DIN pins: CFA pins 6–8 on the 8-pin version, and VicPol pins 1, 3, 4, 6 and 8. Identify them before attempting PC/tablet control.
+* **PTT:** the firmware senses PTT on CPU PA6 (inferred, §3). Head PTT may also arrive as a serial command (`$44`/`$45`).
