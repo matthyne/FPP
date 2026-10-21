@@ -433,3 +433,99 @@ Whether the head can draw letters depends on the head's own character generator.
 
 FM92L is not supported by this patch. Its 2-digit display is fed 4-bit BCD values through
 latches, which almost certainly use BCD-to-7-segment decoders that can only show 0–9.
+
+## 12. EPROM type, 2716 → 2764 conversion, and bigger EPROMs for more channels
+
+### 12.1 What the firmware and FM900.EXE require
+
+* **Image size.** The image is a full **8 KB (2764)**. Code runs from 0x0100 to 0x15AE, the channel table and config fill 0x1B40/0x1BE8–0x1FEF, and the reset/interrupt vectors are at 0x1FF0–0x1FFF. None of it fits in a 2 KB 2716.
+* **FM900.EXE.** Its EPROM menu offers only **2764** (21 V programming) and **2764A** (12.5 V). Both read identically in the radio. A modern **27C64** is a drop-in replacement and draws less current. The CPU bus is slow, so any access-time grade (150–250 ns) is fine.
+* **CPU address range.** The CPU is an MC146805E2-class part with a 13-bit address bus (A0–A12). **8 KB is the most it can address**, and every master in `fm900/MASTERS` uses all of it.
+
+### 12.2 The 2716 story
+
+Nothing in these files mentions a 2716. If some FM9x boards were built with a 24-pin 2716 socket, they must have run older or smaller firmware: today's masters physically need 8 KB.
+
+Converting such a board to take a 2764 is the standard 24→28-pin socket job. The 2716 sits in the bottom 24 positions of a 28-pin footprint:
+
+| 28-pin socket pin | 2764 function | what a 2716 board has there (2716 pin) |
+|---|---|---|
+| 1 | Vpp | – (no pin) |
+| 2 | **A12** | – |
+| 3–19 | A7–A0, D0–D7, GND | same (1–17) |
+| 20 | /CE | /CE (18) |
+| 21 | A10 | A10 (19) |
+| 22 | /OE | /OE (20) |
+| 23 | **A11** | **Vpp (21), tied to +5 V on a read-only board** |
+| 24, 25 | A9, A8 | A9, A8 (22, 23) |
+| 26 | NC | **+5 V (24)** |
+| 27 | /PGM | – |
+| 28 | Vcc | – |
+
+The modification is therefore:
+
+1. Fit a 28-pin socket aligned so that its pins 3–26 match the old 1–24.
+2. Connect socket pins **28, 1 and 27** to +5 V.
+3. **Cut pin 23 away from +5 V** and wire it to the CPU's (latched) **A11**.
+4. Wire pin 2 to **A12**.
+5. Pin 26 can stay at +5 V, because it is NC on a 2764.
+
+This is generic EPROM practice, not taken from a Philips drawing. Check it against the actual board and the CPU pinout before cutting anything.
+
+### 12.3 Using a 27128 or 27256
+
+The larger parts differ from a 2764 only in what pins 26 and 27 do:
+
+| Pin | 2764 | 27128 | 27256 |
+|---|---|---|---|
+| 1 | Vpp | Vpp | Vpp |
+| 26 | NC | **A13** | **A13** |
+| 27 | /PGM | /PGM | **A14** |
+
+The CPU still only addresses 8 KB, so a bigger EPROM can't make one image bigger. The firmware also hard-limits the FM92 to 99 channel slots (FM91: 120). What a bigger part *can* do is hold **several complete 8 KB images** (banks), selected by driving A13 (and A14):
+
+* **27128:** 2 banks, so 2 × 99 channels.
+* **27256:** 4 banks, so 4 × 99 = 396 channels.
+
+Each bank must be a complete, valid image: firmware plus that bank's channels and settings. Build each one normally with `fm900gen.py` (each gets its own correct checksums), then concatenate them in bank order (A14 A13 = 00, 01, 10, 11):
+
+```sh
+./fm900gen.py build bank0.csv --hw ... --sw ... -o b0.bin
+./fm900gen.py build bank1.csv --hw ... --sw ... -o b1.bin
+cat b0.bin b1.bin > rom_27128.bin                       # 16 KB
+cat b0.bin b1.bin b2.bin b3.bin > rom_27256.bin         # 32 KB
+```
+
+**Simplest use, with no modifications:** on a converted board, pin 26 is often still tied to +5 V, which makes a 27128 read its *upper* half. If you just want to use a larger or cheaper EPROM, program the same image into every bank (`cat radio.bin radio.bin > rom.bin`). It then works however A13 and A14 are strapped.
+
+#### Option A: external switch (no firmware change)
+
+1. Lift pin 26 (and pin 27 for a 27256) out of the socket, or cut its track.
+2. Fit a 10 kΩ pull-up to +5 V on each.
+3. Connect a switch to ground: a toggle for a 27128, or a 2-bit rotary/DIP switch for a 27256.
+
+The address lines must never float, which is why the pull-ups are needed.
+
+**Change banks only with the radio switched off.** This is why, from the firmware's point of view:
+
+* **Same code in every bank.** All banks built from the same master have byte-identical code. The CPU won't crash if the bank changes under it, because only the data area changes.
+* **RAM checks.** The firmware keeps RAM copies of 0x1F2E, 0x1F32 and 0x1F33–0x1F37 and re-checks them about every 13 ms (`supervision_task` → `chk_ram_config`).
+  * If the banks use **different hardware/software codes**, switching while on fails this check. The radio cold-restarts and shuts down; switch it back on.
+  * If the codes are **the same**, the radio carries on with the old synthesiser setting and display until the next channel change, while scan lists and limits switch immediately. That works, but is confusing.
+* **Tamper checks.** The signature (0x1F65) and option checksum (0x1F66) are valid within each bank, so the tamper checks pass in every bank.
+* **Valid channel.** Make sure the radio's current channel exists in every bank (e.g. always program channel 1), or change channel after switching banks.
+* **No mixing masters.** Don't mix different masters, or patched and unpatched firmware, in one EPROM unless you only ever switch with the power off.
+
+#### Option B: spare CPU output (FM92R, needs a firmware patch)
+
+On the **FM92R**, CPU port **PB7** is configured as an output (DDRB = `$FE`) but is never used. The code only ever writes the whole port, setting PB7 low at power-on (`$01 ← $22` at 0x01CE) and at power-off (`CLR $01`). On the FM92L the same pin strobes the LED latch, so it is **not spare there**.
+
+Wiring PB7 to EPROM A13, with a 10 kΩ pull-down because the pin floats until the CPU initialises its port, would let the firmware choose the bank:
+
+* **As-is:** every power-up starts in bank 0 and nothing ever selects bank 1, so the extra bank is unusable without a patch.
+* **With a small patch,** in the same style as `patch_startup_msg.py`:
+  * add a function-key code (e.g. 9 = "bank toggle", assignable with `--keys`);
+  * that function flips PB7 and reselects the channel; because the code is identical in both banks, execution continues seamlessly;
+  * the power-on port write would be changed to keep the last bank, which survives in RAM while the radio is "off" (in STOP).
+
+You'd have to confirm on the board that the CPU's PB7 pin is accessible and not connected to anything on an FM92R PCB. The external output latches (`$80`–`$86`) may also have spare bits, but without a schematic that can't be determined.
