@@ -298,7 +298,7 @@ FM92 VHF exception: L is stored as 2.
 | `0x1F4C` | priority channel of scan block 2 |
 | `0x1F4D–56` | scan block 2 list |
 | `0x1F57` | count of scan block 2 |
-| `0x1F58` | FM91: priority channel of scan block 3. FM92: always `01` |
+| `0x1F58` | FM91: priority channel of scan block 3. FM92: always `01`. On FM92, bytes 0x1F58–0x1F5B are the function codes for head keys 1/2/4/7 (firmware/FIRMWARE.md §6.2); `fm900gen.py --keys` can override them. |
 | `0x1F59` | FM91: start of scan block 3 list (`0x1F59–62`). FM92: always `02` |
 | `0x1F5A` | FM92 only: `05` if s6 > 0; `06` if s6 = 0 and s1 = 1; `08` if 0x1F37.b6 is set and a selcall code is set |
 | `0x1F5B` | FM92 only: `07` if s11–s14 ≠ 0000, otherwise `00` |

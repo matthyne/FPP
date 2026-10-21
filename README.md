@@ -67,6 +67,37 @@ Examples taken from the existing jobs:
 
 The codes for an existing radio come from its `.JOB` file, its PIRS sheet, or its label. They cannot be fully recovered from an EPROM image, because several codes map to the same bits.
 
+## Remapping the head's function keys (FM92 only)
+
+The FM92 radio acts on four key codes from the control head: `1`, `2`, `4` and `7`.
+Each one runs the function whose number is stored in EPROM bytes 0x1F58–0x1F5B.
+
+FM900.EXE always fills these from the software code. To choose them yourself, pass `--keys`
+to `build` or `fromjob`: four comma-separated values, for keys 1, 2, 4 and 7 in that order.
+
+| Code | Name | Function |
+|---|---|---|
+| 0 | `none` | button does nothing |
+| 1 | `up` | channel up (skips empty channels, wraps) |
+| 2 | `down` | channel down |
+| 3 | `tens` | jump to the next block of ten (23 → 30) |
+| 4 | `units` | units digit up within the block (27 → 28, 29 → 20) |
+| 5 | `scan` | scan on/off |
+| 6 | `monitor` | monitor (squelch defeat) on/off |
+| 7 | `selcall` | send selcall |
+| 8 | `dial` | selcall dial mode on/off (keys then step the selcall digits) |
+
+```sh
+./fm900gen.py build channels.csv --hw 92440150 --sw 110100201000000 \
+    --keys up,down,scan,monitor -o radio.bin       # same as --keys 1,2,5,6
+```
+
+* Any combination is allowed, including the same function on two keys, or `none`.
+* These bytes are not covered by the radio's option checksum or tamper signature. Only the overall EPROM checksum changes, and the tool recomputes it.
+* The firmware cannot say which physical button sends which code. Find out by pressing each button with known settings: e.g. with `--keys up,down,scan,monitor`, the button that steps the channel up is key `1`.
+* **Not available on FM91**, where those bytes hold scan block 3.
+* There is no duplex or talk-around function in the firmware (see firmware/FIRMWARE.md §6.2).
+
 ## Other commands
 
 ```sh

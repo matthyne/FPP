@@ -224,6 +224,16 @@ Key *n* runs the function whose number is stored in **0x1F58 + n**:
 | 7 | send selcall |
 | 8 | selcall mode toggle |
 
+**Remapping.** These four bytes are outside the option checksum (0x1F66) and the firmware
+signature (0x1F65). They can be set to any code 0–8 in any combination with
+`fm900gen.py --keys` (see README). Only the overall EPROM checksum changes.
+
+There is **no duplex / talk-around / reverse function**. Tx always comes from the channel's
+own Tx divider. The software-code digit s10 (option byte 0x1F33 bit 0) only makes the radio
+skip reloading the synthesiser for transmit, which suits a separate-transmitter variant.
+Switching a repeater offset on and off would need either paired channels or a firmware
+patch that adds a function 9.
+
 FM900.EXE always writes `01 02` to the first two keys (channel up/down). The third key gets
 5 (scan) if scanning is enabled (s6 > 0), or 6 (monitor) if variable mute is chosen; it gets 8
 if selcall is set up. The fourth key gets 7 if a selcall code is set.

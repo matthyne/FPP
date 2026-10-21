@@ -17,7 +17,7 @@ The original DOS files are reference material. **Never modify them.**
 | `fm900/BIN/FM900.EXE` | The real programmer. EXEPACK-compressed MS C 5.x. |
 | `fm900/MASTERS/*.BIN` | 8 KB factory master images (68HC05 firmware). `fm900gen.py` reads these by default. |
 | `fm900/JOBS/` | Sample jobs (`.JOB` / `.CHL` / `.BIN`). These are the regression test vectors. |
-| `fm900gen.py` | The generator. Python 3, stdlib only, single file. Sub-commands: `build`, `fromjob`, `writejob`, `dump`. |
+| `fm900gen.py` | The generator. Python 3, stdlib only, single file. Sub-commands: `build`, `fromjob`, `writejob`, `dump`. `--keys` (FM92 only) is the one deliberate deviation from FM900.EXE: it overrides the function-key bytes 0x1F58–0x1F5B. |
 | `FM900_FORMAT.md` | Authoritative format documentation. Keep it in sync with code changes. |
 | `README.md` | User docs. |
 | `firmware/FIRMWARE.md` | Radio firmware (FM92R/FM92L) documentation. |

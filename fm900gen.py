@@ -192,12 +192,13 @@ def freq_units(s):
 # The builder
 # ---------------------------------------------------------------------------
 class Builder:
-    def __init__(self, hw, sw, masters_dir, date=None, version=(0x21, 0x12)):
+    def __init__(self, hw, sw, masters_dir, date=None, version=(0x21, 0x12), keys=None):
         self.hw = hw
         self.sw = sw
         self.masters_dir = masters_dir
         self.date = date or datetime.date.today()
         self.version = version
+        self.keys = keys            # FM92 only: 4 function codes for 0x1F58..0x1F5B
         self._check_codes()
 
     # -- code validation -------------------------------------------------
@@ -214,6 +215,8 @@ class Builder:
             raise FM900Error('unknown band digit %r' % hw[2])
         if hw[3] not in '3478':
             raise FM900Error('unknown control/spacing digit %r' % hw[3])
+        if self.keys is not None and hw[1] != '2':
+            raise FM900Error('--keys is only valid for FM92 (on FM91, 0x1F58.. holds scan block 3)')
         if hw[4] in '237':
             raise FM900Error('water-proof mechanics (hw digit 5 = 2/3/7) use the FM97WP '
                              'master, which is not supported by this tool')
@@ -470,6 +473,11 @@ class Builder:
         img[0x1F3E] = ch_max & 0xFF
         self._scan(img, chans)                 # FUNC 0x77F7
         self._power_and_misc(img, ch_min, pw_min, pw_max)   # FUNC 0x7285
+        if self.keys is not None:
+            # Not part of FM900.EXE: override the FM92 programmable function keys.
+            # These bytes are outside the 0x1F66 option checksum and the 0x1F65
+            # signature, so only the 0x1F64 sum (recomputed below) is affected.
+            img[0x1F58:0x1F5C] = bytes(self.keys)
         img[0x1FE0], img[0x1FE1] = self.version
 
         # ---- FUNC 0x30A0: checksums ----------------------------------------
@@ -764,6 +772,28 @@ def default_masters():
     return os.path.join(here, 'fm900', 'MASTERS')
 
 
+# FM92 function-key codes (firmware jump table at 0x05D6, see firmware/FIRMWARE.md 6.2)
+KEY_FUNCS = {'none': 0, 'up': 1, 'down': 2, 'tens': 3, 'units': 4,
+             'scan': 5, 'monitor': 6, 'selcall': 7, 'dial': 8}
+
+
+def parse_keys(s):
+    if s is None:
+        return None
+    items = [x.strip().lower() for x in s.split(',')]
+    if len(items) != 4:
+        raise FM900Error('--keys needs exactly 4 comma-separated values (keys 1,2,4,7 on the head)')
+    out = []
+    for x in items:
+        if x.isdigit() and 0 <= int(x) <= 8:
+            out.append(int(x))
+        elif x in KEY_FUNCS:
+            out.append(KEY_FUNCS[x])
+        else:
+            raise FM900Error('bad key function %r (use 0-8 or %s)' % (x, '/'.join(KEY_FUNCS)))
+    return out
+
+
 def parse_date(s):
     if not s:
         return None
@@ -778,6 +808,9 @@ def main(argv=None):
         p.add_argument('--masters', default=default_masters(), help='directory with FM9x.BIN masters')
         p.add_argument('--date', help='build date YYYY-MM-DD stored in the image (default today)')
         p.add_argument('--master-file', help='use this 8 KB master image instead of auto-selecting')
+        p.add_argument('--keys', help='FM92 only: functions for head keys 1,2,4,7 as 4 comma-separated '
+                       'codes 0-8 or names none/up/down/tens/units/scan/monitor/selcall/dial, '
+                       'e.g. up,down,scan,monitor')
         p.add_argument('-o', '--output', required=True)
 
     p = sub.add_parser('build', help='build an image from a channel list')
@@ -827,7 +860,7 @@ def main(argv=None):
             hw, sw = job['hw'], job['sw']
             chl = a.chl or os.path.splitext(a.job)[0] + '.CHL'
             chans = read_chl(chl)
-        b = Builder(hw, sw, a.masters, parse_date(a.date))
+        b = Builder(hw, sw, a.masters, parse_date(a.date), keys=parse_keys(a.keys))
         master = open(a.master_file, 'rb').read() if a.master_file else None
         img = b.build(chans, master)
         for w in b.vco_warnings(chans):
