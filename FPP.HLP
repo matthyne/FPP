@@ -1,0 +1,24 @@
+CURSOR:
+   The cursor is the highlighted area with the small, flashing underline
+   character in its first column.  By using the cursor keys this  cursor
+   may be moved. 
+
+KEY USE:
+   [CURSOR UP/ DOWN]    move cursor ONE FIELD up or down. 
+   [PAGE UP/ DOWN]      move cursor ONE PAGE up or down.
+   [HOME]               To move cursor to TOP of list.
+   [END]                To move cursor to BOTTOM of list.
+
+   [ESC]                Will terminate MENU SELECTION PROGRAM
+   [ENTER] ([RETURN])   Will activate the currently selected FPP program.
+                        On exit from the FPP program, the MENU SELECTION
+                        PROGRAM is re-entered. 
+   F1                   To select this (help (?)) page.
+
+
+
+
+
+NOTE:	the HELP TEXT consists of 21 LINES @ 75 CHARACTERS
+	any text exceeding these limits is ignored!
+

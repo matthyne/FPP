@@ -1,0 +1,10 @@
+[autoexec]
+
+MOUNT C "/Users/matt/Google Drive/My Drive/7. Hobbies/radio/FM900"
+SET PATH=C:\;C:\FPP;C:\FPP\FM900;C:\FPP\FM900\BIN
+
+C:
+CD FPP
+
+ECHO Starting FPP
+FPP.EXE
