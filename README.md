@@ -11,6 +11,9 @@ It also holds a Linux replacement for the image-building part:
 
 * **`fm900gen.py`**: builds the 8 KB 2764 EPROM image for FM91 and FM92 radios from a list of frequencies. It is Python 3 with no dependencies.
 * **`FM900_FORMAT.md`**: full documentation of FPP.EXE, FM900.EXE, the job file formats, the hardware/software codes, and the EPROM layout.
+* **`firmware/`**: disassembly of the radio's own 68HC05 firmware (FM92R and FM92L masters).
+  * `FIRMWARE.md` explains what L vs R means, the hardware interface, the scheduler, and how the radio uses every channel and config byte.
+  * The folder also holds annotated listings and the disassembler tools.
 
 ## Quick start
 
@@ -91,7 +94,7 @@ The original runs in DOSBox: `dosbox -conf dosbox.conf`, with the mount path edi
 
 None of the five sample jobs exercises the following, so treat them as unverified:
 
-* ECON or duplicate channel numbers (slot ring links)
+* VOTE rings or duplicate channel numbers (slot ring links)
 * the FM92L master, and any selcall `*S` master
 * the VHF 6.25 kHz step
 * `L` or `S` power

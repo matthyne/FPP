@@ -1,0 +1,151 @@
+# routine names  (=addr name)
+=0100 RESET
+=013b chk_ram_config
+=014f delay_A
+=0159 cold_start
+=0186 power_down_stop
+=018e power_down
+=01c0 init_ddr
+=01c9 init_ports
+=01d2 latch29_init
+=01d4 write_latch_PB3
+=01e4 eprom_checksum
+=0206 warm_start
+=0278 wait_startup
+=02aa main_loop
+=034c TIMER_ISR
+=0368 tick_slot_table
+=0398 tick_rti
+=039c clear_ram_10_1f
+=03a0 clear_ram_x_to_a
+=03ab write_latch_PB2
+=03c7 update_display
+=0434 ptt_handler
+=0473 low_batt_check
+=0480 key_hold_handler
+=052e tx_timer_expired
+=0517 tx_timer_start
+=0548 head_key_dispatch
+=0573 fkey_func_table
+=058e fn_monitor_toggle
+=063e tx_start
+=066c tx_stop
+=06ab fn_channel_up
+=06ee fn_channel_down
+=06b9 fn_channel_tens
+=0718 fn_channel_units
+=0768 select_channel
+=076a select_channel_A
+=07bd load_synth
+=083b synth_write_nibble
+=083d synth_strobe
+=0842 chan_ptr
+=0853 uart_bit
+=08ef adc_start_3to6
+=0914 adc_start_2
+=091e adc_start_1
+=093f squelch_task
+=0a24 mute_close
+=0a2d soft_timers
+=0a76 write_latch_PB4
+=0a84 supervision_task
+=0ac4 check_signatures
+=0af5 IRQ_ISR
+=0b3e display_digits
+=0b8f check_power_window
+=0bc5 check_window
+=0bd5 bin_to_bcd
+=0c17 init_selcall_ctcss
+=0c21 set_ctcss_tone
+=0c30 copy_selcall_codes
+=0c43 main_loop_part2
+=0d68 scan_task
+=0e4d squelch_open_test
+=0ef7 fn_scan
+=0f27 scan_stop
+=0f52 scan_list_read
+=0f68 scan_list_select
+=0f79 vote_task
+=0ff2 chan_flags_rx
+=102d selcall_decode_task
+=10c9 selcall_encode_task
+=112d selcall_send_start
+=11b2 tone_chip_write
+=1306 fn_selcall_send
+=1361 fn_selcall_toggle
+=13b7 econ_task
+=1416 econ_setup
+=143d auto_power_off_task
+=145a auto_power_off_reset
+=1465 init_peripherals
+# comments
+0100 reset vector: SEI, reset stack, set up ports
+0118 PA5 = on/off switch sense; $20 = power state (0x11 off, 0x99 on)
+013b compare RAM copy of option bytes with EPROM 1F2E/1F33..1F37 (warm start?)
+0169 copy EPROM 1F2E..1F31 -> RAM $2B..$2E ($2E = current channel = lowest channel)
+017e copy option bytes 1F33..1F37 -> RAM $2F..$33
+018d STOP: wait for wake-up (IRQ)
+01e4 builds "ADD $hhll,X; RTS" in RAM $21 and sums $0100-$1FFF; must equal $FF
+0248 timer: TDR=$FF, TCR=$0F
+026b 1FA9 -> $C8 (selcall timing)
+02f0 PA6 = PTT input (inferred)
+0301 PA7 = second front input (hook/monitor, inferred)
+034c timer reload: TDR=$C5, TCR=$09 -> ~2.4 kHz tick (one tick ~415 us)
+0354 PB5 low (synth strobe idle)
+0365 16-entry slot table, one slot every 2 ticks
+07bd X=2: Rx bytes 0-2, X=5: Tx bytes 3-5 of the channel slot
+07d3 bit7 of byte2/5 = entry valid, else carry set = empty channel
+07e8 Rx: byte2 bit4 (C/R) -> $1B.5 / $19.2
+07f0 Rx: byte2 bit5 (VOTE) handled in chan_flags_rx
+07f3 Rx: byte2 bit3 -> latch $2C bit5 (VCO band switch)
+07fd bit6 (injection side) -> $29.1
+080b synth: port A = 1F2D, PB6 low (enable), 2 strobes
+0816 synth: 4 BCD digits, low nibble then high nibble, one PB5 strobe each
+0825 synth: digit 5 (byte2/5 | 8)
+082b synth: then reference bytes 1F2C, 1F2D; PB6 high
+0842 ptr = $1BE0 + 8*A  (into RAM routine at $21: LDA $hhll,X; RTS)
+077b bytes 6,7 of slot -> $34 (CTCSS/flags), $35 (link)
+0789 byte5 bit3 -> latch $82 bit5 (inverted)
+079d byte5 bits4-5 = power; 0 -> operator-selected power from $2C
+0926 ADC: select mux via $2A latch, note start time; IRQ (comparator) stores result
+093f squelch: pot ($49) -> setting 0-7 via table $0A4C (with hysteresis)
+09b8 noise ($45) vs close threshold 1F1C+setting
+09d2 noise ($45) vs open threshold 1F14+setting
+09c9 squelch tail from table 1F24
+0a2d soft timers: $57-$61,$E9,$EA every 64 ticks (~27 ms)
+0a51 $63-$65,$EB,$EC every 2304 ticks (~1 s)
+0a64 $67 every 24064 ticks (~10 s): Tx timer / auto power-off units
+0a76 latch $2C (inverted) -> port A, PB4 strobe: power level, VCO band etc.
+0ac4 signature over firmware + 1F65, and 1F33..1F37 + 1F66: must be 0 else halt
+0af2 on failure jump to $0189 (power down / stop)
+0af5 IRQ = ADC comparator: result = start_time - timer - $1E
+0b3e send 2 display digits: $80/$81 + char, $82/$83 + char
+0b8f Tx: forward-power ADC ($4A) must lie in window 1F08..1F0F for current power level
+0ba6 Rx: $4A < $15 -> supply too low: shut down with alarm on PA4
+0bc5 window check: 1F00+x <= A <= 1F01+x
+0c21 CTCSS code (byte6 bits0-5) -> tone chip value table $0E56 -> $81
+0c30 copy selcall codes 1F67..1F70 -> $CA.., 1F7A..1F83 -> $D4..
+0d68 scanning: lists via $53/$54 pointer (1F40 block 1, 1F4C block 2)
+0e4d compare noise $45 with open threshold 1F14+squelch setting
+0f52 RAM routine LDA list,X  (X=0 priority channel, X=11 count)
+0f62 scan list base table: 1F40, 1F4C
+0f79 voting: hop round the linked ring (byte7 & $7F)+1, compare RSSI ($46)
+0fe6 1FB4 = vote/scan dwell time
+1014 1F1B = voting threshold
+102d selcall decoder: reads tone digit from $80, compares with 1F8D/1F96/1F9F codes
+10c9 selcall encoder: sends digits with timing from 1F70/1F71
+13b7 economiser: power-save cycling with times 1FB1/1FB2/1FB3
+143d 8-hour auto power off: 1FB5 x 30 min (enabled by 1F35 bit5)
+1465 init external peripherals $80-$86
+# FM92L-specific (local control head)
+=0401 led_latch_task
+0422 indicator LEDs: $1D/$1E/$1F -> port A, PB7 strobe (blink time 1F13)
+=088d keypad_scan
+088d front-panel keys read on port A (DDRA briefly cleared), debounce/repeat 1F10/1F11/1F12
+=0548 local_key_dispatch
+054f key bits 1,2,8,4 -> function key 0..3 -> 1F58..1F5B
+=0b2e display_digits_local
+0b4b 2-digit display: low digit on port A, PB0 strobe; high digit PB1 strobe
+=034c TIMER_ISR
+=0af5 IRQ_ISR
+=0100 RESET

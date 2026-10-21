@@ -47,7 +47,7 @@ current directory set to `fm900`.
 * **Edit Order:** New, Existing, Re-use, SELCALL entry.
   1. Enter a *PIRS order*: job code (= file name), optional "sum of frequencies" check value, and comment lines.
   2. Enter the 8-digit **hardware code** and the 15-digit **software code** (§3).
-  3. Enter channels one by one: Channel, Rx, Tx, Power, Scanning, CTCSS, VOTE, ECON, SELCALL, C/R.
+  3. Enter channels one by one: Channel, Rx, Tx, Power, Scanning, CTCSS, C/R, VOTE, ECON, SELCALL.
   4. On F10 it validates everything, selects and loads the master image (§4.1), builds the image (§5), and writes `<job>.JOB`, `<job>.CHL` and `<job>.BIN` to the job directory.
 * **Eprom menu:** drives the Philips ISA programmer card (port 768–799) to read, blank-check, copy, program and verify 2764/2764A EPROMs.
 
@@ -90,9 +90,9 @@ scan-list order and the slot allocation for duplicates.
 | 1 | 0x0002 | Power `M` | medium, 5 W |
 | 2 | 0x0004 | Power `L` | low, 1 W |
 | 3 | 0x0008 | Power `S` | operator selectable |
-| 4 | 0x0010 | ECON `Y` | economiser on this channel |
-| 5 | 0x0020 | SELCALL `Y` | selcall on this channel |
-| 6 | 0x0040 | C/R `Y` | CTCSS community-repeater |
+| 4 | 0x0010 | VOTE `Y` | voting: several records with the same channel number form a linked ring of slots |
+| 5 | 0x0020 | ECON `Y` | economiser on this channel |
+| 6 | 0x0040 | SELCALL `Y` | selcall on this channel |
 | 7 | 0x0080 | Scanning contains `1` | member of scan block 1 |
 | 8 | 0x0100 | Scanning contains `2` | member of scan block 2 |
 | 9 | 0x0200 | Scanning contains `3` | member of scan block 3 (FM91 only) |
@@ -100,7 +100,7 @@ scan-list order and the slot allocation for duplicates.
 | 11 | 0x0800 | Scanning `2P` | priority channel of block 2 |
 | 12 | 0x1000 | Scanning `3P` | priority channel of block 3 |
 | 13 | 0x2000 | Scanning contains `S` | operator-selectable scan |
-| 14 | 0x4000 | VOTE `Y` | voting |
+| 14 | 0x4000 | C/R `Y` | CTCSS community repeater (requires a CTCSS tone) |
 | 15 | 0x8000 | – | never read; appears as junk in some files |
 
 **CTCSS codes:** letter → (radio code, Hz)
@@ -210,14 +210,14 @@ Encoded by routines `0x60C9` (power), `0x5A5D` (frequencies) and `0x6226` (optio
 ```
 byte 0  Rx divider digits d1|d0   (each nibble = 15 - decimal digit)
 byte 1  Rx divider digits d3|d2
-byte 2  b7=1 (Rx valid)  b6=LO-side flag  b5=ECON  b4=VOTE  b3=see below  b2..0 = ~d4
+byte 2  b7=1 (Rx valid)  b6=LO-side flag  b5=VOTE  b4=C/R  b3=see below  b2..0 = ~d4
 byte 3  Tx divider digits d1|d0
 byte 4  Tx divider digits d3|d2
 byte 5  b7=Tx enabled  b6=inverse of byte2.b6  b5..4=power  b3=1  b2..0 = ~d4
-byte 6  b7=C/R  b6=operator-selectable-scan  b5..0 = CTCSS code (0 = none)
+byte 6  b7=SELCALL  b6=operator-selectable-scan  b5..0 = CTCSS code (0 = none)
 byte 7  b7 = bit 1 of the selcall-encode table word
-        b6..0 = duplicate/ECON link (slot index), otherwise:
-        b2 = SELCALL per channel, b1 = economiser operator-selectable (s2 = 2)
+        b6..0 = VOTE / duplicate-channel ring link (next slot index), otherwise:
+        b2 = ECON per channel, b1 = economiser operator-selectable (s2 = 2)
 ```
 
 **Frequency dividers** (routine `0xAE7E`)
@@ -268,10 +268,10 @@ The sign depends on h2 (band):
 
 FM92 VHF exception: L is stored as 2.
 
-**Duplicates / ECON** (routine `0x5927`)
+**Duplicates / VOTE rings** (routine `0x5927`)
 
 * The first record for channel *n* uses slot *n−1*.
-* If that slot is already taken, or the channel has ECON set, the program allocates a free slot from the top of the table downward (FM92 from slot 98, FM91 from 119).
+* If that slot is already taken, or the channel has VOTE set, the program allocates a free slot from the top of the table downward (FM92 from slot 98, FM91 from 119).
 * The slots are chained in a ring through byte7 b6..0.
 
 ### 4.3 Configuration block `0x1F00–0x1FFF` (routines `0x6452`, `0x6688`, `0x7182`, `0x7285`, `0x77F7`)

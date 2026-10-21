@@ -1,0 +1,3565 @@
+  0000  db 43 4f 50 59 52 49 47 48 54 20 28 43 29 20 31 39
+  0010  db 38 32 2c 20 50 48 49 4c 49 50 53 20 54 2e 4d 2e
+  0020  db 43 2e ac 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+RESET:    ; xref 01fb
+  0100  9b       sei                                ; reset vector: SEI, reset stack, set up ports
+  0101  9c       rsp                                
+  0102  cd01ca   jsr    init_ports                  
+  0105  cd01c1   jsr    init_ddr                    
+  0108  cd01d3   jsr    latch29_init                
+  010b  a619     lda    #$19                        
+  010d  ad43     bsr    delay_A                     
+  010f  ad2d     bsr    chk_ram_config              
+  0111  3f3b     clr    $3b                         
+  0113  3f3c     clr    $3c                         
+  0115  131a     bset   1, $1a                      
+  0117  b620     lda    $20                         
+  0119  1b04     bset   5, $04                      
+  011b  0a000a   brset  5, $00, L_0128              ; PA5 = on/off switch sense; $20 = power state (0x11 off, 0x99 on)
+  011e  a111     cmp    #$11                        
+  0120  2767     beq    power_down_stop             
+  0122  a199     cmp    #$99                        
+  0124  2636     bne    cold_start                  
+  0126  200e     bra    L_0136                      
+
+L_0128:    ; xref 011b
+  0128  a199     cmp    #$99                        
+  012a  275d     beq    power_down_stop             
+  012c  a111     cmp    #$11                        
+  012e  262c     bne    cold_start                  
+  0130  a699     lda    #$99                        
+  0132  b720     sta    $20                         
+  0134  1a2a     bclr   5, $2a                      
+
+L_0136:    ; xref 0126
+  0136  1a04     bclr   5, $04                      
+  0138  cd1574   jsr    auto_power_off_reset        
+  013b  cc01fe   jmp    warm_start                  
+
+chk_ram_config:    ; xref 010f 0b73
+  013e  b62b     lda    $2b                         ; compare RAM copy of option bytes with EPROM 1F2E/1F33..1F37 (warm start?)
+  0140  c11f2e   cmp    $1f2e                       
+  0143  2617     bne    cold_start                  
+  0145  ae05     ldx    #$05                        
+
+L_0147:    ; xref 014f
+  0147  e62e     lda    $002e, x                    
+  0149  d11f32   cmp    $1f32, x                    
+  014c  260e     bne    cold_start                  
+  014e  5a       decx                               
+  014f  26f6     bne    L_0147                      
+  0151  81       rts                                
+
+delay_A:    ; xref 010d 0158 0cba 0cc1 1519
+  0152  aea3     ldx    #$a3                        
+
+L_0154:    ; xref 0155
+  0154  5a       decx                               
+  0155  26fd     bne    L_0154                      
+  0157  4a       deca                               
+  0158  26f8     bne    delay_A                     
+  015a  9d       nop                                
+  015b  81       rts                                
+
+cold_start:    ; xref 0124 012e 0143 014c 0bda
+  015c  cd0d2c   jsr    init_selcall_ctcss          
+  015f  cd03c3   jsr    clear_ram_10_1f             
+  0162  3fa2     clr    $a2                         
+  0164  ae04     ldx    #$04                        
+  0166  3fde     clr    $de                         
+  0168  3fdf     clr    $df                         
+  016a  1fa0     bset   7, $a0                      
+
+L_016c:    ; xref 0172
+  016c  d61f2d   lda    $1f2d, x                    ; copy EPROM 1F2E..1F31 -> RAM $2B..$2E ($2E = current channel = lowest channel)
+  016f  e72a     sta    $002a, x                    
+  0171  5a       decx                               
+  0172  26f8     bne    L_016c                      
+  0174  c61f32   lda    $1f32                       
+  0177  b768     sta    $68                         
+  0179  b62e     lda    $2e                         
+  017b  b750     sta    $50                         
+  017d  b752     sta    $52                         
+  017f  ae05     ldx    #$05                        
+
+L_0181:    ; xref 0187
+  0181  d61f32   lda    $1f32, x                    ; copy option bytes 1F33..1F37 -> RAM $2F..$33
+  0184  e72e     sta    $002e, x                    
+  0186  5a       decx                               
+  0187  26f8     bne    L_0181                      
+
+power_down_stop:    ; xref 0120 012a 0471 053f 1571
+  0189  1d29     bset   6, $29                      
+  018b  cd07ed   jsr    select_channel              
+  018e  ad01     bsr    power_down                  
+  0190  8e       stop                               ; STOP: wait for wake-up (IRQ)
+
+power_down:    ; xref 018e 0cb3
+  0191  a611     lda    #$11                        
+  0193  b720     sta    $20                         
+  0195  0d1104   brclr  6, $11, L_019c              
+  0198  b650     lda    $50                         
+  019a  b72e     sta    $2e                         
+
+L_019c:    ; xref 0195
+  019c  ad23     bsr    init_ddr                    
+  019e  1c09     bclr   6, $09                      
+  01a0  a607     lda    #$07                        
+  01a2  b72a     sta    $2a                         
+  01a4  cd03d2   jsr    write_latch_PB2             
+  01a7  a621     lda    #$21                        
+  01a9  ad2a     bsr    write_latch_PB3             
+  01ab  3f00     clr    $00                         
+  01ad  1801     bclr   4, $01                      
+  01af  1901     bset   4, $01                      
+  01b1  1904     bset   4, $04                      
+  01b3  1b04     bset   5, $04                      
+  01b5  3f01     clr    $01                         
+  01b7  cd158c   jsr    init_peripherals            
+  01ba  3f80     clr    $80                         
+  01bc  3f81     clr    $81                         
+  01be  3f82     clr    $82                         
+  01c0  81       rts                                
+
+init_ddr:    ; xref 0105 019c
+  01c1  a63f     lda    #$3f                        
+  01c3  b704     sta    $04                         
+  01c5  a6fe     lda    #$fe                        
+  01c7  b705     sta    $05                         
+  01c9  81       rts                                
+
+init_ports:    ; xref 0102
+  01ca  a600     lda    #$00                        
+  01cc  b700     sta    $00                         
+  01ce  a622     lda    #$22                        
+  01d0  b701     sta    $01                         
+  01d2  81       rts                                
+
+latch29_init:    ; xref 0108
+  01d3  a62d     lda    #$2d                        
+
+write_latch_PB3:    ; xref 01a9
+  01d5  b700     sta    $00                         
+  01d7  1601     bclr   3, $01                      
+  01d9  1701     bset   3, $01                      
+  01db  81       rts                                
+
+eprom_checksum:    ; xref 025a
+  01dc  a6db     lda    #$db                        ; builds "ADD $hhll,X; RTS" in RAM $21 and sums $0100-$1FFF; must equal $FF
+  01de  b721     sta    $21                         
+  01e0  a601     lda    #$01                        
+  01e2  b722     sta    $22                         
+  01e4  ae00     ldx    #$00                        
+  01e6  3f23     clr    $23                         
+  01e8  a681     lda    #$81                        
+  01ea  b724     sta    $24                         
+  01ec  4f       clra                               
+
+L_01ed:    ; xref 01f0 01f4
+  01ed  bd21     jsr    $21                         
+  01ef  5c       incx                               
+  01f0  26fb     bne    L_01ed                      
+  01f2  3c22     inc    $22                         
+  01f4  0b22f6   brclr  5, $22, L_01ed              
+  01f7  4c       inca                               
+  01f8  2601     bne    L_01fb                      
+  01fa  81       rts                                
+
+L_01fb:    ; xref 01f8
+  01fb  cc0100   jmp    RESET                       
+
+warm_start:    ; xref 013b
+  01fe  cd13de   jsr    sub_13de                    
+  0201  001f03   brset  0, $1f, L_0207              
+  0204  0c1100   brset  6, $11, L_0207              
+
+L_0207:    ; xref 0201 0204
+  0207  3622     ror    $22                         
+  0209  01320c   brclr  0, $32, L_0218              
+  020c  091b01   brclr  4, $1b, L_0210              
+  020f  99       sec                                
+
+L_0210:    ; xref 020c
+  0210  36bf     ror    $bf                         
+  0212  09a201   brclr  4, $a2, L_0216              
+  0215  99       sec                                
+
+L_0216:    ; xref 0212
+  0216  36bf     ror    $bf                         
+
+L_0218:    ; xref 0209
+  0218  cd03c3   jsr    clear_ram_10_1f             
+  021b  aea0     ldx    #$a0                        
+  021d  a6a4     lda    #$a4                        
+  021f  cd03c7   jsr    clear_ram_x_to_a            
+  0222  0f2202   brclr  7, $22, L_0227              
+  0225  101f     bclr   0, $1f                      
+
+L_0227:    ; xref 0222
+  0227  01320a   brclr  0, $32, L_0234              
+  022a  0fbf07   brclr  7, $bf, L_0234              
+  022d  18a2     bclr   4, $a2                      
+  022f  0dbf02   brclr  6, $bf, L_0234              
+  0232  181b     bclr   4, $1b                      
+
+L_0234:    ; xref 0227 022a 022f
+  0234  3f36     clr    $36                         
+  0236  3f28     clr    $28                         
+  0238  a609     lda    #$09                        ; timer: TDR=$FF, TCR=$0F
+  023a  b762     sta    $62                         
+  023c  a6ff     lda    #$ff                        
+  023e  b708     sta    $08                         
+  0240  a60f     lda    #$0f                        
+  0242  b709     sta    $09                         
+  0244  a640     lda    #$40                        
+  0246  b75e     sta    $5e                         
+  0248  1411     bclr   2, $11                      
+  024a  b62a     lda    $2a                         
+  024c  a420     and    #$20                        
+  024e  aa07     ora    #$07                        
+  0250  b72a     sta    $2a                         
+  0252  cd03d2   jsr    write_latch_PB2             
+  0255  1f29     bset   7, $29                      
+  0257  cd158c   jsr    init_peripherals            
+  025a  cd01dc   jsr    eprom_checksum              
+  025d  c61fa9   lda    $1fa9                       ; 1FA9 -> $C8 (selcall timing)
+  0260  0e8104   brset  7, $81, L_0267              
+  0263  1e14     bclr   7, $14                      
+  0265  a6ff     lda    #$ff                        
+
+L_0267:    ; xref 0260
+  0267  b7c8     sta    $c8                         
+  0269  9a       cli                                
+
+wait_startup:    ; xref 026e
+  026a  b628     lda    $28                         
+  026c  a119     cmp    #$19                        
+  026e  25fa     bcs    wait_startup                
+  0270  3f10     clr    $10                         
+  0272  a6aa     lda    #$aa                        
+  0274  cd0be5   jsr    head_send                   ; tell control head we (re)started
+  0277  cd06ea   jsr    tx_stop                     
+  027a  0b1b02   brclr  5, $1b, L_027f              
+  027d  1616     bclr   3, $16                      
+
+L_027f:    ; xref 027a
+  027f  a602     lda    #$02                        
+  0281  b761     sta    $61                         
+  0283  1e16     bclr   7, $16                      
+  0285  09a208   brclr  4, $a2, L_0290              
+  0288  a6a7     lda    #$a7                        
+  028a  cd0be5   jsr    head_send                   
+  028d  091b00   brclr  4, $1b, L_0290              
+
+L_0290:    ; xref 0285 028d
+  0290  0d1302   brclr  6, $13, L_0295              
+  0293  1e18     bclr   7, $18                      
+
+L_0295:    ; xref 0290
+  0295  cd0d36   jsr    set_ctcss_tone              
+  0298  cd1530   jsr    econ_setup                  
+  029b  0d1304   brclr  6, $13, main_loop           
+  029e  b602     lda    $02                         
+  02a0  b72d     sta    $2d                         
+
+main_loop:    ; xref 029b 0dcc
+  02a2  011a03   brclr  0, $1a, L_02a8              
+  02a5  cd0574   jsr    head_key_dispatch           
+
+L_02a8:    ; xref 02a2
+  02a8  cd0475   jsr    key_hold_handler            
+  02ab  071c03   brclr  3, $1c, L_02b1              
+  02ae  cd03df   jsr    sub_03df                    
+
+L_02b1:    ; xref 02ab
+  02b1  051c06   brclr  2, $1c, L_02ba              
+  02b4  0f5503   brclr  7, $55, L_02ba              
+  02b7  cd0726   jsr    sub_0726                    
+
+L_02ba:    ; xref 02b1 02b4
+  02ba  031c06   brclr  1, $1c, L_02c3              
+  02bd  0f5503   brclr  7, $55, L_02c3              
+  02c0  cd071a   jsr    sub_071a                    
+
+L_02c3:    ; xref 02ba 02bd
+  02c3  cd0429   jsr    ptt_handler                 
+  02c6  051103   brclr  2, $11, L_02cc              
+  02c9  cd0508   jsr    send_head_config            
+
+L_02cc:    ; xref 02c6
+  02cc  0f5e03   brclr  7, $5e, L_02d2              
+  02cf  cd051c   jsr    sub_051c                    
+
+L_02d2:    ; xref 02cc
+  02d2  071103   brclr  3, $11, L_02d8              
+  02d5  cd0526   jsr    sub_0526                    
+
+L_02d8:    ; xref 02d2
+  02d8  0b1c03   brclr  5, $1c, L_02de              
+  02db  cd0534   jsr    sub_0534                    
+
+L_02de:    ; xref 02d8
+  02de  0d1c03   brclr  6, $1c, L_02e4              
+  02e1  cd0559   jsr    tx_timer_expired            
+
+L_02e4:    ; xref 02de
+  02e4  03120a   brclr  1, $12, L_02f1              
+  02e7  08a207   brset  4, $a2, L_02f1              
+  02ea  1312     bset   1, $12                      
+  02ec  a6a6     lda    #$a6                        
+  02ee  cd0be5   jsr    head_send                   
+
+L_02f1:    ; xref 02e4 02e7
+  02f1  05120a   brclr  2, $12, L_02fe              
+  02f4  08a207   brset  4, $a2, L_02fe              
+  02f7  1512     bset   2, $12                      
+  02f9  a6a4     lda    #$a4                        
+  02fb  cd0be5   jsr    head_send                   
+
+L_02fe:    ; xref 02f1 02f4
+  02fe  0c0008   brset  6, $00, L_0309              ; PA6 = PTT input (inferred)
+  0301  00150b   brset  0, $15, L_030f              
+  0304  cd061a   jsr    sub_061a                    
+  0307  2006     bra    L_030f                      
+
+L_0309:    ; xref 02fe
+  0309  011503   brclr  0, $15, L_030f              
+  030c  cd0653   jsr    sub_0653                    
+
+L_030f:    ; xref 0301 0307 0309
+  030f  0f0007   brclr  7, $00, L_0319              ; PA7 = second front input (hook/monitor, inferred)
+  0312  011404   brclr  0, $14, L_0319              
+  0315  1811     bclr   4, $11                      
+  0317  2002     bra    L_031b                      
+
+L_0319:    ; xref 030f 0312
+  0319  1911     bset   4, $11                      
+
+L_031b:    ; xref 0317
+  031b  b617     lda    $17                         
+  031d  2704     beq    L_0323                      
+  031f  1629     bclr   3, $29                      
+  0321  2002     bra    L_0325                      
+
+L_0323:    ; xref 031d
+  0323  1729     bset   3, $29                      
+
+L_0325:    ; xref 0321
+  0325  0c1203   brset  6, $12, L_032b              
+  0328  cd0567   jsr    sub_0567                    
+
+L_032b:    ; xref 0325
+  032b  0d120b   brclr  6, $12, L_0339              
+  032e  b610     lda    $10                         
+  0330  2607     bne    L_0339                      
+  0332  1d12     bset   6, $12                      
+  0334  a6c0     lda    #$c0                        
+  0336  cd0be5   jsr    head_send                   
+
+L_0339:    ; xref 032b 0330
+  0339  0b1103   brclr  5, $11, L_033f              
+  033c  cd066c   jsr    sub_066c                    
+
+L_033f:    ; xref 0339
+  033f  011103   brclr  0, $11, L_0345              
+  0342  cd0468   jsr    low_batt_check              
+
+L_0345:    ; xref 033f
+  0345  091407   brclr  4, $14, L_034f              
+  0348  0f5c04   brclr  7, $5c, L_034f              
+  034b  1914     bset   4, $14                      
+  034d  1314     bset   1, $14                      
+
+L_034f:    ; xref 0345 0348
+  034f  031506   brclr  1, $15, L_0358              
+  0352  0f5b03   brclr  7, $5b, L_0358              
+  0355  cd064f   jsr    sub_064f                    
+
+L_0358:    ; xref 034f 0352
+  0358  011406   brclr  0, $14, L_0361              
+  035b  0f5a03   brclr  7, $5a, L_0361              
+  035e  cd060d   jsr    sub_060d                    
+
+L_0361:    ; xref 0358 035b
+  0361  072f03   brclr  3, $2f, L_0367              
+  0364  cd0542   jsr    tx_timer_start              
+
+L_0367:    ; xref 0361
+  0367  0f6102   brclr  7, $61, L_036c              
+  036a  1f16     bset   7, $16                      
+
+L_036c:    ; xref 0367
+  036c  cc0d58   jmp    main_loop_part2             
+
+TIMER_ISR:
+  036f  a609     lda    #$09                        ; timer reload: TDR=$C5, TCR=$09 -> ~2.4 kHz tick (one tick ~415 us)
+  0371  aec5     ldx    #$c5                        
+  0373  bf08     stx    $08                         
+  0375  b709     sta    $09                         
+  0377  1a01     bclr   5, $01                      ; PB5 low (synth strobe idle)
+  0379  3c28     inc    $28                         
+  037b  012840   brclr  0, $28, uart_tick           
+  037e  1301     bset   1, $01                      ; PB1 toggles every tick (1.2 kHz square wave)
+  0380  b628     lda    $28                         
+  0382  a41e     and    #$1e                        
+  0384  b727     sta    $27                         
+  0386  44       lsra                               
+  0387  bb27     add    $27                         
+  0389  97       tax                                
+  038a  dc038d   jmp    $038d, x                    ; 16-entry slot table, one slot every 2 ticks
+
+tick_slot_table:
+  038d  cc03bd   jmp    tick_rti                    
+
+sub_0390:
+  0390  cc09d0   jmp    adc_start_2                 
+
+sub_0393:
+  0393  cc03bd   jmp    tick_rti                    
+
+sub_0396:
+  0396  cc09da   jmp    adc_start_1                 
+
+sub_0399:
+  0399  cc03bd   jmp    tick_rti                    
+
+sub_039c:
+  039c  cc09fb   jmp    squelch_task                
+
+sub_039f:
+  039f  cc09ab   jmp    adc_start_3to6              
+
+sub_03a2:
+  03a2  cc03bd   jmp    tick_rti                    
+
+sub_03a5:
+  03a5  cc0ae9   jmp    soft_timers                 
+
+sub_03a8:
+  03a8  cc0b40   jmp    supervision_task            
+
+sub_03ab:
+  03ab  cc0b32   jmp    write_latch_PB4             
+
+sub_03ae:
+  03ae  cc09da   jmp    adc_start_1                 
+
+sub_03b1:
+  03b1  cc03bd   jmp    tick_rti                    
+
+sub_03b4:
+  03b4  cc09fb   jmp    squelch_task                
+
+sub_03b7:
+  03b7  cc03bd   jmp    tick_rti                    
+
+sub_03ba:
+  03ba  cc03bd   jmp    tick_rti                    
+
+tick_rti:    ; xref 038d 0393 0399 03a2 03b1 03b7 03ba
+  03bd  80       rti                                
+
+uart_tick:    ; xref 037b
+  03be  1201     bclr   1, $01                      
+  03c0  cc08d8   jmp    uart_bit                    
+
+clear_ram_10_1f:    ; xref 015f 0218
+  03c3  ae10     ldx    #$10                        
+  03c5  a620     lda    #$20                        
+
+clear_ram_x_to_a:    ; xref 021f
+  03c7  b721     sta    $21                         
+
+L_03c9:    ; xref 03cf
+  03c9  b321     cpx    $21                         
+  03cb  2704     beq    L_03d1                      
+  03cd  7f       clr    , x                         
+  03ce  5c       incx                               
+  03cf  20f8     bra    L_03c9                      
+
+L_03d1:    ; xref 03cb
+  03d1  81       rts                                
+
+write_latch_PB2:    ; xref 01a4 0252
+  03d2  be00     ldx    $00                         
+  03d4  b62a     lda    $2a                         
+  03d6  b700     sta    $00                         
+  03d8  1401     bclr   2, $01                      
+  03da  1501     bset   2, $01                      
+  03dc  bf00     stx    $00                         
+  03de  81       rts                                
+
+sub_03df:    ; xref 02ae
+  03df  0f6346   brclr  7, $63, L_0428              
+  03e2  171c     bset   3, $1c                      
+  03e4  cd0c09   jsr    sub_0c09                    
+  03e7  091304   brclr  4, $13, update_display      
+  03ea  1913     bset   4, $13                      
+  03ec  2032     bra    L_0420                      
+
+update_display:    ; xref 03e7 0648 0714 07e7 0e91 0f5f 1039 1396 149f 14b4
+  03ee  0a142d   brset  5, $14, L_041e              
+  03f1  0d111b   brclr  6, $11, L_040f              
+  03f4  061f0e   brset  3, $1f, L_0405              
+  03f7  121d     bclr   1, $1d                      
+  03f9  121e     bclr   1, $1e                      
+  03fb  b64f     lda    $4f                         
+  03fd  aa0f     ora    #$0f                        
+  03ff  cd0c24   jsr    display_digits              
+  0402  171c     bset   3, $1c                      
+  0404  81       rts                                
+
+L_0405:    ; xref 03f4
+  0405  121d     bclr   1, $1d                      
+  0407  121e     bclr   1, $1e                      
+  0409  cd0c14   jsr    sub_0c14                    
+  040c  171c     bset   3, $1c                      
+  040e  81       rts                                
+
+L_040f:    ; xref 03f1
+  040f  121d     bclr   1, $1d                      
+  0411  131e     bset   1, $1e                      
+  0413  0fa005   brclr  7, $a0, L_041b              
+  0416  cd14b7   jsr    sub_14b7                    
+  0419  2003     bra    L_041e                      
+
+L_041b:    ; xref 0413
+  041b  cd0c14   jsr    sub_0c14                    
+
+L_041e:    ; xref 03ee 0419
+  041e  1b14     bset   5, $14                      
+
+L_0420:    ; xref 03ec
+  0420  0d1205   brclr  6, $12, L_0428              
+  0423  a6c1     lda    #$c1                        
+  0425  cd0be5   jsr    head_send                   
+
+L_0428:    ; xref 03df 0420
+  0428  81       rts                                
+
+ptt_handler:    ; xref 02c3
+  0429  be15     ldx    $15                         
+  042b  272d     beq    L_045a                      
+  042d  01111a   brclr  0, $11, L_044a              
+  0430  081434   brset  4, $14, L_0467              
+  0433  03140d   brclr  1, $14, L_0443              
+  0436  00292e   brset  0, $29, L_0467              
+  0439  1029     bclr   0, $29                      
+  043b  1213     bclr   1, $13                      
+
+L_043d:    ; xref 043d
+  043d  0213fd   brset  1, $13, L_043d              
+  0440  3f4a     clr    $4a                         
+  0442  81       rts                                
+
+L_0443:    ; xref 0433
+  0443  cd06a5   jsr    sub_06a5                    
+  0446  241f     bcc    L_0467                      
+  0448  2013     bra    L_045d                      
+
+L_044a:    ; xref 042d
+  044a  9f       txa                                
+  044b  a403     and    #$03                        
+  044d  2703     beq    L_0452                      
+  044f  cc061f   jmp    L_061f                      
+
+L_0452:    ; xref 044d
+  0452  cd06a5   jsr    sub_06a5                    
+  0455  2510     bcs    L_0467                      
+  0457  cc06bc   jmp    tx_start                    
+
+L_045a:    ; xref 042b
+  045a  01110a   brclr  0, $11, L_0467              
+
+L_045d:    ; xref 0448
+  045d  cd06ea   jsr    tx_stop                     
+  0460  1314     bset   1, $14                      
+  0462  0d1302   brclr  6, $13, L_0467              
+  0465  1e18     bclr   7, $18                      
+
+L_0467:    ; xref 0430 0436 0446 0455 045a 0462
+  0467  81       rts                                
+
+low_batt_check:    ; xref 0342
+  0468  012909   brclr  0, $29, L_0474              
+  046b  b64a     lda    $4a                         
+  046d  a115     cmp    #$15                        
+  046f  2503     bcs    L_0474                      
+  0471  cc0189   jmp    power_down_stop             
+
+L_0474:    ; xref 0468 046f
+  0474  81       rts                                
+
+key_hold_handler:    ; xref 02a8
+  0475  011b04   brclr  0, $1b, L_047c              
+  0478  1b13     bset   5, $13                      
+  047a  200c     bra    L_0488                      
+
+L_047c:    ; xref 0475
+  047c  031b16   brclr  1, $1b, L_0495              
+  047f  0a1309   brset  5, $13, L_048b              
+  0482  a602     lda    #$02                        
+  0484  b759     sta    $59                         
+  0486  1a13     bclr   5, $13                      
+
+L_0488:    ; xref 047a 048b
+  0488  1e29     bclr   7, $29                      
+  048a  81       rts                                
+
+L_048b:    ; xref 047f
+  048b  0f59fa   brclr  7, $59, L_0488              
+  048e  1f29     bset   7, $29                      
+  0490  131b     bset   1, $1b                      
+  0492  1b13     bset   5, $13                      
+  0494  81       rts                                
+
+L_0495:    ; xref 047c
+  0495  041b40   brset  2, $1b, L_04d8              
+  0498  071b1f   brclr  3, $1b, L_04ba              
+  049b  0e1b08   brset  7, $1b, L_04a6              
+  049e  a637     lda    #$37                        
+  04a0  b75d     sta    $5d                         
+  04a2  1e1b     bclr   7, $1b                      
+  04a4  2032     bra    L_04d8                      
+
+L_04a6:    ; xref 049b
+  04a6  0f5d2f   brclr  7, $5d, L_04d8              
+
+L_04a9:    ; xref 04ba
+  04a9  1f29     bset   7, $29                      
+  04ab  1d1b     bset   6, $1b                      
+  04ad  b636     lda    $36                         
+  04af  a40f     and    #$0f                        
+  04b1  b736     sta    $36                         
+  04b3  1b13     bset   5, $13                      
+  04b5  1f1b     bset   7, $1b                      
+  04b7  171b     bset   3, $1b                      
+  04b9  81       rts                                
+
+L_04ba:    ; xref 0498
+  04ba  091bec   brclr  4, $1b, L_04a9              
+  04bd  0d1b18   brclr  6, $1b, L_04d8              
+  04c0  1f29     bset   7, $29                      
+  04c2  0a1307   brset  5, $13, L_04cc              
+  04c5  a612     lda    #$12                        
+  04c7  b759     sta    $59                         
+  04c9  1a13     bclr   5, $13                      
+  04cb  81       rts                                
+
+L_04cc:    ; xref 04c2
+  04cc  0f5908   brclr  7, $59, L_04d7              
+  04cf  1b13     bset   5, $13                      
+
+L_04d1:    ; xref 0506
+  04d1  b61b     lda    $1b                         
+  04d3  a840     eor    #$40                        
+  04d5  b71b     sta    $1b                         
+
+L_04d7:    ; xref 04cc 04e8 04f1 04fc
+  04d7  81       rts                                
+
+L_04d8:    ; xref 0495 04a4 04a6 04bd
+  04d8  0a130d   brset  5, $13, L_04e8              
+  04db  a601     lda    #$01                        
+  04dd  b759     sta    $59                         
+  04df  1a13     bclr   5, $13                      
+
+sub_04e1:    ; xref 04ef
+  04e1  b629     lda    $29                         
+  04e3  a880     eor    #$80                        
+  04e5  b729     sta    $29                         
+  04e7  81       rts                                
+
+L_04e8:    ; xref 04d8
+  04e8  0f59ec   brclr  7, $59, L_04d7              
+  04eb  a601     lda    #$01                        
+  04ed  b759     sta    $59                         
+  04ef  adf0     bsr    sub_04e1                    
+  04f1  091be3   brclr  4, $1b, L_04d7              
+  04f4  b636     lda    $36                         
+  04f6  ab10     add    #$10                        
+  04f8  b736     sta    $36                         
+  04fa  a170     cmp    #$70                        
+  04fc  25d9     bcs    L_04d7                      
+  04fe  1b13     bset   5, $13                      
+  0500  b636     lda    $36                         
+  0502  a40f     and    #$0f                        
+  0504  b736     sta    $36                         
+  0506  20c9     bra    L_04d1                      
+
+send_head_config:    ; xref 02c9
+  0508  a6e7     lda    #$e7                        
+  050a  cd0be5   jsr    head_send                   
+  050d  5f       clrx                               
+
+L_050e:    ; xref 0517
+  050e  d61f10   lda    $1f10, x                    
+  0511  cd0be5   jsr    head_send                   
+  0514  5c       incx                               
+  0515  a303     cpx    #$03                        
+  0517  26f5     bne    L_050e                      
+  0519  1511     bset   2, $11                      
+  051b  81       rts                                
+
+sub_051c:    ; xref 02cf
+  051c  cd1409   jsr    sub_1409                    
+  051f  a613     lda    #$13                        
+  0521  b75e     sta    $5e                         
+  0523  1611     bclr   3, $11                      
+  0525  81       rts                                
+
+sub_0526:    ; xref 02d5
+  0526  0a1c0a   brset  5, $1c, L_0533              
+  0529  a6e4     lda    #$e4                        
+  052b  cd0be5   jsr    head_send                   
+  052e  cd0c73   jsr    sub_0c73                    
+  0531  1711     bset   3, $11                      
+
+L_0533:    ; xref 0526
+  0533  81       rts                                
+
+sub_0534:    ; xref 02db
+  0534  0f5f07   brclr  7, $5f, L_053e              
+  0537  061405   brset  3, $14, L_053f              
+  053a  1614     bclr   3, $14                      
+  053c  1b1c     bset   5, $1c                      
+
+L_053e:    ; xref 0534
+  053e  81       rts                                
+
+L_053f:    ; xref 0537
+  053f  cc0189   jmp    power_down_stop             
+
+tx_timer_start:    ; xref 0364
+  0542  011113   brclr  0, $11, L_0558              
+  0545  0c1c10   brset  6, $1c, L_0558              
+  0548  b615     lda    $15                         
+  054a  a503     bit    #$03                        
+  054c  270a     beq    L_0558                      
+  054e  0e1c07   brset  7, $1c, L_0558              
+  0551  c61f38   lda    $1f38                       
+  0554  b767     sta    $67                         
+  0556  1c1c     bclr   6, $1c                      
+
+L_0558:    ; xref 0542 0545 054c 054e
+  0558  81       rts                                
+
+tx_timer_expired:    ; xref 02e1
+  0559  b667     lda    $67                         
+  055b  2609     bne    L_0566                      
+  055d  1d1c     bset   6, $1c                      
+  055f  cd1360   jsr    sub_1360                    
+  0562  1416     bclr   2, $16                      
+  0564  101b     bclr   0, $1b                      
+
+L_0566:    ; xref 055b
+  0566  81       rts                                
+
+sub_0567:    ; xref 0328
+  0567  b610     lda    $10                         
+  0569  2b01     bmi    L_056c                      
+  056b  81       rts                                
+
+L_056c:    ; xref 0569
+  056c  1c12     bclr   6, $12                      
+  056e  a6c1     lda    #$c1                        
+  0570  cd0be5   jsr    head_send                   
+  0573  81       rts                                
+
+head_key_dispatch:    ; xref 02a5
+  0574  b638     lda    $38                         
+  0576  111a     bset   0, $1a                      
+  0578  041a20   brset  2, $1a, L_059b              
+  057b  061a1d   brset  3, $1a, L_059b              
+  057e  a130     cmp    #$30                        
+  0580  2517     bcs    L_0599                      
+  0582  a13f     cmp    #$3f                        
+  0584  232b     bls    L_05b1                      
+  0586  a044     sub    #$44                        
+  0588  2b0f     bmi    L_0599                      
+  058a  b721     sta    $21                         
+  058c  48       lsla                               
+  058d  bb21     add    $21                         
+  058f  97       tax                                
+  0590  a315     cpx    #$15                        
+  0592  2205     bhi    L_0599                      
+  0594  1110     bset   0, $10                      
+  0596  dc059c   jmp    $059c, x                    
+
+L_0599:    ; xref 0580 0588 0592
+  0599  1010     bclr   0, $10                      
+
+L_059b:    ; xref 0578 057b
+  059b  81       rts                                
+
+head_cmd_table:
+  059c  cc0610   jmp    L_0610                      
+
+sub_059f:
+  059f  cc064f   jmp    sub_064f                    
+
+sub_05a2:
+  05a2  cc0606   jmp    L_0606                      
+
+sub_05a5:
+  05a5  cc060d   jmp    sub_060d                    
+
+sub_05a8:
+  05a8  cc05d5   jmp    L_05d5                      
+
+sub_05ab:
+  05ab  cc0667   jmp    L_0667                      
+
+sub_05ae:
+  05ae  cc157e   jmp    head_ram_dump               
+
+L_05b1:    ; xref 0584
+  05b1  5f       clrx                               
+
+L_05b2:    ; xref 05ba
+  05b2  d105bf   cmp    $05bf, x                    
+  05b5  270c     beq    L_05c3                      
+  05b7  5c       incx                               
+  05b8  a304     cpx    #$04                        
+  05ba  26f6     bne    L_05b2                      
+
+L_05bc:    ; xref 05ce
+  05bc  161b     bclr   3, $1b                      
+  05be  81       rts                                
+  05bf  db 31 32 34 37
+
+L_05c3:    ; xref 05b5
+  05c3  d61f58   lda    $1f58, x                    
+  05c6  b721     sta    $21                         
+  05c8  48       lsla                               
+  05c9  bb21     add    $21                         
+  05cb  97       tax                                
+  05cc  a31b     cpx    #$1b                        
+  05ce  24ec     bcc    L_05bc                      
+  05d0  1110     bset   0, $10                      
+  05d2  dc05d6   jmp    $05d6, x                    
+
+L_05d5:    ; xref 059c 05a8 05d6
+  05d5  81       rts                                
+
+fkey_func_table:
+  05d6  cc05d5   jmp    L_05d5                      
+
+sub_05d9:
+  05d9  cc072d   jmp    fn_channel_up               
+
+sub_05dc:
+  05dc  cc0770   jmp    fn_channel_down             
+
+sub_05df:
+  05df  cc073b   jmp    fn_channel_tens             
+
+sub_05e2:
+  05e2  cc079d   jmp    fn_channel_units            
+
+sub_05e5:
+  05e5  cc100c   jmp    fn_scan                     
+
+sub_05e8:
+  05e8  cc05f1   jmp    fn_monitor_toggle           
+
+sub_05eb:
+  05eb  cc141c   jmp    fn_selcall_send             
+
+sub_05ee:
+  05ee  cc147b   jmp    fn_selcall_toggle           
+
+fn_monitor_toggle:    ; xref 05d6 05e8
+  05f1  04190a   brset  2, $19, L_05fe              
+  05f4  09330c   brclr  4, $33, L_0603              
+  05f7  0a1b09   brset  5, $1b, L_0603              
+  05fa  1419     bclr   2, $19                      
+  05fc  2002     bra    L_0600                      
+
+L_05fe:    ; xref 05f1
+  05fe  1519     bset   2, $19                      
+
+L_0600:    ; xref 05fc
+  0600  121b     bclr   1, $1b                      
+  0602  81       rts                                
+
+L_0603:    ; xref 05f4 05f7
+  0603  cc07ea   jmp    sub_07ea                    
+
+L_0606:    ; xref 059c 05a2
+  0606  1014     bclr   0, $14                      
+  0608  a638     lda    #$38                        
+  060a  b75a     sta    $5a                         
+  060c  81       rts                                
+
+sub_060d:    ; xref 035e 059c 05a5
+  060d  1114     bset   0, $14                      
+  060f  81       rts                                
+
+L_0610:    ; xref 059c
+  0610  1215     bclr   1, $15                      
+  0612  a638     lda    #$38                        
+  0614  b75b     sta    $5b                         
+  0616  2004     bra    L_061c                      
+  0618  db 20 02
+
+sub_061a:    ; xref 0304
+  061a  1015     bclr   0, $15                      
+
+L_061c:    ; xref 0616
+  061c  1517     bset   2, $17                      
+  061e  81       rts                                
+
+L_061f:    ; xref 044f
+  061f  09a20d   brclr  4, $a2, L_062f              
+  0622  191b     bset   4, $1b                      
+  0624  19a2     bset   4, $a2                      
+  0626  1412     bclr   2, $12                      
+  0628  091904   brclr  4, $19, L_062f              
+  062b  1212     bclr   1, $12                      
+  062d  1512     bset   2, $12                      
+
+L_062f:    ; xref 061f 0628
+  062f  052f03   brclr  2, $2f, L_0635              
+  0632  081917   brset  4, $19, L_064c              
+
+L_0635:    ; xref 062f
+  0635  0e1c14   brset  7, $1c, L_064c              
+  0638  ad6b     bsr    sub_06a5                    
+  063a  2510     bcs    L_064c                      
+  063c  cd06bc   jsr    tx_start                    
+  063f  250b     bcs    L_064c                      
+  0641  cd1368   jsr    sub_1368                    
+  0644  b617     lda    $17                         
+  0646  2604     bne    L_064c                      
+  0648  cc03ee   jmp    update_display              
+  064b  db 81
+
+L_064c:    ; xref 0632 0635 063a 063f 0646
+  064c  101b     bclr   0, $1b                      
+  064e  81       rts                                
+
+sub_064f:    ; xref 0355 059c 059f
+  064f  1315     bset   1, $15                      
+  0651  2002     bra    L_0655                      
+
+sub_0653:    ; xref 030c
+  0653  1115     bset   0, $15                      
+
+L_0655:    ; xref 0651
+  0655  cd1360   jsr    sub_1360                    
+  0658  1417     bclr   2, $17                      
+  065a  1d1c     bset   6, $1c                      
+  065c  111b     bset   0, $1b                      
+  065e  1516     bset   2, $16                      
+  0660  cd1574   jsr    auto_power_off_reset        
+  0663  81       rts                                
+  0664  db cc 15 74
+
+L_0667:    ; xref 059c 05ab
+  0667  1b1c     bset   5, $1c                      
+  0669  1714     bset   3, $14                      
+  066b  81       rts                                
+
+sub_066c:    ; xref 033c
+  066c  001114   brset  0, $11, L_0683              
+  066f  041c32   brset  2, $1c, L_06a4              
+  0672  0c2a2f   brset  6, $2a, L_06a4              
+  0675  0c112c   brset  6, $11, L_06a4              
+  0678  0d1303   brclr  6, $13, L_067e              
+  067b  0a1626   brset  5, $16, L_06a4              
+
+L_067e:    ; xref 0678
+  067e  cd07ed   jsr    select_channel              
+  0681  2011     bra    L_0694                      
+
+L_0683:    ; xref 066c
+  0683  021c17   brset  1, $1c, L_069d              
+  0686  002f1b   brset  0, $2f, L_06a4              
+  0689  a611     lda    #$11                        
+  068b  b755     sta    $55                         
+  068d  121c     bclr   1, $1c                      
+  068f  b62e     lda    $2e                         
+  0691  cd0842   jsr    load_synth                  
+
+L_0694:    ; xref 0681
+  0694  b62d     lda    $2d                         
+  0696  2b05     bmi    L_069d                      
+  0698  ab08     add    #$08                        
+  069a  b72d     sta    $2d                         
+  069c  81       rts                                
+
+L_069d:    ; xref 0683 0696
+  069d  1810     bclr   4, $10                      
+  069f  011102   brclr  0, $11, L_06a4              
+  06a2  1214     bclr   1, $14                      
+
+L_06a4:    ; xref 066f 0672 0675 067b 0686 069f
+  06a4  81       rts                                
+
+sub_06a5:    ; xref 0443 0452 0638
+  06a5  0c1010   brset  6, $10, L_06b8              
+  06a8  b616     lda    $16                         
+  06aa  a4f0     and    #$f0                        
+  06ac  260a     bne    L_06b8                      
+  06ae  b615     lda    $15                         
+  06b0  a4f0     and    #$f0                        
+  06b2  2606     bne    L_06ba                      
+  06b4  b616     lda    $16                         
+  06b6  2702     beq    L_06ba                      
+
+L_06b8:    ; xref 06a5 06ac
+  06b8  99       sec                                
+  06b9  81       rts                                
+
+L_06ba:    ; xref 06b2 06b6
+  06ba  98       clc                                
+  06bb  81       rts                                
+
+tx_start:    ; xref 0457 063c
+  06bc  cd1137   jsr    sub_1137                    
+  06bf  a611     lda    #$11                        
+  06c1  b755     sta    $55                         
+  06c3  121c     bclr   1, $1c                      
+  06c5  151c     bset   2, $1c                      
+  06c7  cd0bde   jsr    sub_0bde                    
+  06ca  1112     bset   0, $12                      
+  06cc  002f0b   brset  0, $2f, L_06da              
+  06cf  1211     bclr   1, $11                      
+  06d1  ad10     bsr    sub_06e3                    
+  06d3  b62e     lda    $2e                         
+  06d5  cd0842   jsr    load_synth                  
+  06d8  2506     bcs    L_06e0                      
+
+L_06da:    ; xref 06cc
+  06da  1129     bset   0, $29                      
+  06dc  1011     bclr   0, $11                      
+  06de  98       clc                                
+  06df  81       rts                                
+
+L_06e0:    ; xref 06d8
+  06e0  131c     bset   1, $1c                      
+  06e2  81       rts                                
+
+sub_06e3:    ; xref 06d1 0706 07e4
+  06e3  b62d     lda    $2d                         
+  06e5  a407     and    #$07                        
+  06e7  b72d     sta    $2d                         
+  06e9  81       rts                                
+
+tx_stop:    ; xref 0277 045d 1507
+  06ea  131c     bset   1, $1c                      
+  06ec  1029     bclr   0, $29                      
+  06ee  1213     bclr   1, $13                      
+
+L_06f0:    ; xref 06f0
+  06f0  0213fd   brset  1, $13, L_06f0              
+  06f3  3f4a     clr    $4a                         
+  06f5  1914     bset   4, $14                      
+  06f7  1417     bclr   2, $17                      
+  06f9  cd0e0d   jsr    sub_0e0d                    
+  06fc  04a105   brset  2, $a1, L_0704              
+  06ff  a6a0     lda    #$a0                        
+  0701  cd0be5   jsr    head_send                   
+
+L_0704:    ; xref 06fc
+  0704  1111     bset   0, $11                      
+  0706  addb     bsr    sub_06e3                    
+  0708  1c29     bclr   6, $29                      
+  070a  cd07ed   jsr    select_channel              
+  070d  1d29     bset   6, $29                      
+  070f  2506     bcs    L_0717                      
+  0711  0c1818   brset  6, $18, L_072c              
+  0714  cc03ee   jmp    update_display              
+
+L_0717:    ; xref 070f
+  0717  cc07ea   jmp    sub_07ea                    
+
+sub_071a:    ; xref 02c0
+  071a  131c     bset   1, $1c                      
+  071c  111b     bset   0, $1b                      
+  071e  a6a2     lda    #$a2                        
+  0720  cd0be5   jsr    head_send                   
+  0723  cc0e2c   jmp    L_0e2c                      
+
+sub_0726:    ; xref 02b7
+  0726  151c     bset   2, $1c                      
+  0728  1318     bset   1, $18                      
+  072a  1118     bset   0, $18                      
+
+L_072c:    ; xref 0711
+  072c  81       rts                                
+
+fn_channel_up:    ; xref 05d6 05d9 0762
+  072d  0ea070   brset  7, $a0, L_07a0              
+  0730  00115f   brset  0, $11, L_0792              
+  0733  0c115c   brset  6, $11, L_0792              
+  0736  ad2c     bsr    sub_0764                    
+  0738  4c       inca                               
+  0739  2016     bra    L_0751                      
+
+fn_channel_tens:    ; xref 05d6 05df
+  073b  0ea035   brset  7, $a0, L_0773              
+  073e  001151   brset  0, $11, L_0792              
+  0741  0c114e   brset  6, $11, L_0792              
+  0744  ad1e     bsr    sub_0764                    
+
+L_0746:    ; xref 0748
+  0746  a00a     sub    #$0a                        
+  0748  24fc     bcc    L_0746                      
+  074a  ab0a     add    #$0a                        
+  074c  b02e     sub    $2e                         
+  074e  40       nega                               
+  074f  ab0a     add    #$0a                        
+
+L_0751:    ; xref 0739
+  0751  c11f3e   cmp    $1f3e                       
+  0754  2303     bls    L_0759                      
+  0756  c61f3f   lda    $1f3f                       
+
+L_0759:    ; xref 0754
+  0759  b72e     sta    $2e                         
+  075b  ad37     bsr    sub_0794                    
+  075d  cd07ed   jsr    select_channel              
+  0760  246d     bcc    L_07cf                      
+  0762  20c9     bra    fn_channel_up               
+
+sub_0764:    ; xref 0736 0744 077c 07a9
+  0764  b62e     lda    $2e                         
+  0766  0d1306   brclr  6, $13, L_076f              
+  0769  b650     lda    $50                         
+  076b  b72e     sta    $2e                         
+  076d  1d13     bset   6, $13                      
+
+L_076f:    ; xref 0766
+  076f  81       rts                                
+
+fn_channel_down:    ; xref 05d6 05dc 078e
+  0770  0fa003   brclr  7, $a0, L_0776              
+
+L_0773:    ; xref 073b
+  0773  cc14a5   jmp    L_14a5                      
+
+L_0776:    ; xref 0770
+  0776  001119   brset  0, $11, L_0792              
+  0779  0c1116   brset  6, $11, L_0792              
+  077c  ade6     bsr    sub_0764                    
+  077e  4a       deca                               
+  077f  c11f3f   cmp    $1f3f                       
+  0782  2403     bcc    L_0787                      
+  0784  c61f3e   lda    $1f3e                       
+
+L_0787:    ; xref 0782
+  0787  b72e     sta    $2e                         
+  0789  ad09     bsr    sub_0794                    
+  078b  cd07ed   jsr    select_channel              
+  078e  25e0     bcs    fn_channel_down             
+  0790  203d     bra    L_07cf                      
+
+L_0792:    ; xref 0730 0733 073e 0741 0776 0779 07a3 07a6
+  0792  2056     bra    sub_07ea                    
+
+sub_0794:    ; xref 075b 0789
+  0794  cd1242   jsr    selcall_send_start          
+  0797  a6a0     lda    #$a0                        
+  0799  cd0be5   jsr    head_send                   
+  079c  81       rts                                
+
+fn_channel_units:    ; xref 05d6 05e2 07c4 07c9 07cd
+  079d  0fa003   brclr  7, $a0, L_07a3              
+
+L_07a0:    ; xref 072d
+  07a0  cc14a9   jmp    L_14a9                      
+
+L_07a3:    ; xref 079d
+  07a3  0011ec   brset  0, $11, L_0792              
+  07a6  0c11e9   brset  6, $11, L_0792              
+  07a9  adb9     bsr    sub_0764                    
+
+L_07ab:    ; xref 07ad
+  07ab  a00a     sub    #$0a                        
+  07ad  24fc     bcc    L_07ab                      
+  07af  97       tax                                
+  07b0  ab0a     add    #$0a                        
+  07b2  b02e     sub    $2e                         
+  07b4  40       nega                               
+  07b5  b72e     sta    $2e                         
+  07b7  9f       txa                                
+  07b8  4c       inca                               
+  07b9  2a02     bpl    L_07bd                      
+  07bb  ab0a     add    #$0a                        
+
+L_07bd:    ; xref 07b9
+  07bd  bb2e     add    $2e                         
+  07bf  b72e     sta    $2e                         
+  07c1  c11f3e   cmp    $1f3e                       
+  07c4  22d7     bhi    fn_channel_units            
+  07c6  c11f3f   cmp    $1f3f                       
+  07c9  25d2     bcs    fn_channel_units            
+  07cb  ad20     bsr    select_channel              
+  07cd  25ce     bcs    fn_channel_units            
+
+L_07cf:    ; xref 0760 0790
+  07cf  121b     bclr   1, $1b                      
+  07d1  1b16     bset   5, $16                      
+  07d3  1f18     bset   7, $18                      
+  07d5  0d130a   brclr  6, $13, L_07e2              
+  07d8  b62e     lda    $2e                         
+  07da  b750     sta    $50                         
+  07dc  b752     sta    $52                         
+  07de  3f1f     clr    $1f                         
+  07e0  1e18     bclr   7, $18                      
+
+L_07e2:    ; xref 07d5
+  07e2  3f10     clr    $10                         
+  07e4  cd06e3   jsr    sub_06e3                    
+  07e7  cc03ee   jmp    update_display              
+
+sub_07ea:    ; xref 0603 0717 0792 1062 1462 14a2
+  07ea  161b     bclr   3, $1b                      
+  07ec  81       rts                                
+
+select_channel:    ; xref 018b 067e 070a 075d 078b 07cb 0fae
+  07ed  b62e     lda    $2e                         
+
+select_channel_A:    ; xref 104a 1104
+  07ef  1218     bclr   1, $18                      
+  07f1  141c     bclr   2, $1c                      
+  07f3  ae18     ldx    #$18                        
+  07f5  bf55     stx    $55                         
+  07f7  1311     bset   1, $11                      
+  07f9  ad47     bsr    load_synth                  
+  07fb  2544     bcs    L_0841                      
+  07fd  0c2909   brset  6, $29, L_0809              
+  0800  bd21     jsr    $21                         ; bytes 6,7 of slot -> $34 (CTCSS/flags), $35 (link)
+  0802  b734     sta    $34                         
+  0804  5c       incx                               
+  0805  bd21     jsr    $21                         
+  0807  b735     sta    $35                         
+
+L_0809:    ; xref 07fd
+  0809  cd139e   jsr    sub_139e                    
+  080c  ae05     ldx    #$05                        
+  080e  bd21     jsr    $21                         ; byte5 bit3 -> latch $82 bit5 (inverted)
+  0810  a508     bit    #$08                        
+  0812  2604     bne    L_0818                      
+  0814  1b82     bset   5, $82                      
+  0816  2002     bra    L_081a                      
+
+L_0818:    ; xref 0812
+  0818  1a82     bclr   5, $82                      
+
+L_081a:    ; xref 0816
+  081a  0c2923   brset  6, $29, L_0840              
+  081d  cd0d36   jsr    set_ctcss_tone              
+  0820  ae05     ldx    #$05                        
+  0822  bd21     jsr    $21                         ; byte5 bits4-5 = power; 0 -> operator-selected power from $2C
+  0824  a430     and    #$30                        
+  0826  2606     bne    L_082e                      
+  0828  b62c     lda    $2c                         
+  082a  44       lsra                               
+  082b  44       lsra                               
+  082c  a430     and    #$30                        
+
+L_082e:    ; xref 0826
+  082e  a410     and    #$10                        
+  0830  b721     sta    $21                         
+  0832  b62c     lda    $2c                         
+  0834  a4ef     and    #$ef                        
+  0836  bb21     add    $21                         
+  0838  cd0bde   jsr    sub_0bde                    
+  083b  b72c     sta    $2c                         
+  083d  cd1530   jsr    econ_setup                  
+
+L_0840:    ; xref 081a
+  0840  98       clc                                
+
+L_0841:    ; xref 07fb
+  0841  81       rts                                
+
+load_synth:    ; xref 0691 06d5 07f9
+  0842  cd08c7   jsr    chan_ptr                    ; X=2: Rx bytes 0-2, X=5: Tx bytes 3-5 of the channel slot
+  0845  ae02     ldx    #$02                        
+  0847  031102   brclr  1, $11, L_084c              
+  084a  ae05     ldx    #$05                        
+
+L_084c:    ; xref 0847
+  084c  bf25     stx    $25                         
+  084e  a6d6     lda    #$d6                        
+  0850  b721     sta    $21                         
+  0852  a681     lda    #$81                        
+  0854  b724     sta    $24                         
+  0856  bd21     jsr    $21                         
+  0858  a580     bit    #$80                        ; bit7 of byte2/5 = entry valid, else carry set = empty channel
+  085a  2602     bne    L_085e                      
+  085c  99       sec                                
+  085d  81       rts                                
+
+L_085e:    ; xref 085a
+  085e  031105   brclr  1, $11, L_0866              
+  0861  1018     bclr   0, $18                      
+  0863  cd0ae0   jsr    mute_close                  
+
+L_0866:    ; xref 085e
+  0866  021119   brset  1, $11, L_0882              
+  0869  1716     bset   3, $16                      
+  086b  1b1b     bset   5, $1b                      
+  086d  a510     bit    #$10                        ; Rx: byte2 bit4 (C/R) -> $1B.5 / $19.2
+  086f  2704     beq    L_0875                      
+  0871  1a1b     bclr   5, $1b                      
+  0873  1519     bset   2, $19                      
+
+L_0875:    ; xref 086f
+  0875  cd1107   jsr    chan_flags_rx               ; Rx: byte2 bit5 (VOTE) handled in chan_flags_rx
+  0878  a508     bit    #$08                        ; Rx: byte2 bit3 -> latch $2C bit5 (VCO band switch)
+  087a  2704     beq    L_0880                      
+  087c  1b2c     bset   5, $2c                      
+  087e  2002     bra    L_0882                      
+
+L_0880:    ; xref 087a
+  0880  1a2c     bclr   5, $2c                      
+
+L_0882:    ; xref 0866 087e
+  0882  a440     and    #$40                        ; bit6 (injection side) -> $29.1
+  0884  2704     beq    L_088a                      
+  0886  1229     bclr   1, $29                      
+  0888  2002     bra    L_088c                      
+
+L_088a:    ; xref 0884
+  088a  1329     bset   1, $29                      
+
+L_088c:    ; xref 0888
+  088c  5a       decx                               
+  088d  5a       decx                               
+  088e  ad32     bsr    synth_strobe                
+  0890  c61f2d   lda    $1f2d                       ; synth: port A = 1F2D, PB6 low (enable), 2 strobes
+  0893  b700     sta    $00                         
+  0895  1c01     bclr   6, $01                      
+  0897  ad29     bsr    synth_strobe                
+  0899  ad27     bsr    synth_strobe                
+
+L_089b:    ; xref 08a8
+  089b  bd21     jsr    $21                         ; synth: 4 BCD digits, low nibble then high nibble, one PB5 strobe each
+  089d  ad21     bsr    synth_write_nibble          
+  089f  44       lsra                               
+  08a0  44       lsra                               
+  08a1  44       lsra                               
+  08a2  44       lsra                               
+  08a3  ad1b     bsr    synth_write_nibble          
+  08a5  5c       incx                               
+  08a6  b325     cpx    $25                         
+  08a8  26f1     bne    L_089b                      
+  08aa  bd21     jsr    $21                         ; synth: digit 5 (byte2/5 | 8)
+  08ac  aa08     ora    #$08                        
+  08ae  ad10     bsr    synth_write_nibble          
+  08b0  c61f2c   lda    $1f2c                       ; synth: then reference bytes 1F2C, 1F2D; PB6 high
+  08b3  ad0b     bsr    synth_write_nibble          
+  08b5  c61f2d   lda    $1f2d                       
+  08b8  ad06     bsr    synth_write_nibble          
+  08ba  1d01     bset   6, $01                      
+  08bc  ae06     ldx    #$06                        
+  08be  98       clc                                
+  08bf  81       rts                                
+
+synth_write_nibble:    ; xref 089d 08a3 08ae 08b3 08b8
+  08c0  b700     sta    $00                         
+
+synth_strobe:    ; xref 088e 0897 0899
+  08c2  1b01     bset   5, $01                      
+  08c4  1a01     bclr   5, $01                      
+  08c6  81       rts                                
+
+chan_ptr:    ; xref 0842
+  08c7  5f       clrx                               ; ptr = $1BE0 + 8*A  (into RAM routine at $21: LDA $hhll,X; RTS)
+  08c8  48       lsla                               
+  08c9  59       rolx                               
+  08ca  48       lsla                               
+  08cb  59       rolx                               
+  08cc  48       lsla                               
+  08cd  59       rolx                               
+  08ce  abe0     add    #$e0                        
+  08d0  b723     sta    $23                         
+  08d2  9f       txa                                
+  08d3  a91b     adc    #$1b                        
+  08d5  b722     sta    $22                         
+  08d7  81       rts                                
+
+uart_bit:    ; xref 03c0
+  08d8  b617     lda    $17                         
+  08da  2704     beq    L_08e0                      
+  08dc  1629     bclr   3, $29                      
+  08de  2002     bra    L_08e2                      
+
+L_08e0:    ; xref 08da
+  08e0  1729     bset   3, $29                      
+
+L_08e2:    ; xref 08de
+  08e2  b629     lda    $29                         
+  08e4  a810     eor    #$10                        
+  08e6  2b02     bmi    L_08ea                      
+  08e8  a4ef     and    #$ef                        
+
+L_08ea:    ; xref 08e6
+  08ea  be00     ldx    $00                         
+  08ec  b700     sta    $00                         
+  08ee  b729     sta    $29                         
+  08f0  1601     bclr   3, $01                      
+  08f2  1701     bset   3, $01                      
+  08f4  bf00     stx    $00                         
+  08f6  1313     bset   1, $13                      
+  08f8  081a3a   brset  4, $1a, L_0935              ; software UART on PB0: 1200 baud, single-wire, 11-bit frames, 4-byte TX FIFO $3D-$40
+  08fb  000564   brset  0, $05, L_0962              
+  08fe  000113   brset  0, $01, L_0914              
+  0901  181a     bclr   4, $1a                      
+  0903  1b1a     bset   5, $1a                      
+  0905  1d1a     bset   6, $1a                      
+  0907  151a     bset   2, $1a                      
+  0909  171a     bset   3, $1a                      
+  090b  3f3a     clr    $3a                         
+  090d  a680     lda    #$80                        
+  090f  b739     sta    $39                         
+  0911  cc0991   jmp    L_0991                      
+
+L_0914:    ; xref 08fe
+  0914  031a7a   brclr  1, $1a, L_0991              
+  0917  0e1a77   brset  7, $1a, L_0991              
+  091a  3f39     clr    $39                         
+  091c  1005     bclr   0, $05                      
+  091e  1101     bset   0, $01                      
+  0920  be3c     ldx    $3c                         
+  0922  e63d     lda    $003d, x                    
+  0924  b737     sta    $37                         
+  0926  9f       txa                                
+  0927  ab01     add    #$01                        
+  0929  a403     and    #$03                        
+  092b  b73c     sta    $3c                         
+  092d  b13b     cmp    $3b                         
+  092f  2660     bne    L_0991                      
+  0931  131a     bset   1, $1a                      
+  0933  205c     bra    L_0991                      
+
+L_0935:    ; xref 08f8
+  0935  0c1a1b   brset  6, $1a, L_0953              
+  0938  010102   brclr  0, $01, L_093d              
+  093b  3c3a     inc    $3a                         
+
+L_093d:    ; xref 0938
+  093d  49       rola                               
+  093e  0a1a09   brset  5, $1a, L_094a              
+  0941  46       rora                               
+  0942  3639     ror    $39                         
+  0944  244b     bcc    L_0991                      
+  0946  1a1a     bclr   5, $1a                      
+  0948  2047     bra    L_0991                      
+
+L_094a:    ; xref 093e
+  094a  1c1a     bclr   6, $1a                      
+  094c  013a42   brclr  0, $3a, L_0991              
+  094f  141a     bclr   2, $1a                      
+  0951  203e     bra    L_0991                      
+
+L_0953:    ; xref 0935
+  0953  000102   brset  0, $01, L_0958              
+  0956  161a     bclr   3, $1a                      
+
+L_0958:    ; xref 0953
+  0958  b639     lda    $39                         
+  095a  b738     sta    $38                         
+  095c  101a     bclr   0, $1a                      
+  095e  191a     bset   4, $1a                      
+  0960  202f     bra    L_0991                      
+
+L_0962:    ; xref 08fb
+  0962  b639     lda    $39                         
+  0964  2602     bne    L_0968                      
+  0966  b73a     sta    $3a                         
+
+L_0968:    ; xref 0964
+  0968  ab01     add    #$01                        
+  096a  b739     sta    $39                         
+  096c  a10b     cmp    #$0b                        
+  096e  2604     bne    L_0974                      
+  0970  1105     bset   0, $05                      
+  0972  201d     bra    L_0991                      
+
+L_0974:    ; xref 096e
+  0974  a109     cmp    #$09                        
+  0976  240e     bcc    L_0986                      
+  0978  3637     ror    $37                         
+  097a  2504     bcs    L_0980                      
+
+L_097c:    ; xref 098c
+  097c  1101     bset   0, $01                      
+  097e  2011     bra    L_0991                      
+
+L_0980:    ; xref 097a
+  0980  1001     bclr   0, $01                      
+  0982  3c3a     inc    $3a                         
+  0984  200b     bra    L_0991                      
+
+L_0986:    ; xref 0976
+  0986  2704     beq    L_098c                      
+  0988  1001     bclr   0, $01                      
+  098a  2005     bra    L_0991                      
+
+L_098c:    ; xref 0986
+  098c  013aed   brclr  0, $3a, L_097c              
+  098f  1001     bclr   0, $01                      
+
+L_0991:    ; xref 0911 0914 0917 092f 0933 0944 0948 094c 0951 0960 0972 097e ...
+  0991  3a55     dec    $55                         
+  0993  3a56     dec    $56                         
+  0995  3ae7     dec    $e7                         
+  0997  3ae8     dec    $e8                         
+  0999  1b11     bset   5, $11                      
+  099b  b61c     lda    $1c                         
+  099d  a406     and    #$06                        
+  099f  2609     bne    L_09aa                      
+  09a1  1904     bset   4, $04                      
+  09a3  090002   brclr  4, $00, L_09a8              
+  09a6  1a11     bclr   5, $11                      
+
+L_09a8:    ; xref 09a3
+  09a8  1804     bclr   4, $04                      
+
+L_09aa:    ; xref 099f
+  09aa  80       rti                                
+
+adc_start_3to6:    ; xref 038d 039f
+  09ab  b62a     lda    $2a                         
+  09ad  a430     and    #$30                        
+  09af  0a280f   brset  5, $28, L_09c1              
+  09b2  0c2806   brset  6, $28, L_09bb              
+  09b5  aa04     ora    #$04                        
+  09b7  ae48     ldx    #$48                        
+  09b9  2027     bra    L_09e2                      
+
+L_09bb:    ; xref 09b2
+  09bb  aa05     ora    #$05                        
+  09bd  ae49     ldx    #$49                        
+  09bf  2021     bra    L_09e2                      
+
+L_09c1:    ; xref 09af
+  09c1  0c2806   brset  6, $28, L_09ca              
+  09c4  aa06     ora    #$06                        
+  09c6  ae4a     ldx    #$4a                        
+  09c8  2018     bra    L_09e2                      
+
+L_09ca:    ; xref 09c1
+  09ca  aa03     ora    #$03                        
+  09cc  ae47     ldx    #$47                        
+  09ce  2012     bra    L_09e2                      
+
+adc_start_2:    ; xref 038d 0390
+  09d0  b62a     lda    $2a                         
+  09d2  a430     and    #$30                        
+  09d4  aa02     ora    #$02                        
+  09d6  ae46     ldx    #$46                        
+  09d8  2008     bra    L_09e2                      
+
+adc_start_1:    ; xref 038d 0396 03ae
+  09da  b62a     lda    $2a                         
+  09dc  a430     and    #$30                        
+  09de  aa01     ora    #$01                        
+  09e0  ae45     ldx    #$45                        
+
+L_09e2:    ; xref 09b9 09bf 09c8 09ce 09d8
+  09e2  bf44     stx    $44                         ; ADC: select mux via $2A latch, note start time; IRQ (comparator) stores result
+  09e4  be00     ldx    $00                         
+  09e6  b700     sta    $00                         
+  09e8  1401     bclr   2, $01                      
+  09ea  1501     bset   2, $01                      
+  09ec  b608     lda    $08                         
+  09ee  b743     sta    $43                         
+  09f0  b628     lda    $28                         
+  09f2  b742     sta    $42                         
+  09f4  1600     bclr   3, $00                      
+  09f6  1401     bclr   2, $01                      
+  09f8  bf00     stx    $00                         
+  09fa  80       rti                                
+
+squelch_task:    ; xref 038d 039c 03b4
+  09fb  b62d     lda    $2d                         ; squelch: pot ($49) -> setting 0-7 via table $0A4C (with hysteresis)
+  09fd  a407     and    #$07                        
+  09ff  97       tax                                
+  0a00  58       lslx                               
+  0a01  b649     lda    $49                         
+  0a03  a150     cmp    #$50                        
+  0a05  2302     bls    L_0a09                      
+  0a07  a650     lda    #$50                        
+
+L_0a09:    ; xref 0a05 0a2c 0a2f 0a34
+  0a09  d10a4c   cmp    $0a4c, x                    
+  0a0c  251c     bcs    L_0a2a                      
+  0a0e  d10a4d   cmp    $0a4d, x                    
+  0a11  2213     bhi    L_0a26                      
+  0a13  54       lsrx                               
+  0a14  08311f   brset  4, $31, L_0a36              
+  0a17  0c1342   brset  6, $13, L_0a5c              
+  0a1a  b62d     lda    $2d                         
+  0a1c  bf2d     stx    $2d                         
+  0a1e  a4f8     and    #$f8                        
+  0a20  ba2d     ora    $2d                         
+  0a22  b72d     sta    $2d                         
+  0a24  2036     bra    L_0a5c                      
+
+L_0a26:    ; xref 0a11
+  0a26  5c       incx                               
+  0a27  5c       incx                               
+  0a28  2002     bra    L_0a2c                      
+
+L_0a2a:    ; xref 0a0c
+  0a2a  5a       decx                               
+  0a2b  5a       decx                               
+
+L_0a2c:    ; xref 0a28
+  0a2c  0831da   brset  4, $31, L_0a09              
+  0a2f  0c13d7   brset  6, $13, L_0a09              
+  0a32  1a18     bclr   5, $18                      
+  0a34  20d3     bra    L_0a09                      
+
+L_0a36:    ; xref 0a14
+  0a36  093323   brclr  4, $33, L_0a5c              
+  0a39  0a1b0c   brset  5, $1b, L_0a48              
+  0a3c  a302     cpx    #$02                        
+  0a3e  2204     bhi    L_0a44                      
+  0a40  1419     bclr   2, $19                      
+  0a42  2018     bra    L_0a5c                      
+
+L_0a44:    ; xref 0a3e
+  0a44  a305     cpx    #$05                        
+  0a46  2514     bcs    L_0a5c                      
+
+L_0a48:    ; xref 0a39
+  0a48  1519     bset   2, $19                      
+  0a4a  2010     bra    L_0a5c                      
+  0a4c  db 00 0b 09 15 13 1f 1d 29 27 33 31 3d 3b 47 45 ff
+
+L_0a5c:    ; xref 0a17 0a24 0a36 0a42 0a46 0a4a
+  0a5c  0b1805   brclr  5, $18, L_0a64              
+  0a5f  cd0ae0   jsr    mute_close                  
+  0a62  1b18     bset   5, $18                      
+
+L_0a64:    ; xref 0a5c
+  0a64  0a1172   brset  5, $11, L_0ad9              
+  0a67  001871   brset  0, $18, L_0adb              
+  0a6a  b62d     lda    $2d                         
+  0a6c  a407     and    #$07                        
+  0a6e  97       tax                                
+  0a6f  b645     lda    $45                         
+  0a71  09191a   brclr  4, $19, L_0a8e              
+  0a74  d11f1c   cmp    $1f1c, x                    ; noise ($45) vs close threshold 1F1C+setting
+  0a77  232c     bls    L_0aa5                      
+  0a79  b14b     cmp    $4b                         
+  0a7b  2b20     bmi    L_0a9d                      
+  0a7d  b64c     lda    $4c                         
+  0a7f  a43f     and    #$3f                        
+  0a81  97       tax                                
+  0a82  54       lsrx                               
+  0a83  54       lsrx                               
+  0a84  54       lsrx                               
+  0a85  d61f24   lda    $1f24, x                    ; squelch tail from table 1F24
+  0a88  b74d     sta    $4d                         
+  0a8a  1a19     bclr   5, $19                      
+  0a8c  2015     bra    L_0aa3                      
+
+L_0a8e:    ; xref 0a71
+  0a8e  d11f14   cmp    $1f14, x                    ; noise ($45) vs open threshold 1F14+setting
+  0a91  2412     bcc    L_0aa5                      
+  0a93  1819     bclr   4, $19                      
+  0a95  1b19     bset   5, $19                      
+  0a97  1212     bclr   1, $12                      
+  0a99  1512     bset   2, $12                      
+  0a9b  2008     bra    L_0aa5                      
+
+L_0a9d:    ; xref 0a7b
+  0a9d  1b19     bset   5, $19                      
+  0a9f  1412     bclr   2, $12                      
+  0aa1  1312     bset   1, $12                      
+
+L_0aa3:    ; xref 0a8c
+  0aa3  1919     bset   4, $19                      
+
+L_0aa5:    ; xref 0a77 0a91 0a9b
+  0aa5  b64b     lda    $4b                         
+  0aa7  b74c     sta    $4c                         
+  0aa9  b645     lda    $45                         
+  0aab  b74b     sta    $4b                         
+  0aad  0b190a   brclr  5, $19, L_0aba              
+  0ab0  3a4d     dec    $4d                         
+  0ab2  2606     bne    L_0aba                      
+  0ab4  1b19     bset   5, $19                      
+  0ab6  1412     bclr   2, $12                      
+  0ab8  1312     bset   1, $12                      
+
+L_0aba:    ; xref 0aad 0ab2
+  0aba  b619     lda    $19                         
+  0abc  a40f     and    #$0f                        
+  0abe  260a     bne    L_0aca                      
+  0ac0  b618     lda    $18                         
+  0ac2  2617     bne    L_0adb                      
+  0ac4  b619     lda    $19                         
+  0ac6  a4f0     and    #$f0                        
+  0ac8  2711     beq    L_0adb                      
+
+L_0aca:    ; xref 0abe
+  0aca  092f03   brclr  4, $2f, L_0ad0              
+  0acd  081104   brset  4, $11, L_0ad4              
+
+L_0ad0:    ; xref 0aca
+  0ad0  1b29     bset   5, $29                      
+  0ad2  2002     bra    L_0ad6                      
+
+L_0ad4:    ; xref 0acd
+  0ad4  1a29     bclr   5, $29                      
+
+L_0ad6:    ; xref 0ad2
+  0ad6  1529     bset   2, $29                      
+  0ad8  80       rti                                
+
+L_0ad9:    ; xref 0a64
+  0ad9  ad05     bsr    mute_close                  
+
+L_0adb:    ; xref 0a67 0ac2 0ac8
+  0adb  1a29     bclr   5, $29                      
+  0add  1429     bclr   2, $29                      
+  0adf  80       rti                                
+
+mute_close:    ; xref 0863 0a5f 0ad9
+  0ae0  1412     bclr   2, $12                      
+  0ae2  1312     bset   1, $12                      
+  0ae4  1919     bset   4, $19                      
+  0ae6  1b19     bset   5, $19                      
+  0ae8  81       rts                                
+
+soft_timers:    ; xref 038d 03a5
+  0ae9  0a281b   brset  5, $28, L_0b07              ; soft timers: $57-$61,$E9,$EA every 64 ticks (~27 ms)
+  0aec  3a57     dec    $57                         
+  0aee  3a58     dec    $58                         
+  0af0  3a59     dec    $59                         
+  0af2  3a5a     dec    $5a                         
+  0af4  3a5b     dec    $5b                         
+  0af6  3a5c     dec    $5c                         
+  0af8  3a5d     dec    $5d                         
+  0afa  3a5e     dec    $5e                         
+  0afc  3a5f     dec    $5f                         
+  0afe  3a60     dec    $60                         
+  0b00  3a61     dec    $61                         
+  0b02  3ae9     dec    $e9                         
+  0b04  3aea     dec    $ea                         
+
+L_0b06:    ; xref 0b0f
+  0b06  80       rti                                
+
+L_0b07:    ; xref 0ae9
+  0b07  0c2821   brset  6, $28, L_0b2b              
+  0b0a  0e2813   brset  7, $28, L_0b20              
+  0b0d  3a62     dec    $62                         ; $63-$65,$EB,$EC every 2304 ticks (~1 s)
+  0b0f  26f5     bne    L_0b06                      
+  0b11  a609     lda    #$09                        
+  0b13  b762     sta    $62                         
+  0b15  3a63     dec    $63                         
+  0b17  3a64     dec    $64                         
+  0b19  3a65     dec    $65                         
+  0b1b  3aeb     dec    $eb                         
+  0b1d  3aec     dec    $ec                         
+  0b1f  80       rti                                
+
+L_0b20:    ; xref 0b0a
+  0b20  3a66     dec    $66                         ; $67 every 24064 ticks (~10 s): Tx timer / auto power-off units
+  0b22  2606     bne    L_0b2a                      
+  0b24  a65e     lda    #$5e                        
+  0b26  b766     sta    $66                         
+  0b28  3a67     dec    $67                         
+
+L_0b2a:    ; xref 0b22
+  0b2a  80       rti                                
+
+L_0b2b:    ; xref 0b07
+  0b2b  0f2801   brclr  7, $28, L_0b2f              
+  0b2e  80       rti                                
+
+L_0b2f:    ; xref 0b2b
+  0b2f  cc0d57   jmp    L_0d57                      
+
+write_latch_PB4:    ; xref 038d 03ab
+  0b32  be00     ldx    $00                         ; latch $2C (inverted) -> port A, PB4 strobe: power level, VCO band etc.
+  0b34  b62c     lda    $2c                         
+  0b36  43       coma                               
+  0b37  b700     sta    $00                         
+  0b39  1801     bclr   4, $01                      
+  0b3b  1901     bset   4, $01                      
+  0b3d  bf00     stx    $00                         
+  0b3f  80       rti                                
+
+supervision_task:    ; xref 038d 03a8
+  0b40  0a2810   brset  5, $28, L_0b53              
+  0b43  0c280b   brset  6, $28, L_0b51              
+  0b46  ad38     bsr    check_signatures            
+  0b48  cd0c7a   jsr    sub_0c7a                    
+  0b4b  2426     bcc    L_0b73                      
+  0b4d  1c10     bclr   6, $10                      
+  0b4f  2022     bra    L_0b73                      
+
+L_0b51:    ; xref 0b43
+  0b51  2020     bra    L_0b73                      
+
+L_0b53:    ; xref 0b40
+  0b53  08141d   brset  4, $14, L_0b73              
+  0b56  0c280f   brset  6, $28, L_0b68              
+  0b59  cd0c95   jsr    check_power_window          
+  0b5c  2615     bne    L_0b73                      
+  0b5e  2404     bcc    L_0b64                      
+  0b60  1e10     bclr   7, $10                      
+  0b62  200f     bra    L_0b73                      
+
+L_0b64:    ; xref 0b5e
+  0b64  1f10     bset   7, $10                      
+  0b66  200b     bra    L_0b73                      
+
+L_0b68:    ; xref 0b56
+  0b68  cd0c86   jsr    sub_0c86                    
+  0b6b  2606     bne    L_0b73                      
+  0b6d  2404     bcc    L_0b73                      
+  0b6f  1a10     bclr   5, $10                      
+  0b71  1214     bclr   1, $14                      
+
+L_0b73:    ; xref 0b4b 0b4f 0b51 0b53 0b5c 0b62 0b66 0b6b 0b6d
+  0b73  cd013e   jsr    chk_ram_config              
+  0b76  b668     lda    $68                         
+  0b78  c11f32   cmp    $1f32                       
+  0b7b  2702     beq    L_0b7f                      
+  0b7d  1610     bclr   3, $10                      
+
+L_0b7f:    ; xref 0b7b
+  0b7f  80       rti                                
+
+check_signatures:    ; xref 0b46
+  0b80  4f       clra                               ; signature over firmware + 1F65, and 1F33..1F37 + 1F66: must be 0 else halt
+  0b81  5f       clrx                               
+  0b82  cb01cc   add    $01cc                       
+  0b85  c005cc   sub    $05cc                       
+  0b88  c809cc   eor    $09cc                       
+  0b8b  cb0dcc   add    $0dcc                       
+  0b8e  cb11cc   add    $11cc                       
+  0b91  c015cc   sub    $15cc                       
+  0b94  c819cc   eor    $19cc                       
+  0b97  cb1acc   add    $1acc                       
+  0b9a  cb1f65   add    $1f65                       
+  0b9d  260e     bne    L_0bad                      
+  0b9f  ae05     ldx    #$05                        
+
+L_0ba1:    ; xref 0ba5
+  0ba1  db1f32   add    $1f32, x                    
+  0ba4  5a       decx                               
+  0ba5  26fa     bne    L_0ba1                      
+  0ba7  cb1f66   add    $1f66                       
+  0baa  2601     bne    L_0bad                      
+  0bac  81       rts                                
+
+L_0bad:    ; xref 0b9d 0baa
+  0bad  5c       incx                               
+  0bae  dc0188   jmp    $0188, x                    ; on failure jump to $0189 (power down / stop)
+
+IRQ_ISR:
+  0bb1  1501     bset   2, $01                      ; IRQ = ADC comparator: result = start_time - timer - $1E
+  0bb3  b628     lda    $28                         
+  0bb5  b142     cmp    $42                         
+  0bb7  2704     beq    L_0bbd                      
+  0bb9  1410     bclr   2, $10                      
+  0bbb  2009     bra    L_0bc6                      
+
+L_0bbd:    ; xref 0bb7
+  0bbd  b643     lda    $43                         
+  0bbf  b008     sub    $08                         
+  0bc1  a01e     sub    #$1e                        
+  0bc3  be44     ldx    $44                         
+  0bc5  f7       sta    , x                         
+
+L_0bc6:    ; xref 0bbb
+  0bc6  1a01     bclr   5, $01                      
+  0bc8  be00     ldx    $00                         
+  0bca  b62a     lda    $2a                         
+  0bcc  b700     sta    $00                         
+  0bce  1401     bclr   2, $01                      
+  0bd0  1501     bset   2, $01                      
+  0bd2  bf00     stx    $00                         
+  0bd4  b620     lda    $20                         
+  0bd6  a199     cmp    #$99                        
+  0bd8  2703     beq    L_0bdd                      
+  0bda  cc015c   jmp    cold_start                  
+
+L_0bdd:    ; xref 0bd8
+  0bdd  80       rti                                
+
+sub_0bde:    ; xref 06c7 0838
+  0bde  ae04     ldx    #$04                        
+  0be0  bf5c     stx    $5c                         
+  0be2  1814     bclr   4, $14                      
+  0be4  81       rts                                
+
+head_send:    ; xref 0274 028a 02ee 02fb 0336 0425 050a 0511 052b 0570 0701 0720 ...
+  0be5  bf25     stx    $25                         ; queue byte for control head (wait while FIFO full)
+
+L_0be7:    ; xref 0bf0
+  0be7  be3b     ldx    $3b                         
+  0be9  b33c     cpx    $3c                         
+  0beb  2605     bne    L_0bf2                      
+  0bed  031a02   brclr  1, $1a, L_0bf2              
+  0bf0  20f5     bra    L_0be7                      
+
+L_0bf2:    ; xref 0beb 0bed
+  0bf2  e73d     sta    $003d, x                    
+  0bf4  9f       txa                                
+  0bf5  4c       inca                               
+  0bf6  a403     and    #$03                        
+  0bf8  b73b     sta    $3b                         
+  0bfa  121a     bclr   1, $1a                      
+  0bfc  be25     ldx    $25                         
+  0bfe  98       clc                                
+  0bff  81       rts                                
+  0c00  db 3f 41 81 11 12 11 1c ad f7
+
+sub_0c09:    ; xref 03e4
+  0c09  a6e5     lda    #$e5                        
+  0c0b  171c     bset   3, $1c                      
+  0c0d  20d6     bra    head_send                   
+
+sub_0c0f:    ; xref 0c34 0c3d 0c52 0c5b
+  0c0f  add4     bsr    head_send                   
+  0c11  9f       txa                                
+  0c12  20d1     bra    head_send                   
+
+sub_0c14:    ; xref 0409 041b
+  0c14  b62e     lda    $2e                         
+  0c16  0d1302   brclr  6, $13, L_0c1b              
+  0c19  b650     lda    $50                         
+
+L_0c1b:    ; xref 0c16
+  0c1b  cd0cdb   jsr    bin_to_bcd                  
+  0c1e  a5f0     bit    #$f0                        
+  0c20  2602     bne    display_digits              
+  0c22  aaf0     ora    #$f0                        
+
+display_digits:    ; xref 03ff 0c20 14c3
+  0c24  b741     sta    $41                         ; send 2 display digits: $80/$81 + char, $82/$83 + char
+  0c26  a40f     and    #$0f                        
+  0c28  a10f     cmp    #$0f                        
+  0c2a  270d     beq    L_0c39                      
+  0c2c  ab30     add    #$30                        
+  0c2e  97       tax                                
+  0c2f  031e09   brclr  1, $1e, L_0c3b              
+  0c32  a681     lda    #$81                        
+  0c34  cd0c0f   jsr    sub_0c0f                    
+  0c37  2007     bra    L_0c40                      
+
+L_0c39:    ; xref 0c2a
+  0c39  ae20     ldx    #$20                        
+
+L_0c3b:    ; xref 0c2f
+  0c3b  a680     lda    #$80                        
+  0c3d  cd0c0f   jsr    sub_0c0f                    
+
+L_0c40:    ; xref 0c37
+  0c40  b641     lda    $41                         
+  0c42  44       lsra                               
+  0c43  44       lsra                               
+  0c44  44       lsra                               
+  0c45  44       lsra                               
+  0c46  a10f     cmp    #$0f                        
+  0c48  270d     beq    L_0c57                      
+  0c4a  ab30     add    #$30                        
+  0c4c  97       tax                                
+  0c4d  031e09   brclr  1, $1e, L_0c59              
+  0c50  a683     lda    #$83                        
+  0c52  cd0c0f   jsr    sub_0c0f                    
+  0c55  2007     bra    L_0c5e                      
+
+L_0c57:    ; xref 0c48
+  0c57  ae20     ldx    #$20                        
+
+L_0c59:    ; xref 0c4d
+  0c59  a682     lda    #$82                        
+  0c5b  cd0c0f   jsr    sub_0c0f                    
+
+L_0c5e:    ; xref 0c55
+  0c5e  ad06     bsr    sub_0c66                    
+  0c60  071c02   brclr  3, $1c, L_0c65              
+  0c63  1813     bclr   4, $13                      
+
+L_0c65:    ; xref 0c60
+  0c65  81       rts                                
+
+sub_0c66:    ; xref 0c5e
+  0c66  171c     bset   3, $1c                      
+  0c68  032f07   brclr  1, $2f, L_0c72              
+  0c6b  c61f3b   lda    $1f3b                       
+  0c6e  b763     sta    $63                         
+  0c70  161c     bclr   3, $1c                      
+
+L_0c72:    ; xref 0c68
+  0c72  81       rts                                
+
+sub_0c73:    ; xref 052e
+  0c73  a638     lda    #$38                        
+  0c75  b75f     sta    $5f                         
+  0c77  1a1c     bclr   5, $1c                      
+  0c79  81       rts                                
+
+sub_0c7a:    ; xref 0b48
+  0c7a  0d2a03   brclr  6, $2a, L_0c80              
+  0c7d  051f48   brclr  2, $1f, L_0cc8              
+
+L_0c80:    ; xref 0c7a
+  0c80  b648     lda    $48                         
+  0c82  ae00     ldx    #$00                        
+  0c84  2045     bra    check_window                
+
+sub_0c86:    ; xref 0b68
+  0c86  b61c     lda    $1c                         
+  0c88  a406     and    #$06                        
+  0c8a  263c     bne    L_0cc8                      
+  0c8c  0c1839   brset  6, $18, L_0cc8              
+  0c8f  b647     lda    $47                         
+  0c91  ae06     ldx    #$06                        
+  0c93  2036     bra    check_window                
+
+check_power_window:    ; xref 0b59
+  0c95  01110e   brclr  0, $11, L_0ca6              ; Tx: forward-power ADC ($4A) must lie in window 1F08..1F0F for current power level
+  0c98  b62c     lda    $2c                         
+  0c9a  44       lsra                               
+  0c9b  44       lsra                               
+  0c9c  44       lsra                               
+  0c9d  a406     and    #$06                        
+  0c9f  ab08     add    #$08                        
+  0ca1  97       tax                                
+  0ca2  b64a     lda    $4a                         
+  0ca4  2025     bra    check_window                
+
+L_0ca6:    ; xref 0c95
+  0ca6  041c1f   brset  2, $1c, L_0cc8              
+  0ca9  002f1c   brset  0, $2f, L_0cc8              
+  0cac  b64a     lda    $4a                         ; Rx: $4A < $15 -> supply too low: shut down with alarm on PA4
+  0cae  a115     cmp    #$15                        
+  0cb0  2523     bcs    L_0cd5                      
+  0cb2  9b       sei                                
+  0cb3  cd0191   jsr    power_down                  
+  0cb6  1804     bclr   4, $04                      
+
+L_0cb8:    ; xref 0cc6
+  0cb8  a601     lda    #$01                        
+  0cba  cd0152   jsr    delay_A                     
+  0cbd  1800     bclr   4, $00                      
+  0cbf  a601     lda    #$01                        
+  0cc1  cd0152   jsr    delay_A                     
+  0cc4  1900     bset   4, $00                      
+  0cc6  20f0     bra    L_0cb8                      
+
+L_0cc8:    ; xref 0c7d 0c8a 0c8c 0ca6 0ca9
+  0cc8  a601     lda    #$01                        
+  0cca  81       rts                                
+
+check_window:    ; xref 0c84 0c93 0ca4
+  0ccb  d11f00   cmp    $1f00, x                    ; window check: 1F00+x <= A <= 1F01+x
+  0cce  2508     bcs    L_0cd8                      
+  0cd0  d11f01   cmp    $1f01, x                    
+  0cd3  2203     bhi    L_0cd8                      
+
+L_0cd5:    ; xref 0cb0
+  0cd5  98       clc                                
+  0cd6  4f       clra                               
+  0cd7  81       rts                                
+
+L_0cd8:    ; xref 0cce 0cd3
+  0cd8  99       sec                                
+  0cd9  4f       clra                               
+  0cda  81       rts                                
+
+bin_to_bcd:    ; xref 0c1b
+  0cdb  5f       clrx                               
+  0cdc  b721     sta    $21                         
+  0cde  bf22     stx    $22                         
+  0ce0  2b39     bmi    L_0d1b                      
+  0ce2  3f23     clr    $23                         
+  0ce4  3f24     clr    $24                         
+  0ce6  3f25     clr    $25                         
+  0ce8  a610     lda    #$10                        
+  0cea  b726     sta    $26                         
+
+L_0cec:    ; xref 0d11
+  0cec  ae23     ldx    #$23                        
+
+L_0cee:    ; xref 0d02
+  0cee  f6       lda    , x                         
+  0cef  a40f     and    #$0f                        
+  0cf1  a105     cmp    #$05                        
+  0cf3  f6       lda    , x                         
+  0cf4  2502     bcs    L_0cf8                      
+  0cf6  ab03     add    #$03                        
+
+L_0cf8:    ; xref 0cf4
+  0cf8  a150     cmp    #$50                        
+  0cfa  2502     bcs    L_0cfe                      
+  0cfc  ab30     add    #$30                        
+
+L_0cfe:    ; xref 0cfa
+  0cfe  f7       sta    , x                         
+  0cff  5c       incx                               
+  0d00  a326     cpx    #$26                        
+  0d02  26ea     bne    L_0cee                      
+  0d04  ae21     ldx    #$21                        
+  0d06  4f       clra                               
+
+L_0d07:    ; xref 0d0d
+  0d07  49       rola                               
+  0d08  79       rol    , x                         
+  0d09  46       rora                               
+  0d0a  5c       incx                               
+  0d0b  a326     cpx    #$26                        
+  0d0d  26f8     bne    L_0d07                      
+  0d0f  3a26     dec    $26                         
+  0d11  26d9     bne    L_0cec                      
+  0d13  b623     lda    $23                         
+  0d15  be24     ldx    $24                         
+  0d17  2b02     bmi    L_0d1b                      
+  0d19  98       clc                                
+  0d1a  81       rts                                
+
+L_0d1b:    ; xref 0ce0 0d17
+  0d1b  99       sec                                
+  0d1c  81       rts                                
+  0d1d  db 44 44 44 44 a4 0f ab 30 a1 39 23 02 ab 07 81
+
+init_selcall_ctcss:    ; xref 015c
+  0d2c  a600     lda    #$00                        
+  0d2e  b74f     sta    $4f                         
+  0d30  ad13     bsr    copy_selcall_codes          
+  0d32  a60f     lda    #$0f                        
+  0d34  b7c2     sta    $c2                         
+
+set_ctcss_tone:    ; xref 0295 081d
+  0d36  b634     lda    $34                         ; CTCSS code (byte6 bits0-5) -> tone chip value table $0E56 -> $81
+  0d38  a43f     and    #$3f                        
+  0d3a  2708     beq    L_0d44                      
+  0d3c  97       tax                                
+  0d3d  d60e56   lda    $0e56, x                    
+  0d40  aa40     ora    #$40                        
+  0d42  b781     sta    $81                         
+
+L_0d44:    ; xref 0d3a
+  0d44  81       rts                                
+
+copy_selcall_codes:    ; xref 0d30 1418
+  0d45  ae0a     ldx    #$0a                        ; copy selcall codes 1F67..1F70 -> $CA.., 1F7A..1F83 -> $D4..
+
+L_0d47:    ; xref 0d52
+  0d47  d61f66   lda    $1f66, x                    
+  0d4a  e7c9     sta    $00c9, x                    
+  0d4c  d61f79   lda    $1f79, x                    
+  0d4f  e7d3     sta    $00d3, x                    
+  0d51  5a       decx                               
+  0d52  26f3     bne    L_0d47                      
+  0d54  cc1403   jmp    L_1403                      
+
+L_0d57:    ; xref 0b2f
+  0d57  80       rti                                
+
+main_loop_part2:    ; xref 036c
+  0d58  001103   brset  0, $11, L_0d5e              
+  0d5b  cd0dcf   jsr    sub_0dcf                    
+
+L_0d5e:    ; xref 0d58
+  0d5e  0c8103   brset  6, $81, L_0d64              
+  0d61  cd0dfa   jsr    sub_0dfa                    
+
+L_0d64:    ; xref 0d5e
+  0d64  0d1503   brclr  6, $15, L_0d6a              
+  0d67  cd0e10   jsr    sub_0e10                    
+
+L_0d6a:    ; xref 0d64
+  0d6a  cd0e7d   jsr    scan_task                   
+  0d6d  0d1303   brclr  6, $13, L_0d73              
+  0d70  cd108e   jsr    vote_task                   
+
+L_0d73:    ; xref 0d6d
+  0d73  001103   brset  0, $11, L_0d79              
+  0d76  cd0dcf   jsr    sub_0dcf                    
+
+L_0d79:    ; xref 0d73
+  0d79  001103   brset  0, $11, L_0d7f              
+  0d7c  cd1142   jsr    selcall_decode_task         
+
+L_0d7f:    ; xref 0d79
+  0d7f  0b1503   brclr  5, $15, L_0d85              
+  0d82  cd11de   jsr    selcall_encode_task         
+
+L_0d85:    ; xref 0d7f
+  0d85  09a303   brclr  4, $a3, L_0d8b              
+  0d88  cd12e3   jsr    sub_12e3                    
+
+L_0d8b:    ; xref 0d85
+  0d8b  0ba303   brclr  5, $a3, L_0d91              
+  0d8e  cd12d2   jsr    sub_12d2                    
+
+L_0d91:    ; xref 0d8b
+  0d91  0da303   brclr  6, $a3, L_0d97              
+  0d94  cd1316   jsr    sub_1316                    
+
+L_0d97:    ; xref 0d91
+  0d97  cd1328   jsr    sub_1328                    
+  0d9a  05a103   brclr  2, $a1, L_0da0              
+  0d9d  cd1341   jsr    sub_1341                    
+
+L_0da0:    ; xref 0d9a
+  0da0  0f1403   brclr  7, $14, L_0da6              
+  0da3  cd14c6   jsr    sub_14c6                    
+
+L_0da6:    ; xref 0da0
+  0da6  05a003   brclr  2, $a0, L_0dac              
+  0da9  cd1357   jsr    sub_1357                    
+
+L_0dac:    ; xref 0da6
+  0dac  cd1374   jsr    sub_1374                    
+  0daf  01a308   brclr  0, $a3, L_0dba              
+  0db2  b6a3     lda    $a3                         
+  0db4  a5f0     bit    #$f0                        
+  0db6  2602     bne    L_0dba                      
+  0db8  11a3     bset   0, $a3                      
+
+L_0dba:    ; xref 0daf 0db6
+  0dba  0d2a03   brclr  6, $2a, L_0dc0              
+  0dbd  cd14d1   jsr    econ_task                   
+
+L_0dc0:    ; xref 0dba
+  0dc0  028203   brset  1, $82, L_0dc6              
+  0dc3  cd0e45   jsr    sub_0e45                    
+
+L_0dc6:    ; xref 0dc0
+  0dc6  0b3103   brclr  5, $31, L_0dcc              
+  0dc9  cd1557   jsr    auto_power_off_task         
+
+L_0dcc:    ; xref 0dc6
+  0dcc  cc02a2   jmp    main_loop                   
+
+sub_0dcf:    ; xref 0d5b 0d76
+  0dcf  013023   brclr  0, $30, L_0df5              
+  0dd2  053020   brclr  2, $30, L_0df5              
+  0dd5  b634     lda    $34                         
+  0dd7  a53f     bit    #$3f                        
+  0dd9  271a     beq    L_0df5                      
+  0ddb  081907   brset  4, $19, L_0de5              
+  0dde  1716     bset   3, $16                      
+  0de0  0a1b0f   brset  5, $1b, L_0df2              
+  0de3  200a     bra    L_0def                      
+
+L_0de5:    ; xref 0ddb
+  0de5  05820d   brclr  2, $82, L_0df5              
+  0de8  0b1b04   brclr  5, $1b, L_0def              
+  0deb  1616     bclr   3, $16                      
+  0ded  2003     bra    L_0df2                      
+
+L_0def:    ; xref 0de3 0de8
+  0def  081103   brset  4, $11, L_0df5              
+
+L_0df2:    ; xref 0de0 0ded
+  0df2  1618     bclr   3, $18                      
+  0df4  81       rts                                
+
+L_0df5:    ; xref 0dcf 0dd2 0dd9 0de5 0def
+  0df5  1718     bset   3, $18                      
+  0df7  1716     bset   3, $16                      
+  0df9  81       rts                                
+
+sub_0dfa:    ; xref 0d61
+  0dfa  0fe912   brclr  7, $e9, L_0e0f              
+
+L_0dfd:    ; xref 0e13
+  0dfd  1c81     bclr   6, $81                      
+  0dff  091109   brclr  4, $11, L_0e0b              
+  0e02  b615     lda    $15                         
+  0e04  a503     bit    #$03                        
+  0e06  2703     beq    L_0e0b                      
+  0e08  051604   brclr  2, $16, L_0e0f              
+
+L_0e0b:    ; xref 0dff 0e06 0e22
+  0e0b  1d15     bset   6, $15                      
+
+sub_0e0d:    ; xref 06f9 0e4b
+  0e0d  1282     bclr   1, $82                      
+
+L_0e0f:    ; xref 0dfa 0e08
+  0e0f  81       rts                                
+
+sub_0e10:    ; xref 0d67
+  0e10  0d8118   brclr  6, $81, L_0e2b              
+  0e13  0130e7   brclr  0, $30, L_0dfd              
+  0e16  b615     lda    $15                         
+  0e18  a140     cmp    #$40                        
+  0e1a  2706     beq    L_0e22                      
+  0e1c  05160c   brclr  2, $16, L_0e2b              
+  0e1f  0a1509   brset  5, $15, L_0e2b              
+
+L_0e22:    ; xref 0e1a 0e4e
+  0e22  0029e6   brset  0, $29, L_0e0b              
+  0e25  ae05     ldx    #$05                        
+  0e27  bfe9     stx    $e9                         
+  0e29  1d81     bset   6, $81                      
+
+L_0e2b:    ; xref 0e10 0e1c 0e1f
+  0e2b  81       rts                                
+
+L_0e2c:    ; xref 0723
+  0e2c  013015   brclr  0, $30, L_0e44              
+  0e2f  b634     lda    $34                         
+  0e31  a53f     bit    #$3f                        
+  0e33  270f     beq    L_0e44                      
+  0e35  0a1503   brset  5, $15, L_0e3b              
+  0e38  091109   brclr  4, $11, L_0e44              
+
+L_0e3b:    ; xref 0e35
+  0e3b  1c81     bclr   6, $81                      
+  0e3d  1382     bset   1, $82                      
+  0e3f  033002   brclr  1, $30, L_0e44              
+  0e42  1c15     bclr   6, $15                      
+
+L_0e44:    ; xref 0e2c 0e33 0e38 0e3f
+  0e44  81       rts                                
+
+sub_0e45:    ; xref 0dc3
+  0e45  0a1509   brset  5, $15, L_0e51              
+  0e48  081106   brset  4, $11, L_0e51              
+  0e4b  0d15bf   brclr  6, $15, sub_0e0d            
+  0e4e  0c81d1   brset  6, $81, L_0e22              
+
+L_0e51:    ; xref 0e45 0e48
+  0e51  81       rts                                
+  0e52  db 12 1b cc 07 ea 38 34 30 2c 28 24 20 1c 39 35 31
+  0e62  db 2d 29 25 21 1d 3f 3d 3b 3c 37 33 2f 19 18 15 14
+  0e72  db 11 10 0d 0c 09 08 05 04 01 00 2b
+
+scan_task:    ; xref 0d6a
+  0e7d  082a2d   brset  4, $2a, L_0ead              ; scanning: lists via $53/$54 pointer (1F40 block 1, 1F4C block 2)
+  0e80  011f2b   brclr  0, $1f, L_0eae              
+  0e83  a604     lda    #$04                        
+  0e85  b41f     and    $1f                         
+  0e87  b71f     sta    $1f                         
+  0e89  1016     bclr   0, $16                      
+  0e8b  1818     bclr   4, $18                      
+  0e8d  1c11     bclr   6, $11                      
+  0e8f  1d2a     bset   6, $2a                      
+  0e91  cd03ee   jsr    update_display              
+  0e94  2018     bra    L_0eae                      
+
+L_0e96:    ; xref 0eb7
+  0e96  cd0f62   jsr    squelch_open_test           
+  0e99  240b     bcc    L_0ea6                      
+  0e9b  048205   brset  2, $82, L_0ea3              
+  0e9e  1514     bset   2, $14                      
+  0ea0  cc0f4c   jmp    L_0f4c                      
+
+L_0ea3:    ; xref 0e9b
+  0ea3  0f6107   brclr  7, $61, L_0ead              
+
+L_0ea6:    ; xref 0e99
+  0ea6  1514     bset   2, $14                      
+  0ea8  2025     bra    L_0ecf                      
+
+L_0eaa:    ; xref 0eb4
+  0eaa  011122   brclr  0, $11, L_0ecf              
+
+L_0ead:    ; xref 0e7d 0ea3 0eae 0eb1
+  0ead  81       rts                                
+
+L_0eae:    ; xref 0e80 0e94
+  0eae  0d11fc   brclr  6, $11, L_0ead              
+  0eb1  041cf9   brset  2, $1c, L_0ead              
+  0eb4  0a11f3   brset  5, $11, L_0eaa              
+  0eb7  0414dc   brset  2, $14, L_0e96              
+  0eba  061f2b   brset  3, $1f, L_0ee8              
+  0ebd  021f6a   brset  1, $1f, L_0f2a              
+  0ec0  08114f   brset  4, $11, L_0f12              
+
+L_0ec3:    ; xref 0f12
+  0ec3  091f09   brclr  4, $1f, L_0ecf              
+  0ec6  0e3003   brset  7, $30, L_0ecc              
+  0ec9  051f79   brclr  2, $1f, L_0f45              
+
+L_0ecc:    ; xref 0ec6
+  0ecc  0f565f   brclr  7, $56, L_0f2e              
+
+L_0ecf:    ; xref 0ea8 0eaa 0ec3 0f4a
+  0ecf  0e1103   brset  7, $11, L_0ed5              
+  0ed2  cc0f70   jmp    L_0f70                      
+
+L_0ed5:    ; xref 0ecf
+  0ed5  161f     bclr   3, $1f                      
+  0ed7  1116     bset   0, $16                      
+  0ed9  1f11     bset   7, $11                      
+  0edb  151f     bset   2, $1f                      
+  0edd  1918     bset   4, $18                      
+  0edf  a64b     lda    #$4b                        
+  0ee1  b760     sta    $60                         
+  0ee3  b651     lda    $51                         
+  0ee5  cc0fac   jmp    L_0fac                      
+
+L_0ee8:    ; xref 0eba
+  0ee8  041f11   brset  2, $1f, L_0efc              
+  0eeb  0f600e   brclr  7, $60, L_0efc              
+  0eee  00110b   brset  0, $11, L_0efc              
+  0ef1  081108   brset  4, $11, L_0efc              
+  0ef4  0e1f05   brset  7, $1f, L_0efc              
+  0ef7  cd1065   jsr    sub_1065                    
+  0efa  2603     bne    L_0eff                      
+
+L_0efc:    ; xref 0ee8 0eeb 0eee 0ef1 0ef4
+  0efc  cc0fb1   jmp    L_0fb1                      
+
+L_0eff:    ; xref 0efa
+  0eff  1e11     bclr   7, $11                      
+  0f01  1a29     bclr   5, $29                      
+  0f03  1429     bclr   2, $29                      
+  0f05  b62e     lda    $2e                         
+  0f07  b751     sta    $51                         
+
+L_0f09:    ; xref 0f27
+  0f09  171f     bset   3, $1f                      
+  0f0b  1016     bclr   0, $16                      
+  0f0d  1818     bclr   4, $18                      
+  0f0f  cc0f9f   jmp    L_0f9f                      
+
+L_0f12:    ; xref 0ec0
+  0f12  0e11ae   brset  7, $11, L_0ec3              
+  0f15  121f     bclr   1, $1f                      
+  0f17  b62e     lda    $2e                         
+  0f19  b752     sta    $52                         
+  0f1b  cd1065   jsr    sub_1065                    
+  0f1e  2607     bne    L_0f27                      
+  0f20  b650     lda    $50                         
+  0f22  b72e     sta    $2e                         
+  0f24  cc0fa6   jmp    L_0fa6                      
+
+L_0f27:    ; xref 0f1e
+  0f27  051fdf   brclr  2, $1f, L_0f09              
+
+L_0f2a:    ; xref 0ebd
+  0f2a  131f     bset   1, $1f                      
+  0f2c  202b     bra    L_0f59                      
+
+L_0f2e:    ; xref 0ecc
+  0f2e  ad32     bsr    squelch_open_test           
+  0f30  2412     bcc    L_0f44                      
+  0f32  013017   brclr  0, $30, L_0f4c              
+  0f35  053014   brclr  2, $30, L_0f4c              
+  0f38  b634     lda    $34                         
+  0f3a  a53f     bit    #$3f                        
+  0f3c  270e     beq    L_0f4c                      
+  0f3e  1414     bclr   2, $14                      
+  0f40  a60e     lda    #$0e                        
+  0f42  b761     sta    $61                         
+
+L_0f44:    ; xref 0f30 0f45
+  0f44  81       rts                                
+
+L_0f45:    ; xref 0ec9
+  0f45  0f56fc   brclr  7, $56, L_0f44              
+  0f48  ad18     bsr    squelch_open_test           
+  0f4a  2583     bcs    L_0ecf                      
+
+L_0f4c:    ; xref 0ea0 0f32 0f35 0f3c
+  0f4c  0e1106   brset  7, $11, L_0f55              
+  0f4f  a64b     lda    #$4b                        
+  0f51  b760     sta    $60                         
+  0f53  2004     bra    L_0f59                      
+
+L_0f55:    ; xref 0f4c
+  0f55  121b     bclr   1, $1b                      
+  0f57  1f11     bset   7, $11                      
+
+L_0f59:    ; xref 0f2c 0f53
+  0f59  1116     bset   0, $16                      
+  0f5b  1918     bset   4, $18                      
+  0f5d  161f     bclr   3, $1f                      
+  0f5f  cc03ee   jmp    update_display              
+
+squelch_open_test:    ; xref 0e96 0f2e 0f48 0fb4 10ce 1122
+  0f62  b62d     lda    $2d                         ; compare noise $45 with open threshold 1F14+squelch setting
+  0f64  a407     and    #$07                        
+  0f66  2601     bne    L_0f69                      
+  0f68  4c       inca                               
+
+L_0f69:    ; xref 0f66
+  0f69  97       tax                                
+  0f6a  b645     lda    $45                         
+  0f6c  d11f14   cmp    $1f14, x                    
+  0f6f  81       rts                                
+
+L_0f70:    ; xref 0ed2
+  0f70  ae00     ldx    #$00                        
+  0f72  cd1067   jsr    scan_list_read              
+  0f75  2703     beq    L_0f7a                      
+  0f77  051f2a   brclr  2, $1f, L_0fa4              
+
+L_0f7a:    ; xref 0f75
+  0f7a  ae0b     ldx    #$0b                        
+  0f7c  bd21     jsr    $21                         
+  0f7e  2603     bne    L_0f83                      
+  0f80  cc103c   jmp    scan_stop                   
+
+L_0f83:    ; xref 0f7e
+  0f83  b725     sta    $25                         
+  0f85  b64f     lda    $4f                         
+  0f87  a40f     and    #$0f                        
+  0f89  b125     cmp    $25                         
+  0f8b  2507     bcs    L_0f94                      
+  0f8d  b64f     lda    $4f                         
+  0f8f  a4f0     and    #$f0                        
+  0f91  b74f     sta    $4f                         
+  0f93  4f       clra                               
+
+L_0f94:    ; xref 0f8b
+  0f94  ab01     add    #$01                        
+  0f96  97       tax                                
+  0f97  bd21     jsr    $21                         
+  0f99  3c4f     inc    $4f                         
+  0f9b  151f     bset   2, $1f                      
+  0f9d  2007     bra    L_0fa6                      
+
+L_0f9f:    ; xref 0f0f
+  0f9f  ae00     ldx    #$00                        
+  0fa1  cd1067   jsr    scan_list_read              
+
+L_0fa4:    ; xref 0f77
+  0fa4  141f     bclr   2, $1f                      
+
+L_0fa6:    ; xref 0f24 0f9d
+  0fa6  ae3b     ldx    #$3b                        
+  0fa8  bf56     stx    $56                         
+  0faa  181f     bclr   4, $1f                      
+
+L_0fac:    ; xref 0ee5
+  0fac  b72e     sta    $2e                         
+  0fae  cc07ed   jmp    select_channel              
+
+L_0fb1:    ; xref 0efc
+  0fb1  001123   brset  0, $11, L_0fd7              
+  0fb4  adac     bsr    squelch_open_test           
+  0fb6  242d     bcc    L_0fe5                      
+  0fb8  013032   brclr  0, $30, L_0fed              
+  0fbb  05302f   brclr  2, $30, L_0fed              
+  0fbe  b634     lda    $34                         
+  0fc0  a53f     bit    #$3f                        
+  0fc2  2729     beq    L_0fed                      
+  0fc4  058226   brclr  2, $82, L_0fed              
+
+L_0fc7:    ; xref 0fe5 0feb 0ff3
+  0fc7  08112b   brset  4, $11, L_0ff5              
+  0fca  001b06   brset  0, $1b, L_0fd3              
+  0fcd  0f1f0e   brclr  7, $1f, L_0fde              
+  0fd0  0f6108   brclr  7, $61, L_0fdb              
+
+L_0fd3:    ; xref 0fca
+  0fd3  171f     bset   3, $1f                      
+  0fd5  101f     bclr   0, $1f                      
+
+L_0fd7:    ; xref 0fb1 0fe8 0fed 0ff0
+  0fd7  1d1f     bset   6, $1f                      
+  0fd9  1f1f     bset   7, $1f                      
+
+L_0fdb:    ; xref 0fd0
+  0fdb  111b     bset   0, $1b                      
+  0fdd  81       rts                                
+
+L_0fde:    ; xref 0fcd
+  0fde  a67f     lda    #$7f                        
+  0fe0  b761     sta    $61                         
+  0fe2  1e1f     bclr   7, $1f                      
+  0fe4  81       rts                                
+
+L_0fe5:    ; xref 0fb6
+  0fe5  041fdf   brset  2, $1f, L_0fc7              
+  0fe8  0f30ec   brclr  7, $30, L_0fd7              
+  0feb  20da     bra    L_0fc7                      
+
+L_0fed:    ; xref 0fb8 0fbb 0fc2 0fc4
+  0fed  041fe7   brset  2, $1f, L_0fd7              
+  0ff0  0e30e4   brset  7, $30, L_0fd7              
+  0ff3  20d2     bra    L_0fc7                      
+
+L_0ff5:    ; xref 0fc7
+  0ff5  1f1f     bset   7, $1f                      
+  0ff7  0c1f0a   brset  6, $1f, L_1004              
+  0ffa  001b06   brset  0, $1b, L_1003              
+  0ffd  a620     lda    #$20                        
+  0fff  b765     sta    $65                         
+  1001  1c1f     bclr   6, $1f                      
+
+L_1003:    ; xref 0ffa 1004
+  1003  81       rts                                
+
+L_1004:    ; xref 0ff7
+  1004  0f65fc   brclr  7, $65, L_1003              
+  1007  101b     bclr   0, $1b                      
+  1009  1d1f     bset   6, $1f                      
+  100b  81       rts                                
+
+fn_scan:    ; xref 05d6 05e5
+  100c  121b     bclr   1, $1b                      
+  100e  111c     bset   0, $1c                      
+  1010  09304f   brclr  4, $30, L_1062              
+  1013  00114c   brset  0, $11, L_1062              
+  1016  0c1349   brset  6, $13, L_1062              
+  1019  0d1103   brclr  6, $11, L_101f              
+  101c  cd103c   jsr    scan_stop                   
+
+L_101f:    ; xref 1019
+  101f  b64f     lda    $4f                         
+  1021  3f4f     clr    $4f                         
+  1023  a4f0     and    #$f0                        
+  1025  ab10     add    #$10                        
+  1027  270e     beq    L_1037                      
+  1029  a130     cmp    #$30                        
+  102b  240a     bcc    L_1037                      
+  102d  cd107d   jsr    scan_list_select            
+  1030  ae0b     ldx    #$0b                        
+  1032  cd1067   jsr    scan_list_read              
+  1035  2619     bne    L_1050                      
+
+L_1037:    ; xref 1027 102b
+  1037  3f4f     clr    $4f                         
+  1039  cc03ee   jmp    update_display              
+
+scan_stop:    ; xref 0f80 101c
+  103c  3f1f     clr    $1f                         
+  103e  111b     bset   0, $1b                      
+  1040  1918     bset   4, $18                      
+  1042  1d11     bset   6, $11                      
+  1044  1f11     bset   7, $11                      
+  1046  b650     lda    $50                         
+  1048  b72e     sta    $2e                         
+  104a  cd07ef   jsr    select_channel_A            
+  104d  1116     bset   0, $16                      
+  104f  81       rts                                
+
+L_1050:    ; xref 1035
+  1050  0c130f   brset  6, $13, L_1062              
+  1053  cd1255   jsr    sub_1255                    
+  1056  cd1472   jsr    sub_1472                    
+  1059  b62e     lda    $2e                         
+  105b  b750     sta    $50                         
+  105d  3f1f     clr    $1f                         
+  105f  101f     bclr   0, $1f                      
+  1061  81       rts                                
+
+L_1062:    ; xref 1010 1013 1016 1050
+  1062  cc07ea   jmp    sub_07ea                    
+
+sub_1065:    ; xref 0ef7 0f1b
+  1065  ae00     ldx    #$00                        
+
+scan_list_read:    ; xref 0f72 0fa1 1032
+  1067  a6d6     lda    #$d6                        ; RAM routine LDA list,X  (X=0 priority channel, X=11 count)
+  1069  b721     sta    $21                         
+  106b  a681     lda    #$81                        
+  106d  b724     sta    $24                         
+  106f  b653     lda    $53                         
+  1071  b722     sta    $22                         
+  1073  b654     lda    $54                         
+  1075  b723     sta    $23                         
+  1077  bc21     jmp    $21                         ; scan list base table: 1F40, 1F4C
+  1079  db 1f 40 1f 4c
+
+scan_list_select:    ; xref 102d
+  107d  b74f     sta    $4f                         
+  107f  44       lsra                               
+  1080  44       lsra                               
+  1081  44       lsra                               
+  1082  97       tax                                
+  1083  d61077   lda    $1077, x                    
+  1086  b753     sta    $53                         
+  1088  d61078   lda    $1078, x                    
+  108b  b754     sta    $54                         
+  108d  81       rts                                
+
+vote_task:    ; xref 0d70
+  108e  03312c   brclr  1, $31, L_10bd              ; voting: hop round the linked ring (byte7 & $7F)+1, compare RSSI ($46)
+  1091  001129   brset  0, $11, L_10bd              
+  1094  041c26   brset  2, $1c, L_10bd              
+  1097  4f       clra                               
+  1098  0a1126   brset  5, $11, L_10c1              
+  109b  b62d     lda    $2d                         
+  109d  a4f8     and    #$f8                        
+  109f  ab02     add    #$02                        
+  10a1  b72d     sta    $2d                         
+  10a3  4f       clra                               
+  10a4  ad7c     bsr    sub_1122                    
+  10a6  0e180a   brset  7, $18, L_10b3              
+  10a9  08190c   brset  4, $19, L_10b8              
+  10ac  0fe80e   brclr  7, $e8, L_10bd              
+  10af  1e18     bclr   7, $18                      
+  10b1  2043     bra    L_10f6                      
+
+L_10b3:    ; xref 10a6
+  10b3  021f08   brset  1, $1f, L_10be              
+  10b6  121f     bclr   1, $1f                      
+
+L_10b8:    ; xref 10a9 10dd
+  10b8  c61fb4   lda    $1fb4                       
+  10bb  b7e8     sta    $e8                         
+
+L_10bd:    ; xref 108e 1091 1094 10ac 10be 10cc
+  10bd  81       rts                                
+
+L_10be:    ; xref 10b3
+  10be  0fe8fc   brclr  7, $e8, L_10bd              
+
+L_10c1:    ; xref 1098
+  10c1  0b1606   brclr  5, $16, L_10ca              
+  10c4  b151     cmp    $51                         
+  10c6  2217     bhi    L_10df                      
+  10c8  201b     bra    L_10e5                      
+
+L_10ca:    ; xref 10c1
+  10ca  3d15     tst    $15                         
+  10cc  26ef     bne    L_10bd                      
+  10ce  cd0f62   jsr    squelch_open_test           
+  10d1  2423     bcc    L_10f6                      
+  10d3  1a16     bclr   5, $16                      
+  10d5  ad52     bsr    sub_1129                    
+  10d7  be2e     ldx    $2e                         
+  10d9  bf53     stx    $53                         
+  10db  3f51     clr    $51                         
+  10dd  20d9     bra    L_10b8                      
+
+L_10df:    ; xref 10c6
+  10df  b751     sta    $51                         
+  10e1  b62e     lda    $2e                         
+  10e3  b752     sta    $52                         
+
+L_10e5:    ; xref 10c8
+  10e5  b635     lda    $35                         
+  10e7  a47f     and    #$7f                        
+  10e9  4c       inca                               
+  10ea  b153     cmp    $53                         
+  10ec  2608     bne    L_10f6                      
+  10ee  1f18     bset   7, $18                      
+  10f0  1b16     bset   5, $16                      
+  10f2  b652     lda    $52                         
+  10f4  2005     bra    L_10fb                      
+
+L_10f6:    ; xref 10b1 10d1 10ec
+  10f6  b635     lda    $35                         
+  10f8  a47f     and    #$7f                        
+  10fa  4c       inca                               
+
+L_10fb:    ; xref 10f4
+  10fb  ce1fb4   ldx    $1fb4                       ; 1FB4 = vote/scan dwell time
+  10fe  bfe8     stx    $e8                         
+
+L_1100:    ; xref 113f
+  1100  b72e     sta    $2e                         
+  1102  1ca0     bclr   6, $a0                      
+  1104  cc07ef   jmp    select_channel_A            
+
+chan_flags_rx:    ; xref 0875
+  1107  1c13     bclr   6, $13                      
+  1109  a520     bit    #$20                        
+  110b  2614     bne    L_1121                      
+  110d  1d13     bset   6, $13                      
+  110f  1b16     bset   5, $16                      
+  1111  1f18     bset   7, $18                      
+  1113  073109   brclr  3, $31, L_111f              
+  1116  0d2a06   brclr  6, $2a, L_111f              
+  1119  041f03   brset  2, $1f, L_111f              
+  111c  0c2902   brset  6, $29, L_1121              
+
+L_111f:    ; xref 1113 1116 1119
+  111f  1519     bset   2, $19                      
+
+L_1121:    ; xref 110b 111c
+  1121  81       rts                                
+
+sub_1122:    ; xref 10a4
+  1122  cd0f62   jsr    squelch_open_test           
+  1125  2502     bcs    sub_1129                    
+  1127  4f       clra                               
+  1128  81       rts                                
+
+sub_1129:    ; xref 10d5 1125
+  1129  c11f1b   cmp    $1f1b                       ; 1F1B = voting threshold
+  112c  2504     bcs    L_1132                      
+  112e  40       nega                               
+  112f  a47f     and    #$7f                        
+  1131  81       rts                                
+
+L_1132:    ; xref 112c
+  1132  b646     lda    $46                         
+  1134  aa80     ora    #$80                        
+  1136  81       rts                                
+
+sub_1137:    ; xref 06bc
+  1137  033107   brclr  1, $31, L_1141              
+  113a  0d1304   brclr  6, $13, L_1141              
+  113d  b652     lda    $52                         
+  113f  20bf     bra    L_1100                      
+
+L_1141:    ; xref 1137 113a
+  1141  81       rts                                
+
+selcall_decode_task:    ; xref 0d7c
+  1142  00a33c   brset  0, $a3, L_1181              ; selcall decoder: reads tone digit from $80, compares with 1F8D/1F96/1F9F codes
+  1145  0d8021   brclr  6, $80, L_1169              
+  1148  b680     lda    $80                         
+  114a  1e80     bclr   7, $80                      
+  114c  ae14     ldx    #$14                        
+
+L_114e:    ; xref 114f
+  114e  5a       decx                               
+  114f  26fd     bne    L_114e                      
+  1151  1f80     bset   7, $80                      
+  1153  a40f     and    #$0f                        
+  1155  bec2     ldx    $c2                         
+  1157  b7c2     sta    $c2                         
+  1159  05a32d   brclr  2, $a3, L_1189              
+  115c  3dbe     tst    $be                         
+  115e  2622     bne    L_1182                      
+  1160  b6a3     lda    $a3                         
+  1162  a4f2     and    #$f2                        
+  1164  aa01     ora    #$01                        
+  1166  b7a3     sta    $a3                         
+  1168  81       rts                                
+
+L_1169:    ; xref 1145
+  1169  05a315   brclr  2, $a3, L_1181              
+  116c  0fea12   brclr  7, $ea, L_1181              
+  116f  06a355   brset  3, $a3, L_11c7              
+  1172  bec0     ldx    $c0                         
+  1174  d61f84   lda    $1f84, x                    
+  1177  3dbe     tst    $be                         
+  1179  2602     bne    L_117d                      
+  117b  a63d     lda    #$3d                        
+
+L_117d:    ; xref 1179
+  117d  b7ea     sta    $ea                         
+  117f  16a3     bclr   3, $a3                      
+
+L_1181:    ; xref 1142 1169 116c
+  1181  81       rts                                
+
+L_1182:    ; xref 115e
+  1182  a10e     cmp    #$0e                        
+  1184  260f     bne    L_1195                      
+  1186  9f       txa                                
+  1187  200c     bra    L_1195                      
+
+L_1189:    ; xref 1159
+  1189  a6f4     lda    #$f4                        
+  118b  b7a3     sta    $a3                         
+  118d  b6d4     lda    $d4                         
+  118f  b7be     sta    $be                         
+  1191  3fc0     clr    $c0                         
+  1193  b6c2     lda    $c2                         
+
+L_1195:    ; xref 1184 1187
+  1195  bec0     ldx    $c0                         
+  1197  1113     bset   0, $13                      
+  1199  a10a     cmp    #$0a                        
+  119b  2609     bne    L_11a6                      
+  119d  1013     bclr   0, $13                      
+  119f  053225   brclr  2, $32, L_11c7              
+  11a2  12a3     bclr   1, $a3                      
+  11a4  201b     bra    L_11c1                      
+
+L_11a6:    ; xref 119b
+  11a6  e1d5     cmp    $00d5, x                    
+  11a8  2702     beq    L_11ac                      
+  11aa  19a3     bset   4, $a3                      
+
+L_11ac:    ; xref 11a8
+  11ac  d11f8d   cmp    $1f8d, x                    
+  11af  2702     beq    L_11b3                      
+  11b1  1ba3     bset   5, $a3                      
+
+L_11b3:    ; xref 11af
+  11b3  d11f96   cmp    $1f96, x                    
+  11b6  2702     beq    L_11ba                      
+  11b8  1da3     bset   6, $a3                      
+
+L_11ba:    ; xref 11b6
+  11ba  d11f9f   cmp    $1f9f, x                    
+  11bd  2702     beq    L_11c1                      
+  11bf  1fa3     bset   7, $a3                      
+
+L_11c1:    ; xref 11a4 11bd
+  11c1  b6a3     lda    $a3                         
+  11c3  a5f0     bit    #$f0                        
+  11c5  2603     bne    L_11ca                      
+
+L_11c7:    ; xref 116f 119f
+  11c7  3fa3     clr    $a3                         
+  11c9  81       rts                                
+
+L_11ca:    ; xref 11c5
+  11ca  3abe     dec    $be                         
+  11cc  5c       incx                               
+  11cd  bfc0     stx    $c0                         
+  11cf  d61f83   lda    $1f83, x                    
+  11d2  011304   brclr  0, $13, L_11d9              
+  11d5  48       lsla                               
+  11d6  db1f83   add    $1f83, x                    
+
+L_11d9:    ; xref 11d2
+  11d9  b7ea     sta    $ea                         
+  11db  17a3     bset   3, $a3                      
+  11dd  81       rts                                
+
+selcall_encode_task:    ; xref 0d82
+  11de  011157   brclr  0, $11, L_1238              ; selcall encoder: sends digits with timing from 1F70/1F71
+  11e1  01327e   brclr  0, $32, L_1262              
+  11e4  01a152   brclr  0, $a1, L_1239              
+  11e7  0ea151   brset  7, $a1, L_123b              
+  11ea  0fe777   brclr  7, $e7, L_1264              
+  11ed  3dc1     tst    $c1                         
+  11ef  270c     beq    L_11fd                      
+  11f1  3ac1     dec    $c1                         
+  11f3  2708     beq    L_11fd                      
+  11f5  bebf     ldx    $bf                         
+  11f7  d61f70   lda    $1f70, x                    
+  11fa  b7e7     sta    $e7                         
+  11fc  81       rts                                
+
+L_11fd:    ; xref 11ef 11f3
+  11fd  3abe     dec    $be                         
+  11ff  2764     beq    L_1265                      
+
+L_1201:    ; xref 12b3
+  1201  bec0     ldx    $c0                         
+  1203  f6       lda    , x                         
+  1204  03a111   brclr  1, $a1, L_1218              
+  1207  bebf     ldx    $bf                         
+  1209  d61f8d   lda    $1f8d, x                    
+  120c  0d2f09   brclr  6, $2f, L_1218              
+  120f  bebe     ldx    $be                         
+  1211  a301     cpx    #$01                        
+  1213  2603     bne    L_1218                      
+  1215  bec0     ldx    $c0                         
+  1217  f6       lda    , x                         
+
+L_1218:    ; xref 1204 120c 1213
+  1218  2b06     bmi    L_1220                      
+  121a  b1c3     cmp    $c3                         
+  121c  2602     bne    L_1220                      
+  121e  a60e     lda    #$0e                        
+
+L_1220:    ; xref 1218 121c
+  1220  b7c3     sta    $c3                         
+  1222  aa50     ora    #$50                        
+  1224  cd12c7   jsr    tone_chip_write             
+  1227  1d80     bset   6, $80                      
+  1229  bebf     ldx    $bf                         
+  122b  d61f71   lda    $1f71, x                    
+  122e  3cc0     inc    $c0                         
+  1230  3cbf     inc    $bf                         
+  1232  b7e7     sta    $e7                         
+  1234  b6c8     lda    $c8                         
+  1236  b7c1     sta    $c1                         
+
+L_1238:    ; xref 11de
+  1238  81       rts                                
+
+L_1239:    ; xref 11e4
+  1239  202c     bra    L_1267                      
+
+L_123b:    ; xref 11e7
+  123b  0fe726   brclr  7, $e7, L_1264              
+  123e  3ac1     dec    $c1                         
+  1240  2655     bne    L_1297                      
+
+selcall_send_start:    ; xref 0794 146f
+  1242  a6b0     lda    #$b0                        
+  1244  b784     sta    $84                         
+  1246  a60f     lda    #$0f                        
+  1248  ad7d     bsr    tone_chip_write             
+  124a  cd13db   jsr    sub_13db                    
+  124d  b6a1     lda    $a1                         
+  124f  a408     and    #$08                        
+  1251  b7a1     sta    $a1                         
+  1253  13a0     bset   1, $a0                      
+
+sub_1255:    ; xref 1053
+  1255  1117     bset   0, $17                      
+  1257  c61f7a   lda    $1f7a                       
+  125a  b7d4     sta    $d4                         
+  125c  01a003   brclr  0, $a0, L_1262              
+  125f  cd13cd   jsr    sub_13cd                    
+
+L_1262:    ; xref 11e1 125c
+  1262  1b15     bset   5, $15                      
+
+L_1264:    ; xref 11ea 123b 129c
+  1264  81       rts                                
+
+L_1265:    ; xref 11ff
+  1265  204f     bra    L_12b6                      
+
+L_1267:    ; xref 1239
+  1267  0ca132   brset  6, $a1, L_129c              
+  126a  1ca1     bclr   6, $a1                      
+  126c  1017     bclr   0, $17                      
+  126e  aed4     ldx    #$d4                        
+  1270  09a102   brclr  4, $a1, L_1275              
+  1273  aeca     ldx    #$ca                        
+
+L_1275:    ; xref 1270
+  1275  bfc0     stx    $c0                         
+  1277  3fbf     clr    $bf                         
+  1279  1880     bclr   4, $80                      
+  127b  1d80     bset   6, $80                      
+  127d  a6ff     lda    #$ff                        
+  127f  b784     sta    $84                         
+  1281  a65f     lda    #$5f                        
+  1283  ad42     bsr    tone_chip_write             
+  1285  1d80     bset   6, $80                      
+  1287  c61fab   lda    $1fab                       
+  128a  02a008   brset  1, $a0, L_1295              
+  128d  06a105   brset  3, $a1, L_1295              
+  1290  003302   brset  0, $33, L_1295              
+  1293  a60a     lda    #$0a                        
+
+L_1295:    ; xref 128a 128d 1290
+  1295  b7c1     sta    $c1                         
+
+L_1297:    ; xref 1240 12a1 12c5
+  1297  a60c     lda    #$0c                        
+  1299  b7e7     sta    $e7                         
+  129b  81       rts                                
+
+L_129c:    ; xref 1267
+  129c  0fe7c5   brclr  7, $e7, L_1264              
+  129f  3ac1     dec    $c1                         
+  12a1  26f4     bne    L_1297                      
+  12a3  1da1     bset   6, $a1                      
+  12a5  bec0     ldx    $c0                         
+  12a7  f6       lda    , x                         
+  12a8  b7be     sta    $be                         
+  12aa  5c       incx                               
+  12ab  bfc0     stx    $c0                         
+  12ad  a6ff     lda    #$ff                        
+  12af  b7c3     sta    $c3                         
+  12b1  10a1     bclr   0, $a1                      
+  12b3  cc1201   jmp    L_1201                      
+
+L_12b6:    ; xref 1265
+  12b6  a65f     lda    #$5f                        
+  12b8  ad0d     bsr    tone_chip_write             
+  12ba  1d80     bset   6, $80                      
+  12bc  13a1     bset   1, $a1                      
+  12be  1ea1     bclr   7, $a1                      
+  12c0  c61fac   lda    $1fac                       
+  12c3  b7c1     sta    $c1                         
+  12c5  20d0     bra    L_1297                      
+
+tone_chip_write:    ; xref 1224 1248 1283 12b8
+  12c7  b721     sta    $21                         
+  12c9  b680     lda    $80                         
+  12cb  a420     and    #$20                        
+  12cd  ba21     ora    $21                         
+  12cf  b780     sta    $80                         
+  12d1  81       rts                                
+
+sub_12d2:    ; xref 0d8e
+  12d2  04a340   brset  2, $a3, L_1315              
+  12d5  1ba3     bset   5, $a3                      
+  12d7  0f343b   brclr  7, $34, L_1315              
+  12da  053338   brclr  2, $33, L_1315              
+  12dd  12a1     bclr   1, $a1                      
+  12df  181b     bclr   4, $1b                      
+  12e1  2012     bra    L_12f5                      
+
+sub_12e3:    ; xref 0d88
+  12e3  04a32f   brset  2, $a3, L_1315              
+  12e6  19a3     bset   4, $a3                      
+  12e8  03322a   brclr  1, $32, L_1315              
+  12eb  0f3427   brclr  7, $34, L_1315              
+  12ee  1ba1     bset   5, $a1                      
+  12f0  0e330e   brset  7, $33, L_1301              
+  12f3  121b     bclr   1, $1b                      
+
+L_12f5:    ; xref 12e1
+  12f5  18a2     bclr   4, $a2                      
+  12f7  a6a7     lda    #$a7                        
+  12f9  cd0be5   jsr    head_send                   
+  12fc  1518     bset   2, $18                      
+  12fe  0f3214   brclr  7, $32, L_1315              
+
+L_1301:    ; xref 12f0
+  1301  02a311   brset  1, $a3, L_1315              
+  1304  1aa1     bclr   5, $a1                      
+  1306  1a14     bclr   5, $14                      
+  1308  16a1     bclr   3, $a1                      
+  130a  19a1     bset   4, $a1                      
+  130c  1a15     bclr   5, $15                      
+
+sub_130e:    ; xref 136e
+  130e  063204   brset  3, $32, L_1315              
+  1311  ae07     ldx    #$07                        
+  1313  bfd4     stx    $d4                         
+
+L_1315:    ; xref 12d2 12d7 12da 12e3 12e8 12eb 12fe 1301 130e
+  1315  81       rts                                
+
+sub_1316:    ; xref 0d94
+  1316  04a30e   brset  2, $a3, L_1327              
+  1319  1da3     bset   6, $a3                      
+  131b  02a309   brset  1, $a3, L_1327              
+  131e  073306   brclr  3, $33, L_1327              
+  1321  1a80     bclr   5, $80                      
+  1323  a611     lda    #$11                        
+  1325  b7eb     sta    $eb                         
+
+L_1327:    ; xref 1316 131b 131e
+  1327  81       rts                                
+
+sub_1328:    ; xref 0d97
+  1328  0b8013   brclr  5, $80, L_133e              
+  132b  0a3205   brset  5, $32, L_1333              
+  132e  0feb0d   brclr  7, $eb, L_133e              
+  1331  2009     bra    sub_133c                    
+
+L_1333:    ; xref 132b
+  1333  0fa30a   brclr  7, $a3, L_1340              
+  1336  04a307   brset  2, $a3, L_1340              
+  1339  02a302   brset  1, $a3, L_133e              
+
+sub_133c:    ; xref 1331 1389
+  133c  1b80     bset   5, $80                      
+
+L_133e:    ; xref 1328 132e 1339
+  133e  1fa3     bset   7, $a3                      
+
+L_1340:    ; xref 1333 1336
+  1340  81       rts                                
+
+sub_1341:    ; xref 0d9d
+  1341  001109   brset  0, $11, L_134d              
+  1344  08190f   brset  4, $19, L_1356              
+  1347  0d1103   brclr  6, $11, L_134d              
+  134a  091109   brclr  4, $11, L_1356              
+
+L_134d:    ; xref 1341 1347
+  134d  1a15     bclr   5, $15                      
+  134f  15a1     bset   2, $a1                      
+  1351  c61faa   lda    $1faa                       
+  1354  b7ec     sta    $ec                         
+
+L_1356:    ; xref 1344 134a
+  1356  81       rts                                
+
+sub_1357:    ; xref 0da9
+  1357  02a005   brset  1, $a0, L_135f              
+  135a  0fec02   brclr  7, $ec, L_135f              
+  135d  15a0     bset   2, $a0                      
+
+L_135f:    ; xref 1357 135a 137f 1399
+  135f  81       rts                                
+
+sub_1360:    ; xref 055f 0655
+  1360  011110   brclr  0, $11, L_1373              
+  1363  00330d   brset  0, $33, L_1373              
+  1366  2003     bra    L_136b                      
+
+sub_1368:    ; xref 0641
+  1368  013308   brclr  0, $33, L_1373              
+
+L_136b:    ; xref 1366
+  136b  0f3505   brclr  7, $35, L_1373              
+  136e  cd130e   jsr    sub_130e                    
+  1371  1a15     bclr   5, $15                      
+
+L_1373:    ; xref 1360 1363 1368 136b
+  1373  81       rts                                
+
+sub_1374:    ; xref 0dac
+  1374  091122   brclr  4, $11, L_1399              
+  1377  1518     bset   2, $18                      
+  1379  023203   brset  1, $32, L_137f              
+  137c  053338   brclr  2, $33, L_13b7              
+
+L_137f:    ; xref 1379
+  137f  08a0dd   brset  4, $a0, L_135f              
+  1382  18a0     bclr   4, $a0                      
+  1384  191b     bset   4, $1b                      
+  1386  0a3202   brset  5, $32, L_138b              
+  1389  adb1     bsr    sub_133c                    
+
+L_138b:    ; xref 1386
+  138b  19a2     bset   4, $a2                      
+  138d  1412     bclr   2, $12                      
+  138f  091904   brclr  4, $19, L_1396              
+  1392  1212     bclr   1, $12                      
+  1394  1512     bset   2, $12                      
+
+L_1396:    ; xref 138f
+  1396  cc03ee   jmp    update_display              
+
+L_1399:    ; xref 1374
+  1399  09a0c3   brclr  4, $a0, L_135f              
+  139c  19a0     bset   4, $a0                      
+
+sub_139e:    ; xref 0809
+  139e  033210   brclr  1, $32, L_13b1              
+  13a1  0f340d   brclr  7, $34, L_13b1              
+  13a4  0ca00e   brset  6, $a0, L_13b5              
+  13a7  06a107   brset  3, $a1, L_13b1              
+  13aa  0e3304   brset  7, $33, L_13b1              
+  13ad  1418     bclr   2, $18                      
+  13af  2002     bra    L_13b3                      
+
+L_13b1:    ; xref 139e 13a1 13a7 13aa
+  13b1  1518     bset   2, $18                      
+
+L_13b3:    ; xref 13af
+  13b3  17a1     bset   3, $a1                      
+
+L_13b5:    ; xref 13a4
+  13b5  1da0     bset   6, $a0                      
+
+L_13b7:    ; xref 137c
+  13b7  81       rts                                
+  13b8  db 10 a0 cd 13 0e 07 32 06 be d9 b7 d9 20 04 be db
+  13c8  db b7 db bf c7 81
+
+sub_13cd:    ; xref 125f
+  13cd  b6c7     lda    $c7                         
+  13cf  073204   brclr  3, $32, L_13d6              
+  13d2  b7d9     sta    $d9                         
+  13d4  2002     bra    L_13d8                      
+
+L_13d6:    ; xref 13cf
+  13d6  b7db     sta    $db                         
+
+L_13d8:    ; xref 13d4
+  13d8  11a0     bset   0, $a0                      
+  13da  81       rts                                
+
+sub_13db:    ; xref 124a
+  13db  09a11b   brclr  4, $a1, L_13f9              
+
+sub_13de:    ; xref 01fe
+  13de  0fa021   brclr  7, $a0, L_1402              
+
+sub_13e1:    ; xref 1488
+  13e1  1fa0     bset   7, $a0                      
+  13e3  131d     bset   1, $1d                      
+  13e5  131e     bset   1, $1e                      
+  13e7  b6ce     lda    $ce                         
+  13e9  b7de     sta    $de                         
+  13eb  b6cf     lda    $cf                         
+  13ed  b7df     sta    $df                         
+  13ef  b6e0     lda    $e0                         
+  13f1  b7ce     sta    $ce                         
+  13f3  b6e1     lda    $e1                         
+  13f5  b7cf     sta    $cf                         
+  13f7  200a     bra    L_1403                      
+
+L_13f9:    ; xref 13db
+  13f9  81       rts                                
+
+sub_13fa:    ; xref 1403 1412
+  13fa  4f       clra                               
+  13fb  ae18     ldx    #$18                        
+
+L_13fd:    ; xref 1400
+  13fd  ebc9     add    $00c9, x                    
+  13ff  5a       decx                               
+  1400  26fb     bne    L_13fd                      
+
+L_1402:    ; xref 13de
+  1402  81       rts                                
+
+L_1403:    ; xref 0d54 13f7
+  1403  adf5     bsr    sub_13fa                    
+  1405  40       nega                               
+  1406  b7c9     sta    $c9                         
+  1408  81       rts                                
+
+sub_1409:    ; xref 051c
+  1409  0ea00f   brset  7, $a0, L_141b              
+  140c  02a00c   brset  1, $a0, L_141b              
+  140f  0a1509   brset  5, $15, L_141b              
+  1412  ade6     bsr    sub_13fa                    
+  1414  bbc9     add    $c9                         
+  1416  2703     beq    L_141b                      
+  1418  cc0d45   jmp    copy_selcall_codes          
+
+L_141b:    ; xref 1409 140c 140f 1416
+  141b  81       rts                                
+
+fn_selcall_send:    ; xref 05d6 05eb
+  141c  0e1643   brset  7, $16, L_1462              
+  141f  061640   brset  3, $16, L_1462              
+  1422  01323d   brclr  0, $32, L_1462              
+  1425  0f343a   brclr  7, $34, L_1462              
+  1428  09a20d   brclr  4, $a2, L_1438              
+  142b  19a2     bset   4, $a2                      
+  142d  191b     bset   4, $1b                      
+  142f  1412     bclr   2, $12                      
+  1431  091904   brclr  4, $19, L_1438              
+  1434  1212     bclr   1, $12                      
+  1436  1512     bset   2, $12                      
+
+L_1438:    ; xref 1428 1431
+  1438  02a02d   brset  1, $a0, L_1468              
+  143b  0b1b03   brclr  5, $1b, L_1441              
+  143e  081921   brset  4, $19, L_1462              
+
+L_1441:    ; xref 143b
+  1441  18a1     bclr   4, $a1                      
+  1443  04a01f   brset  2, $a0, L_1465              
+  1446  0c1119   brset  6, $11, L_1462              
+  1449  001103   brset  0, $11, L_144f              
+  144c  cd1574   jsr    auto_power_off_reset        
+
+L_144f:    ; xref 1449
+  144f  121b     bclr   1, $1b                      
+  1451  14a0     bclr   2, $a0                      
+  1453  12a0     bclr   1, $a0                      
+  1455  13a1     bset   1, $a1                      
+  1457  14a1     bclr   2, $a1                      
+  1459  001105   brset  0, $11, L_1461              
+  145c  a6a3     lda    #$a3                        
+  145e  cd0be5   jsr    head_send                   
+
+L_1461:    ; xref 1459
+  1461  81       rts                                
+
+L_1462:    ; xref 141c 141f 1422 1425 143e 1446
+  1462  cd07ea   jsr    sub_07ea                    
+
+L_1465:    ; xref 1443
+  1465  19a1     bset   4, $a1                      
+  1467  81       rts                                
+
+L_1468:    ; xref 1438
+  1468  03330f   brclr  1, $33, L_147a              
+  146b  121b     bclr   1, $1b                      
+  146d  15a0     bset   2, $a0                      
+  146f  cd1242   jsr    selcall_send_start          
+
+sub_1472:    ; xref 1056
+  1472  001105   brset  0, $11, L_147a              
+  1475  a6a0     lda    #$a0                        
+  1477  cd0be5   jsr    head_send                   
+
+L_147a:    ; xref 1468 1472
+  147a  81       rts                                
+
+fn_selcall_toggle:    ; xref 05d6 05ee
+  147b  013224   brclr  0, $32, L_14a2              
+  147e  0d3321   brclr  6, $33, L_14a2              
+  1481  121b     bclr   1, $1b                      
+  1483  0fa007   brclr  7, $a0, L_148d              
+  1486  1fa0     bset   7, $a0                      
+  1488  cd13e1   jsr    sub_13e1                    
+  148b  2012     bra    L_149f                      
+
+L_148d:    ; xref 1483
+  148d  1ea0     bclr   7, $a0                      
+  148f  b6ce     lda    $ce                         
+  1491  b7e0     sta    $e0                         
+  1493  b6cf     lda    $cf                         
+  1495  b7e1     sta    $e1                         
+  1497  b6de     lda    $de                         
+  1499  b7ce     sta    $ce                         
+  149b  b6df     lda    $df                         
+  149d  b7cf     sta    $cf                         
+
+L_149f:    ; xref 148b
+  149f  cc03ee   jmp    update_display              
+
+L_14a2:    ; xref 147b 147e
+  14a2  cc07ea   jmp    sub_07ea                    
+
+L_14a5:    ; xref 0773
+  14a5  aece     ldx    #$ce                        
+  14a7  2002     bra    L_14ab                      
+
+L_14a9:    ; xref 07a0
+  14a9  aecf     ldx    #$cf                        
+
+L_14ab:    ; xref 14a7
+  14ab  7c       inc    , x                         
+  14ac  f6       lda    , x                         
+  14ad  a109     cmp    #$09                        
+  14af  2301     bls    L_14b2                      
+  14b1  7f       clr    , x                         
+
+L_14b2:    ; xref 14af
+  14b2  121b     bclr   1, $1b                      
+  14b4  cc03ee   jmp    update_display              
+
+sub_14b7:    ; xref 0416
+  14b7  b6ce     lda    $ce                         
+  14b9  48       lsla                               
+  14ba  48       lsla                               
+  14bb  48       lsla                               
+  14bc  48       lsla                               
+  14bd  bacf     ora    $cf                         
+  14bf  121d     bclr   1, $1d                      
+  14c1  121e     bclr   1, $1e                      
+  14c3  cc0c24   jmp    display_digits              
+
+sub_14c6:    ; xref 0da3
+  14c6  0f8107   brclr  7, $81, L_14d0              
+  14c9  1f14     bset   7, $14                      
+  14cb  c61fa9   lda    $1fa9                       
+  14ce  b7c8     sta    $c8                         
+
+L_14d0:    ; xref 14c6
+  14d0  81       rts                                
+
+econ_task:    ; xref 0dbd
+  14d1  082a29   brset  4, $2a, L_14fd              ; economiser: power-save cycling with times 1FB1/1FB2/1FB3
+  14d4  041c16   brset  2, $1c, L_14ed              
+  14d7  041933   brset  2, $19, L_150d              
+  14da  081930   brset  4, $19, L_150d              
+  14dd  00112d   brset  0, $11, L_150d              
+  14e0  08112a   brset  4, $11, L_150d              
+  14e3  b615     lda    $15                         
+  14e5  2626     bne    L_150d                      
+  14e7  041f04   brset  2, $1f, L_14ee              
+  14ea  0e6006   brset  7, $60, L_14f3              
+
+L_14ed:    ; xref 14d4 14ee 14fd
+  14ed  81       rts                                
+
+L_14ee:    ; xref 14e7
+  14ee  0f60fc   brclr  7, $60, L_14ed              
+  14f1  151f     bset   2, $1f                      
+
+L_14f3:    ; xref 14ea
+  14f3  1c18     bclr   6, $18                      
+  14f5  182a     bclr   4, $2a                      
+  14f7  c61fb3   lda    $1fb3                       
+  14fa  b760     sta    $60                         
+  14fc  81       rts                                
+
+L_14fd:    ; xref 14d1
+  14fd  0f60ed   brclr  7, $60, L_14ed              
+  1500  ad13     bsr    sub_1515                    
+  1502  c61fb2   lda    $1fb2                       
+  1505  b760     sta    $60                         
+  1507  cd06ea   jsr    tx_stop                     
+  150a  1d18     bset   6, $18                      
+  150c  81       rts                                
+
+L_150d:    ; xref 14d7 14da 14dd 14e0 14e5
+  150d  141f     bclr   2, $1f                      
+  150f  c61fb1   lda    $1fb1                       
+  1512  b760     sta    $60                         
+  1514  81       rts                                
+
+sub_1515:    ; xref 1500 154a
+  1515  192a     bset   4, $2a                      
+  1517  a60c     lda    #$0c                        
+  1519  cd0152   jsr    delay_A                     
+  151c  81       rts                                
+  151d  db 07 31 24 03 35 21 0c 11 1e 0c 13 1b 12 1b 0d 2a
+  152d  db 0e 20 1a
+
+econ_setup:    ; xref 0298 083d
+  1530  073110   brclr  3, $31, L_1543              
+  1533  053511   brclr  2, $35, L_1547              
+  1536  0c110e   brset  6, $11, L_1547              
+  1539  0c130b   brset  6, $13, L_1547              
+  153c  1c2a     bclr   6, $2a                      
+  153e  c61fb2   lda    $1fb2                       
+  1541  b760     sta    $60                         
+
+L_1543:    ; xref 1530 1547
+  1543  81       rts                                
+  1544  db cc 07 ea
+
+L_1547:    ; xref 1533 1536 1539
+  1547  0d2af9   brclr  6, $2a, L_1543              
+  154a  adc9     bsr    sub_1515                    
+  154c  c61f00   lda    $1f00                       
+  154f  4c       inca                               
+  1550  b748     sta    $48                         
+  1552  1d18     bset   6, $18                      
+  1554  1d2a     bset   6, $2a                      
+  1556  81       rts                                
+
+auto_power_off_task:    ; xref 0dc9
+  1557  001116   brset  0, $11, L_1570              ; 8-hour auto power off: 1FB5 x 30 min (enabled by 1F35 bit5)
+  155a  0c1c13   brset  6, $1c, L_1570              
+  155d  0e1c10   brset  7, $1c, L_1570              
+  1560  b667     lda    $67                         
+  1562  260c     bne    L_1570                      
+  1564  3a4e     dec    $4e                         
+  1566  2b09     bmi    L_1571                      
+  1568  260f     bne    L_1579                      
+  156a  a602     lda    #$02                        
+  156c  b767     sta    $67                         
+  156e  121b     bclr   1, $1b                      
+
+L_1570:    ; xref 1557 155a 155d 1562
+  1570  81       rts                                
+
+L_1571:    ; xref 1566
+  1571  cc0189   jmp    power_down_stop             
+
+auto_power_off_reset:    ; xref 0138 0660 144c
+  1574  c61fb5   lda    $1fb5                       
+  1577  b74e     sta    $4e                         
+
+L_1579:    ; xref 1568
+  1579  a6b4     lda    #$b4                        
+  157b  b767     sta    $67                         
+  157d  81       rts                                
+
+head_ram_dump:    ; xref 059c 05ae
+  157e  a6ec     lda    #$ec                        ; command $4A from head: dump RAM to head (diagnostic)
+  1580  cd0be5   jsr    head_send                   
+  1583  5f       clrx                               
+
+L_1584:    ; xref 1589
+  1584  f6       lda    , x                         
+  1585  cd0be5   jsr    head_send                   
+  1588  5a       decx                               
+  1589  26f9     bne    L_1584                      
+  158b  81       rts                                
+
+init_peripherals:    ; xref 01b7 0257
+  158c  0c1105   brset  6, $11, L_1594              ; init external peripherals $80-$86
+  158f  001f02   brset  0, $1f, L_1594              
+  1592  3f4f     clr    $4f                         
+
+L_1594:    ; xref 158c 158f
+  1594  a600     lda    #$00                        
+  1596  b780     sta    $80                         
+  1598  a600     lda    #$00                        
+  159a  b781     sta    $81                         
+  159c  a606     lda    #$06                        
+  159e  b782     sta    $82                         
+  15a0  a6b0     lda    #$b0                        
+  15a2  b784     sta    $84                         
+  15a4  b7a4     sta    $a4                         
+  15a6  a67f     lda    #$7f                        
+  15a8  b785     sta    $85                         
+  15aa  a63b     lda    #$3b                        
+  15ac  b786     sta    $86                         
+  15ae  81       rts                                
+  15af  db 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  1eff  db 00 25 4b 1b 82 00 38 0d 68 00 82 00 15 09 32 1a
+  1f0f  db 82 02 60 06 eb 57 2a 23 1c 17 13 10 0e 57 31 31
+  1f1f  db 31 31 31 31 31 01 0a 14 1e 28 32 3c 46 0f 05 5a
+  1f2f  db f4 02 00 a5 00 00 00 00 00 00 00 0b 05 01 03 00
+  1f5f  db 00 00 00 00 00 ff 1e 00 ff ff ff ff ff ff ff ff
+  1f6f  db ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  1f7f  db ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  1f8f  db ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  1f9f  db ff ff ff ff ff ff ff ff ff 07 00 0b 3c 0a 12 23
+  1faf  db 24 12 4b 03 0d 3b 10 08 00 00 00 00 00 00 00 00
+  1fdf  db 00 00 01 00 00 00 05 0a ff f0 51 80 30 30 32 39
+  1fef  db 3a 00 00 03 6f 03 6f 03 6f 03 6f 0b b1 01 00 01

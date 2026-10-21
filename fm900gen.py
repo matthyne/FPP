@@ -75,10 +75,11 @@ CTCSS_BY_HZ = {hz: c for c, v, hz in CTCSS}
 
 # Channel-record flag word (offset 0x14 of a .CHL record)
 F_HIGH, F_MED, F_LOW, F_SELPWR = 0x0001, 0x0002, 0x0004, 0x0008
-F_ECON, F_SELCALL, F_CR = 0x0010, 0x0020, 0x0040
+# Entry-screen field order is CTCSS, C/R, VOTE, ECON, SELCALL (FUNC 0x3225).
+F_VOTE, F_ECON, F_SELCALL = 0x0010, 0x0020, 0x0040
 F_SCAN1, F_SCAN2, F_SCAN3 = 0x0080, 0x0100, 0x0200
 F_PRI1, F_PRI2, F_PRI3 = 0x0400, 0x0800, 0x1000
-F_SCANSEL, F_VOTE = 0x2000, 0x4000
+F_SCANSEL, F_CR = 0x2000, 0x4000
 
 MASTER_VERSION = {   # file -> (byte at 0x1FE5, string at 0x1FEB)   (FUNC 0x8517)
     'FM91S.BIN': (10, '01045'), 'FM91.BIN': (1, '0020:'),
@@ -307,7 +308,7 @@ class Builder:
         if hw[2] >= '5':
             p = (r[5] >> 4) & 3
             r[2] = (r[2] & 0xF7) | ((((~p) >> 1) & 1) << 3)
-        if not fl & F_ECON:
+        if not fl & F_VOTE:
             r[7] &= 0xFE
 
     def rec_freqs(self, r, c):   # FUNC 0x5A5D
@@ -351,19 +352,19 @@ class Builder:
         else:
             r[6] &= 0xC0
         r[6] = (r[6] & 0xBF) | (0x40 if fl & F_SCANSEL else 0)
-        r[6] = (r[6] & 0x7F) | (0x80 if fl & F_CR else 0)
+        r[6] = (r[6] & 0x7F) | (0x80 if fl & F_SELCALL else 0)
         enc = int(sw[11:13])
         r[7] = (r[7] & 0x7F) | (((enc_tab_word(enc) >> 1) & 1) << 7)
         if self.hw[1] != '3':
-            if not fl & F_ECON:
+            if not fl & F_VOTE:
                 r[7] &= 0xFB
                 r[7] &= 0xFD
-            if not fl & (F_ECON | F_CR):
+            if not fl & (F_VOTE | F_SELCALL):
                 r[7] = (r[7] & 0xFD) | (0x02 if sw[2] == '2' else 0)
                 if not r[7] & 0x02:
-                    r[7] = (r[7] & 0xFB) | (0x04 if fl & F_SELCALL else 0)
-            r[2] = (r[2] & 0xDF) | (0x20 if fl & F_ECON else 0)
-        r[2] = (r[2] | 0x10) if (fl & F_VOTE) else (r[2] & 0xEF)
+                    r[7] = (r[7] & 0xFB) | (0x04 if fl & F_ECON else 0)
+            r[2] = (r[2] & 0xDF) | (0x20 if fl & F_VOTE else 0)
+        r[2] = (r[2] | 0x10) if (fl & F_CR) else (r[2] & 0xEF)
 
     # -- main ------------------------------------------------------------
     def build(self, chans, master=None):
@@ -445,7 +446,7 @@ class Builder:
             if c.flags & F_LOW and pw_min > 1:
                 pw_min = 1
             slot = n - 1
-            if used[slot][0] or c.flags & F_ECON:
+            if used[slot][0] or c.flags & F_VOTE:
                 slot = remap(slot)
             if slot < 0:
                 raise FM900Error('out of channel slots')
