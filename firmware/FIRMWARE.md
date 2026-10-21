@@ -529,3 +529,63 @@ Wiring PB7 to EPROM A13, with a 10 kΩ pull-down because the pin floats until th
   * the power-on port write would be changed to keep the last bank, which survives in RAM while the radio is "off" (in STOP).
 
 You'd have to confirm on the board that the CPU's PB7 pin is accessible and not connected to anything on an FM92R PCB. The external output latches (`$80`–`$86`) may also have spare bits, but without a schematic that can't be determined.
+
+## 13. Future Upgrade Options
+
+These are designed but **not implemented**. Each would be a patch tool in the style of
+`patch_startup_msg.py`:
+
+* verify the original bytes;
+* write a patched copy of the master;
+* put new code in the empty EPROM area 0x15AF–0x1B3F, avoiding the signature-sample bytes 0x15CC, 0x19CC and 0x1ACC;
+* use the patched master with `fm900gen.py --master-file`.
+
+All would be untested on hardware until burned.
+
+### 13.1 Duplex / talk-around on/off key (FM92R and FM92L)
+
+**Goal:** one function key that toggles between normal repeater operation and transmitting
+on the receive frequency.
+
+* **New function code 9.**
+  * Function codes are range-checked at 0x05CC (`CPX #$1B`) before `JMP $05D6,X`, and the table at 0x05D6 has no room to grow.
+  * So: redirect the dispatch to a new range check and table in free space that accepts codes 0–9, and allow `9`/`duplex` in `fm900gen.py --keys`.
+  * The new function toggles a free RAM flag bit, re-selects the channel (`select_channel`), and shows the state briefly on the display.
+* **Transmit frequency** (`load_synth`, 0x0842, Tx path X = 5). When the flag is set, compute the Tx divider from the Rx divider instead of reading bytes 3–5:
+
+  ```
+  N_tx = N_rx - IF/step     if the IF offset is positive (bands E, B, T, U)
+  N_tx = N_rx + IF/step     if negative (bands A, W1, W2)
+  ```
+
+  * Digits are stored as `15 − digit`, so decode the 5 BCD digits, add or subtract the constant with decimal carries, and re-encode.
+  * IF/step is a fixed constant per radio: e.g. 21.4 MHz / 5 kHz = 4280, or / 6.25 kHz = 3424. The patch tool would take `--hw`, or band plus step, and bake in the constant.
+  * Estimated 60–80 bytes.
+* **Check:** C/R / CTCSS behaviour and the PA power windows are unaffected, because power still comes from byte 5.
+* **Alternative with no patch:** program pairs of channels (repeater and simplex), ideally 10 apart, and use the `tens` key.
+
+### 13.2 Bank switching from the radio (FM92R only)
+
+**Goal:** select 27128/27256 banks (§12.3) from a function key instead of an external switch.
+
+* **Hardware.**
+  * Wire CPU **PB7** to EPROM A13 (pin 26), with a 10 kΩ pull-down.
+  * PB7 is already an output (DDRB = `$FE`) and unused in FM92R firmware. It strobes the LEDs on FM92L, so it is not usable there.
+  * For 4 banks, A14 would need a second spare output, which hasn't been identified yet.
+* **New function code** (e.g. 10 = bank toggle). It flips PB7 with `BSET`/`BCLR 7,$01` and re-selects the channel.
+  * Every bank must be built from the **same master with the same hardware/software codes**. Then the code is byte-identical across banks and the RAM option check (`chk_ram_config`) still passes.
+  * Each bank must have the current channel programmed (e.g. always channel 1).
+* **Keep the bank across power-off.**
+  * Patch the power-on write `LDA #$22 ; STA $01` (0x01CE) and the power-down `CLR $01` (0x01B5) so they preserve PB7.
+  * Store the bank in a free RAM bit; RAM is retained while the radio is "off" in STOP.
+  * On a true cold start, bank 0 is selected (pull-down plus port reset).
+* **Display.** Optionally show `b0`/`b1` on the head when switching, reusing the `patch_startup_msg.py` display code.
+
+### 13.3 Other gaps
+
+| Item | Notes |
+|---|---|
+| **FM93, FM97WP, "92 with 91 PCBs" builds** in `fm900gen.py` | FM900.EXE routines are identified (FM900_FORMAT.md §5). Needs sample jobs to verify against. |
+| **Selcall tone programming** in `fm900gen.py` | FM900.EXE selcall editor around 0x113F9. Firmware use of 0x1F67–0x1FA7 is in §7.8. |
+| **Head character set** | Find out which characters the remote head can display, by testing `patch_startup_msg.py` with letters. That would allow messages per channel or per bank. |
+| **Spare outputs on the external latches `$80`–`$86`** | Needs a schematic or board inspection; could provide A14 for 4-bank switching. |
