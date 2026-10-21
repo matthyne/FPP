@@ -615,19 +615,32 @@ on the receive frequency.
 
 ## 14. Connectors: control head DIN and microphone
 
-This pinout was supplied by the owner from radio documentation. It was **not** derived from
-the firmware.
+**Source:** WICEN (Vic.) Inc., "FM92 for Packet", <https://www.vic.wicen.org.au/?page_id=631>
+(checked 2026-10-21). This is not derived from the firmware.
 
-| Signal | CFA head (5/8-pin DIN) | VicPol head (8-pin DIN) | Microphone connector |
+| Signal | CFA head (5- or 8-pin DIN) | Microphone connector | VicPol head (8-pin DIN) |
 |---|---|---|---|
-| Tx audio | Pin 1 | Pin 5 | Pin 4 |
-| Ground | Pin 2 | Pin 2 | Pin 3 |
-| PTT | Pin 3 | Pin 7 | Pin 1 |
-| Rx audio | Pin 4 | Pin 5 | Pin 6 |
-| Switched Rx audio | Pin 5 | — | — |
+| Tx audio | 1 | 4 | 5 |
+| Ground | 2 | 3 | 2 |
+| PTT | 3 | 1 | 7 |
+| Rx audio | 4 | – | 6 |
+| Switched Rx audio | 5 | – | – |
+| Tx audio ground | – | 5 | 3 |
+| Cradle switch | – | 2 | 1 |
 
-Notes:
+All of these connectors are on the **control head**.
 
-* **Possible error in the source table.** The VicPol column lists **Pin 5 for both Tx audio and Rx audio**, which looks like a transcription error. Check with a meter before wiring anything to the VicPol connector.
-* **Head data line not listed.** The table does not include the head's **serial data line** (the ~1200 baud 8E1 link on CPU PB0, §1 and §13.3), its supply, or its power-switch line. These would sit on the remaining DIN pins: CFA pins 6–8 on the 8-pin version, and VicPol pins 1, 3, 4, 6 and 8. Identify them before attempting PC/tablet control.
+Notes from the source:
+
+* **Ex-Victoria Police (VicPol) heads** already have all the signals on the rear DIN.
+* **Ex-CFA heads:** Tx audio and PTT must be wired from the front microphone connector through to the rear DIN. WICEN marks these in red as connections you may need to make. WICEN's digipeaters use the CFA pinout.
+* **Mic pin 6** is the microphone connector pin closest to the right edge of the head.
+* **TNC wiring.** The same page also gives TNC pinouts:
+  * Kantronics 9-pin D: Tx audio 1, Ground 6, PTT 3, Rx audio 5.
+  * Tiny-2 / MFJ-1270B 5-pin DIN: Tx audio 1, Ground 2, PTT 3, Rx audio 4.
+
+My own notes:
+
+* **Earlier version.** A version of this table supplied earlier gave VicPol Rx audio as pin 5 (a duplicate of Tx audio) and microphone Rx audio as pin 6. The WICEN source gives VicPol Rx audio = **6** and no microphone Rx-audio pin.
+* **Data line not listed.** These are the head's audio/PTT accessory connections. The source does not list the head ↔ radio **serial data line** (the ~1200 baud 8E1 link on CPU PB0, §1 and §13.3), the supply, or the power switch. Those are on the head-to-radio cable, not this DIN. Identify them before attempting PC/tablet control.
 * **PTT:** the firmware senses PTT on CPU PA6 (inferred, §3). Head PTT may also arrive as a serial command (`$44`/`$45`).
