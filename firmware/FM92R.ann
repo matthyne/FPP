@@ -97,7 +97,7 @@
 02fe PA6 = PTT input (inferred)
 030f PA7 = second front input (hook/monitor, inferred)
 036f timer reload: TDR=$C5, TCR=$09 -> ~2.4 kHz tick (one tick ~415 us)
-0377 PB5 low (synth strobe idle)
+0377 PB5 high (synth strobe idle; strobes are low-going pulses)
 037e PB1 toggles every tick (1.2 kHz square wave)
 038a 16-entry slot table, one slot every 2 ticks
 0842 X=2: Rx bytes 0-2, X=5: Tx bytes 3-5 of the channel slot
@@ -106,15 +106,15 @@
 0875 Rx: byte2 bit5 (VOTE) handled in chan_flags_rx
 0878 Rx: byte2 bit3 -> latch $2C bit5 (VCO band switch)
 0882 bit6 (injection side) -> $29.1
-0890 synth: port A = 1F2D, PB6 low (enable), 2 strobes
+0890 synth: port A = 1F2D, PB6 high (enable), 2 strobes
 089b synth: 4 BCD digits, low nibble then high nibble, one PB5 strobe each
 08aa synth: digit 5 (byte2/5 | 8)
-08b0 synth: then reference bytes 1F2C, 1F2D; PB6 high
+08b0 synth: then reference bytes 1F2C, 1F2D; PB6 low again
 08c7 ptr = $1BE0 + 8*A  (into RAM routine at $21: LDA $hhll,X; RTS)
 0800 bytes 6,7 of slot -> $34 (CTCSS/flags), $35 (link)
-080e byte5 bit3 -> latch $82 bit5 (inverted)
+080e byte5 bit3 -> latch $82 bit5
 0822 byte5 bits4-5 = power; 0 -> operator-selected power from $2C
-08f8 software UART on PB0: 1200 baud, single-wire, 11-bit frames, 4-byte TX FIFO $3D-$40
+08f8 software UART on PB0: ~1200 baud 8E1 (start, 8 data LSB first, even parity, stop), single wire idle-high; PB0 is driven only while sending; 4-byte TX FIFO $3D-$40
 09e2 ADC: select mux via $2A latch, note start time; IRQ (comparator) stores result
 09fb squelch: pot ($49) -> setting 0-7 via table $0A4C (with hysteresis)
 0a74 noise ($45) vs close threshold 1F1C+setting

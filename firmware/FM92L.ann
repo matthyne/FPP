@@ -91,7 +91,7 @@
 02f0 PA6 = PTT input (inferred)
 0301 PA7 = second front input (hook/monitor, inferred)
 034c timer reload: TDR=$C5, TCR=$09 -> ~2.4 kHz tick (one tick ~415 us)
-0354 PB5 low (synth strobe idle)
+0354 PB5 high (synth strobe idle; strobes are low-going pulses)
 0365 16-entry slot table, one slot every 2 ticks
 07bd X=2: Rx bytes 0-2, X=5: Tx bytes 3-5 of the channel slot
 07d3 bit7 of byte2/5 = entry valid, else carry set = empty channel
@@ -99,13 +99,13 @@
 07f0 Rx: byte2 bit5 (VOTE) handled in chan_flags_rx
 07f3 Rx: byte2 bit3 -> latch $2C bit5 (VCO band switch)
 07fd bit6 (injection side) -> $29.1
-080b synth: port A = 1F2D, PB6 low (enable), 2 strobes
+080b synth: port A = 1F2D, PB6 high (enable), 2 strobes
 0816 synth: 4 BCD digits, low nibble then high nibble, one PB5 strobe each
 0825 synth: digit 5 (byte2/5 | 8)
-082b synth: then reference bytes 1F2C, 1F2D; PB6 high
+082b synth: then reference bytes 1F2C, 1F2D; PB6 low again
 0842 ptr = $1BE0 + 8*A  (into RAM routine at $21: LDA $hhll,X; RTS)
 077b bytes 6,7 of slot -> $34 (CTCSS/flags), $35 (link)
-0789 byte5 bit3 -> latch $82 bit5 (inverted)
+0789 byte5 bit3 -> latch $82 bit5
 079d byte5 bits4-5 = power; 0 -> operator-selected power from $2C
 0926 ADC: select mux via $2A latch, note start time; IRQ (comparator) stores result
 093f squelch: pot ($49) -> setting 0-7 via table $0A4C (with hysteresis)

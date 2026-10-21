@@ -16,7 +16,7 @@ It also holds a Linux replacement for the image-building part:
   * The folder also holds annotated listings and the disassembler tools.
   * `patch_startup_msg.py` builds a patched FM92R master that shows a start-up message (e.g. `AA`) on the remote head.
   * `FIRMWARE.md` §12 covers EPROM types: why it must be a 2764, 2716→2764 socket conversion, and using a 27128/27256 for 2–4 switchable banks of 99 channels.
-  * `FIRMWARE.md` §13, **Future Upgrade Options**: designs for a duplex/talk-around key and for bank switching from a function key (not implemented).
+  * `FIRMWARE.md` §13, **Future Upgrade Options**: designs for a duplex/talk-around key, bank switching from a function key, and PC/tablet control over the remote-head link (not implemented).
 
 ## Quick start
 

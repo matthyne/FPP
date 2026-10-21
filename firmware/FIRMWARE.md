@@ -36,7 +36,7 @@ to the operator.
 | Controls | Keys on the radio front panel, read directly on port A by `keypad_scan` (0x088D). Debounce and auto-repeat times come from 0x1F10–0x1F12. | Separate control head (e.g. CU91R) connected by a single-wire serial link. |
 | Display | 2-digit channel display driven directly: BCD digits on port A, latched with PB0 and PB1 (`display_digits_local`, 0x0B2E). | The radio sends display characters to the head over the link (`display_digits`, 0x0C24). |
 | Indicators | LED latch on port A and PB7 (`led_latch_task`, 0x0401). Blink rate from 0x1F13. | The head draws them, from status messages. |
-| Serial link | none | 1200 baud software UART on PB0, half-duplex single wire, 11-bit frames, 4-byte transmit FIFO (`uart_bit`, 0x08D8). Bytes 0x1F10–0x1F12 are sent to the head at start-up (`send_head_config`, 0x0508). |
+| Serial link | none | Software UART on PB0 (`uart_bit`, 0x08D8): ~1200 baud **8E1** (start bit, 8 data bits LSB first, even parity, stop bit). Single wire, idle high, half-duplex; the radio drives PB0 only while sending a byte. 4-byte transmit FIFO. Bytes 0x1F10–0x1F12 are sent to the head at start-up (`send_head_config`, 0x0508). |
 | Head commands | – | `head_key_dispatch` (0x0574) decodes key and command bytes from the head (§6.2). Command 0x4A dumps RAM to the head (service diagnostic). |
 | Odd timer ticks | keypad scan | UART bit timing |
 | Master ID | `0028:`, version byte 0x1FE5 = 4 | `0029:`, version byte 0x1FE5 = 5 |
@@ -90,8 +90,8 @@ Each external latch is loaded by putting a byte on port A and pulsing a port-B s
 | PB2 strobe → latch **`$2A`** | ADC multiplexer select (bits 0–2), plus misc. outputs |
 | PB3 strobe → latch **`$29`** | Audio and mute control; bit 1 = receiver injection side (from slot byte2/5 bit 6) (inferred) |
 | PB4 strobe → latch **`$2C`** (written inverted) | Transmitter power Hi/Lo (bit 4); VCO band switch (bit 5, from slot byte2 bit 3); others |
-| PB5 | Synthesiser data strobe |
-| PB6 | Synthesiser enable (active low) |
+| PB5 | Synthesiser data strobe (idles high, low-going pulses) |
+| PB6 | Synthesiser load enable (high while loading) |
 | PB0 | FM92R: serial link to the control head. FM92L: display low-digit strobe. |
 | PB1 | FM92R: 1.2 kHz square wave toggled every tick (inferred: clock or charge pump). FM92L: display high-digit strobe. |
 | PB7 | FM92L: indicator LED latch strobe |
@@ -106,11 +106,11 @@ Each external latch is loaded by putting a byte on port A and pulsing a port-B s
 `chan_ptr` (0x08C7) computes `ptr = 0x1BE0 + 8 × channel`, so channel 1 is at 0x1BE8.
 
 1. Check that byte 2 (Rx) or byte 5 (Tx) has bit 7 set. If not, the channel is empty and the routine returns with carry set.
-2. Put byte 0x1F2D on port A, pull PB6 low, and give two PB5 strobes.
+2. Put byte 0x1F2D on port A, raise PB6, and give two PB5 strobes.
 3. Send the two divider bytes as four nibbles, low nibble first, one PB5 strobe each. These are the one's-complemented BCD digits FM900.EXE wrote.
 4. Send the fifth digit: byte2 or byte5, OR'd with `$08`.
 5. Send the reference/mode bytes 0x1F2C and 0x1F2D.
-6. Release PB6.
+6. Drop PB6 low again.
 
 The receiver is loaded with slot bytes 0–2 and the transmitter with bytes 3–5. That is why
 FM900.EXE folds the IF offset into the Rx divider. This 4-bit, strobed, BCD-loaded interface
@@ -265,13 +265,13 @@ FM900_FORMAT.md §4.2 gives the byte layout. On a channel change, `select_channe
 * **Bytes 0–2 (Rx divider):** loaded into the receive synthesiser.
 * **Byte 2 bit 7:** channel valid. Empty channels are skipped by up/down and by scanning.
 * **Byte 2 bit 6:** injection side, sent to latch `$29` bit 1.
-* **Byte 2 bit 5 (VOTE):** handled by `chan_flags_rx`. When clear, the channel is remembered as the "home" channel (`$50`/`$52`) that scanning and voting return to.
+* **Byte 2 bit 5 (VOTE):** handled by `chan_flags_rx`, which sets `$13.6` ("on a vote channel"). While voting hops round the ring, `$50`/`$52` keep the channel the user selected, and channel up/down restart from there.
 * **Byte 2 bit 4 (C/R):** community-repeater handling of the CTCSS decoder.
 * **Byte 2 bit 3:** VCO band switch, sent to latch `$2C` bit 5.
 * **Bytes 3–5 (Tx divider):** loaded into the synthesiser when transmitting.
 * **Byte 5 bit 7 clear:** receive-only channel.
 * **Byte 5 bits 4–5:** power, `$30` = high, `$20` = medium, `$10` = low, `$00` = use the operator's choice. Only bit 4 reaches the PA switch (latch `$2C` bit 4). The bits also select which 0x1F08–0x1F0F window supervises the PA. This is why FM900.EXE stores 1 W as `$20` on FM92 VHF radios: those have only two power stages.
-* **Byte 5 bit 3:** sent inverted to latch `$82` bit 5.
+* **Byte 5 bit 3:** sent to latch `$82` bit 5.
 * **Byte 6 bits 0–5:** CTCSS code. It is translated through the table at 0x0E56 to a tone-chip value, written to `$81` with bit 6 set (`set_ctcss_tone`). Code 0 means no tone.
 * **Byte 6 bit 7 (SELCALL):** selcall enabled on this channel.
 * **Byte 6 bit 6:** operator-selectable scan member.
@@ -401,6 +401,7 @@ python3 tools/mklist.py FM92L
 ```
 
 * `tools/d6805.py` is a recursive-descent 6805 disassembler that also follows `JMP table,X` jump tables.
+* **Capstone bug.** Capstone 5.0.x prints 6805 `BSET`/`BCLR` the wrong way round: it shows opcode `$10+2n` as `bclr` when the manual defines it as `BSET n`. `d6805.py` corrects this. Listings made before this fix (commits before the PC-control notes) had every `bset`/`bclr` inverted.
 * The `.ann` files hold routine names (`=addr name`) and per-address comments.
 * The FM92L names were transferred from FM92R by aligning the two instruction streams.
 
@@ -581,7 +582,29 @@ on the receive frequency.
   * On a true cold start, bank 0 is selected (pull-down plus port reset).
 * **Display.** Optionally show `b0`/`b1` on the head when switching, reusing the `patch_startup_msg.py` display code.
 
-### 13.3 Other gaps
+### 13.3 PC / tablet control through the head interface (FM92R, no firmware change)
+
+**Goal:** a PC or tablet emulates the CU91R control head on the radio's head link.
+
+* **Electrical.**
+  * The link is one wire plus ground: ~1200 baud **8E1**, idle high. The radio drives the line (push-pull from the CPU pin) only while it is sending; the rest of the time PB0 is an input.
+  * A USB-TTL serial adapter can do it, with its TX through an open-collector transistor (or a diode plus pull-up) onto the wire and its RX also on the wire. You will hear your own transmissions echoed back.
+  * The voltage level (5 V logic at the CPU, possibly buffered on the board) and the head-connector pinout must be checked on the hardware.
+* **What a PC can read.**
+  * The display characters (`$80`/`$82` + ASCII), i.e. the channel number.
+  * Status bytes (`$A0`–`$AA`, `$C0`/`$C1`, `$E4`/`$E5`, `$E7`+config).
+  * On request (`$4A`), a full RAM dump. That includes live RSSI (`$46`), squelch noise (`$45`), the supply/forward-power reading (`$4A`), the current channel (`$2E`) and all flags, which is useful for a signal meter or logging.
+* **What a PC can do.**
+  * Send key codes `'1' '2' '4' '7'` to run the four programmable functions (§6.2), e.g. channel up/down, scan, monitor. With `tens`/`units` assigned (`--keys tens,units,…`), it can jump to any channel in about 3–10 key presses.
+  * Send PTT press/release (`$45`/`$44`, inferred) and power off (`$49`).
+  * It **cannot** set an arbitrary frequency: only the programmed channels are reachable, the same as from the head.
+* **To confirm first.** Sniff a real head with a logic analyser or a USB-serial adapter in receive-only mode, to check the baud rate, parity, levels and the meaning of the head command bytes (§6.2). Also check whether the radio needs anything from the head at power-up; the firmware does not appear to wait for any reply.
+* **Software.**
+  * A small Python head emulator (pyserial): decode the display and status bytes, and send keys and PTT.
+  * Optionally an ESP32 bridge on the wire serving a web page or Bluetooth link for a tablet.
+* **Living with a real head.** Listening in parallel with a real head is safe. Sending while the head is connected risks collisions on the single wire, so either disconnect the head or only send when the line is idle.
+
+### 13.4 Other gaps
 
 | Item | Notes |
 |---|---|

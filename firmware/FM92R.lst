@@ -13,9 +13,9 @@ RESET:    ; xref 01fb
   010f  ad2d     bsr    chk_ram_config              
   0111  3f3b     clr    $3b                         
   0113  3f3c     clr    $3c                         
-  0115  131a     bset   1, $1a                      
+  0115  131a     bclr   1, $1a                      
   0117  b620     lda    $20                         
-  0119  1b04     bset   5, $04                      
+  0119  1b04     bclr   5, $04                      
   011b  0a000a   brset  5, $00, L_0128              ; PA5 = on/off switch sense; $20 = power state (0x11 off, 0x99 on)
   011e  a111     cmp    #$11                        
   0120  2767     beq    power_down_stop             
@@ -30,10 +30,10 @@ L_0128:    ; xref 011b
   012e  262c     bne    cold_start                  
   0130  a699     lda    #$99                        
   0132  b720     sta    $20                         
-  0134  1a2a     bclr   5, $2a                      
+  0134  1a2a     bset   5, $2a                      
 
 L_0136:    ; xref 0126
-  0136  1a04     bclr   5, $04                      
+  0136  1a04     bset   5, $04                      
   0138  cd1574   jsr    auto_power_off_reset        
   013b  cc01fe   jmp    warm_start                  
 
@@ -69,7 +69,7 @@ cold_start:    ; xref 0124 012e 0143 014c 0bda
   0164  ae04     ldx    #$04                        
   0166  3fde     clr    $de                         
   0168  3fdf     clr    $df                         
-  016a  1fa0     bset   7, $a0                      
+  016a  1fa0     bclr   7, $a0                      
 
 L_016c:    ; xref 0172
   016c  d61f2d   lda    $1f2d, x                    ; copy EPROM 1F2E..1F31 -> RAM $2B..$2E ($2E = current channel = lowest channel)
@@ -90,7 +90,7 @@ L_0181:    ; xref 0187
   0187  26f8     bne    L_0181                      
 
 power_down_stop:    ; xref 0120 012a 0471 053f 1571
-  0189  1d29     bset   6, $29                      
+  0189  1d29     bclr   6, $29                      
   018b  cd07ed   jsr    select_channel              
   018e  ad01     bsr    power_down                  
   0190  8e       stop                               ; STOP: wait for wake-up (IRQ)
@@ -104,17 +104,17 @@ power_down:    ; xref 018e 0cb3
 
 L_019c:    ; xref 0195
   019c  ad23     bsr    init_ddr                    
-  019e  1c09     bclr   6, $09                      
+  019e  1c09     bset   6, $09                      
   01a0  a607     lda    #$07                        
   01a2  b72a     sta    $2a                         
   01a4  cd03d2   jsr    write_latch_PB2             
   01a7  a621     lda    #$21                        
   01a9  ad2a     bsr    write_latch_PB3             
   01ab  3f00     clr    $00                         
-  01ad  1801     bclr   4, $01                      
-  01af  1901     bset   4, $01                      
-  01b1  1904     bset   4, $04                      
-  01b3  1b04     bset   5, $04                      
+  01ad  1801     bset   4, $01                      
+  01af  1901     bclr   4, $01                      
+  01b1  1904     bclr   4, $04                      
+  01b3  1b04     bclr   5, $04                      
   01b5  3f01     clr    $01                         
   01b7  cd158c   jsr    init_peripherals            
   01ba  3f80     clr    $80                         
@@ -141,8 +141,8 @@ latch29_init:    ; xref 0108
 
 write_latch_PB3:    ; xref 01a9
   01d5  b700     sta    $00                         
-  01d7  1601     bclr   3, $01                      
-  01d9  1701     bset   3, $01                      
+  01d7  1601     bset   3, $01                      
+  01d9  1701     bclr   3, $01                      
   01db  81       rts                                
 
 eprom_checksum:    ; xref 025a
@@ -194,14 +194,14 @@ L_0218:    ; xref 0209
   021d  a6a4     lda    #$a4                        
   021f  cd03c7   jsr    clear_ram_x_to_a            
   0222  0f2202   brclr  7, $22, L_0227              
-  0225  101f     bclr   0, $1f                      
+  0225  101f     bset   0, $1f                      
 
 L_0227:    ; xref 0222
   0227  01320a   brclr  0, $32, L_0234              
   022a  0fbf07   brclr  7, $bf, L_0234              
-  022d  18a2     bclr   4, $a2                      
+  022d  18a2     bset   4, $a2                      
   022f  0dbf02   brclr  6, $bf, L_0234              
-  0232  181b     bclr   4, $1b                      
+  0232  181b     bset   4, $1b                      
 
 L_0234:    ; xref 0227 022a 022f
   0234  3f36     clr    $36                         
@@ -214,18 +214,18 @@ L_0234:    ; xref 0227 022a 022f
   0242  b709     sta    $09                         
   0244  a640     lda    #$40                        
   0246  b75e     sta    $5e                         
-  0248  1411     bclr   2, $11                      
+  0248  1411     bset   2, $11                      
   024a  b62a     lda    $2a                         
   024c  a420     and    #$20                        
   024e  aa07     ora    #$07                        
   0250  b72a     sta    $2a                         
   0252  cd03d2   jsr    write_latch_PB2             
-  0255  1f29     bset   7, $29                      
+  0255  1f29     bclr   7, $29                      
   0257  cd158c   jsr    init_peripherals            
   025a  cd01dc   jsr    eprom_checksum              
   025d  c61fa9   lda    $1fa9                       ; 1FA9 -> $C8 (selcall timing)
   0260  0e8104   brset  7, $81, L_0267              
-  0263  1e14     bclr   7, $14                      
+  0263  1e14     bset   7, $14                      
   0265  a6ff     lda    #$ff                        
 
 L_0267:    ; xref 0260
@@ -241,12 +241,12 @@ wait_startup:    ; xref 026e
   0274  cd0be5   jsr    head_send                   ; tell control head we (re)started
   0277  cd06ea   jsr    tx_stop                     
   027a  0b1b02   brclr  5, $1b, L_027f              
-  027d  1616     bclr   3, $16                      
+  027d  1616     bset   3, $16                      
 
 L_027f:    ; xref 027a
   027f  a602     lda    #$02                        
   0281  b761     sta    $61                         
-  0283  1e16     bclr   7, $16                      
+  0283  1e16     bset   7, $16                      
   0285  09a208   brclr  4, $a2, L_0290              
   0288  a6a7     lda    #$a7                        
   028a  cd0be5   jsr    head_send                   
@@ -254,7 +254,7 @@ L_027f:    ; xref 027a
 
 L_0290:    ; xref 0285 028d
   0290  0d1302   brclr  6, $13, L_0295              
-  0293  1e18     bclr   7, $18                      
+  0293  1e18     bset   7, $18                      
 
 L_0295:    ; xref 0290
   0295  cd0d36   jsr    set_ctcss_tone              
@@ -306,14 +306,14 @@ L_02de:    ; xref 02d8
 L_02e4:    ; xref 02de
   02e4  03120a   brclr  1, $12, L_02f1              
   02e7  08a207   brset  4, $a2, L_02f1              
-  02ea  1312     bset   1, $12                      
+  02ea  1312     bclr   1, $12                      
   02ec  a6a6     lda    #$a6                        
   02ee  cd0be5   jsr    head_send                   
 
 L_02f1:    ; xref 02e4 02e7
   02f1  05120a   brclr  2, $12, L_02fe              
   02f4  08a207   brset  4, $a2, L_02fe              
-  02f7  1512     bset   2, $12                      
+  02f7  1512     bclr   2, $12                      
   02f9  a6a4     lda    #$a4                        
   02fb  cd0be5   jsr    head_send                   
 
@@ -330,20 +330,20 @@ L_0309:    ; xref 02fe
 L_030f:    ; xref 0301 0307 0309
   030f  0f0007   brclr  7, $00, L_0319              ; PA7 = second front input (hook/monitor, inferred)
   0312  011404   brclr  0, $14, L_0319              
-  0315  1811     bclr   4, $11                      
+  0315  1811     bset   4, $11                      
   0317  2002     bra    L_031b                      
 
 L_0319:    ; xref 030f 0312
-  0319  1911     bset   4, $11                      
+  0319  1911     bclr   4, $11                      
 
 L_031b:    ; xref 0317
   031b  b617     lda    $17                         
   031d  2704     beq    L_0323                      
-  031f  1629     bclr   3, $29                      
+  031f  1629     bset   3, $29                      
   0321  2002     bra    L_0325                      
 
 L_0323:    ; xref 031d
-  0323  1729     bset   3, $29                      
+  0323  1729     bclr   3, $29                      
 
 L_0325:    ; xref 0321
   0325  0c1203   brset  6, $12, L_032b              
@@ -353,7 +353,7 @@ L_032b:    ; xref 0325
   032b  0d120b   brclr  6, $12, L_0339              
   032e  b610     lda    $10                         
   0330  2607     bne    L_0339                      
-  0332  1d12     bset   6, $12                      
+  0332  1d12     bclr   6, $12                      
   0334  a6c0     lda    #$c0                        
   0336  cd0be5   jsr    head_send                   
 
@@ -368,8 +368,8 @@ L_033f:    ; xref 0339
 L_0345:    ; xref 033f
   0345  091407   brclr  4, $14, L_034f              
   0348  0f5c04   brclr  7, $5c, L_034f              
-  034b  1914     bset   4, $14                      
-  034d  1314     bset   1, $14                      
+  034b  1914     bclr   4, $14                      
+  034d  1314     bclr   1, $14                      
 
 L_034f:    ; xref 0345 0348
   034f  031506   brclr  1, $15, L_0358              
@@ -387,7 +387,7 @@ L_0361:    ; xref 0358 035b
 
 L_0367:    ; xref 0361
   0367  0f6102   brclr  7, $61, L_036c              
-  036a  1f16     bset   7, $16                      
+  036a  1f16     bclr   7, $16                      
 
 L_036c:    ; xref 0367
   036c  cc0d58   jmp    main_loop_part2             
@@ -397,10 +397,10 @@ TIMER_ISR:
   0371  aec5     ldx    #$c5                        
   0373  bf08     stx    $08                         
   0375  b709     sta    $09                         
-  0377  1a01     bclr   5, $01                      ; PB5 low (synth strobe idle)
+  0377  1a01     bset   5, $01                      ; PB5 high (synth strobe idle; strobes are low-going pulses)
   0379  3c28     inc    $28                         
   037b  012840   brclr  0, $28, uart_tick           
-  037e  1301     bset   1, $01                      ; PB1 toggles every tick (1.2 kHz square wave)
+  037e  1301     bclr   1, $01                      ; PB1 toggles every tick (1.2 kHz square wave)
   0380  b628     lda    $28                         
   0382  a41e     and    #$1e                        
   0384  b727     sta    $27                         
@@ -461,7 +461,7 @@ tick_rti:    ; xref 038d 0393 0399 03a2 03b1 03b7 03ba
   03bd  80       rti                                
 
 uart_tick:    ; xref 037b
-  03be  1201     bclr   1, $01                      
+  03be  1201     bset   1, $01                      
   03c0  cc08d8   jmp    uart_bit                    
 
 clear_ram_10_1f:    ; xref 015f 0218
@@ -485,41 +485,41 @@ write_latch_PB2:    ; xref 01a4 0252
   03d2  be00     ldx    $00                         
   03d4  b62a     lda    $2a                         
   03d6  b700     sta    $00                         
-  03d8  1401     bclr   2, $01                      
-  03da  1501     bset   2, $01                      
+  03d8  1401     bset   2, $01                      
+  03da  1501     bclr   2, $01                      
   03dc  bf00     stx    $00                         
   03de  81       rts                                
 
 sub_03df:    ; xref 02ae
   03df  0f6346   brclr  7, $63, L_0428              
-  03e2  171c     bset   3, $1c                      
+  03e2  171c     bclr   3, $1c                      
   03e4  cd0c09   jsr    sub_0c09                    
   03e7  091304   brclr  4, $13, update_display      
-  03ea  1913     bset   4, $13                      
+  03ea  1913     bclr   4, $13                      
   03ec  2032     bra    L_0420                      
 
 update_display:    ; xref 03e7 0648 0714 07e7 0e91 0f5f 1039 1396 149f 14b4
   03ee  0a142d   brset  5, $14, L_041e              
   03f1  0d111b   brclr  6, $11, L_040f              
   03f4  061f0e   brset  3, $1f, L_0405              
-  03f7  121d     bclr   1, $1d                      
-  03f9  121e     bclr   1, $1e                      
+  03f7  121d     bset   1, $1d                      
+  03f9  121e     bset   1, $1e                      
   03fb  b64f     lda    $4f                         
   03fd  aa0f     ora    #$0f                        
   03ff  cd0c24   jsr    display_digits              
-  0402  171c     bset   3, $1c                      
+  0402  171c     bclr   3, $1c                      
   0404  81       rts                                
 
 L_0405:    ; xref 03f4
-  0405  121d     bclr   1, $1d                      
-  0407  121e     bclr   1, $1e                      
+  0405  121d     bset   1, $1d                      
+  0407  121e     bset   1, $1e                      
   0409  cd0c14   jsr    sub_0c14                    
-  040c  171c     bset   3, $1c                      
+  040c  171c     bclr   3, $1c                      
   040e  81       rts                                
 
 L_040f:    ; xref 03f1
-  040f  121d     bclr   1, $1d                      
-  0411  131e     bset   1, $1e                      
+  040f  121d     bset   1, $1d                      
+  0411  131e     bclr   1, $1e                      
   0413  0fa005   brclr  7, $a0, L_041b              
   0416  cd14b7   jsr    sub_14b7                    
   0419  2003     bra    L_041e                      
@@ -528,7 +528,7 @@ L_041b:    ; xref 0413
   041b  cd0c14   jsr    sub_0c14                    
 
 L_041e:    ; xref 03ee 0419
-  041e  1b14     bset   5, $14                      
+  041e  1b14     bclr   5, $14                      
 
 L_0420:    ; xref 03ec
   0420  0d1205   brclr  6, $12, L_0428              
@@ -545,8 +545,8 @@ ptt_handler:    ; xref 02c3
   0430  081434   brset  4, $14, L_0467              
   0433  03140d   brclr  1, $14, L_0443              
   0436  00292e   brset  0, $29, L_0467              
-  0439  1029     bclr   0, $29                      
-  043b  1213     bclr   1, $13                      
+  0439  1029     bset   0, $29                      
+  043b  1213     bset   1, $13                      
 
 L_043d:    ; xref 043d
   043d  0213fd   brset  1, $13, L_043d              
@@ -574,9 +574,9 @@ L_045a:    ; xref 042b
 
 L_045d:    ; xref 0448
   045d  cd06ea   jsr    tx_stop                     
-  0460  1314     bset   1, $14                      
+  0460  1314     bclr   1, $14                      
   0462  0d1302   brclr  6, $13, L_0467              
-  0465  1e18     bclr   7, $18                      
+  0465  1e18     bset   7, $18                      
 
 L_0467:    ; xref 0430 0436 0446 0455 045a 0462
   0467  81       rts                                
@@ -593,7 +593,7 @@ L_0474:    ; xref 0468 046f
 
 key_hold_handler:    ; xref 02a8
   0475  011b04   brclr  0, $1b, L_047c              
-  0478  1b13     bset   5, $13                      
+  0478  1b13     bclr   5, $13                      
   047a  200c     bra    L_0488                      
 
 L_047c:    ; xref 0475
@@ -601,17 +601,17 @@ L_047c:    ; xref 0475
   047f  0a1309   brset  5, $13, L_048b              
   0482  a602     lda    #$02                        
   0484  b759     sta    $59                         
-  0486  1a13     bclr   5, $13                      
+  0486  1a13     bset   5, $13                      
 
 L_0488:    ; xref 047a 048b
-  0488  1e29     bclr   7, $29                      
+  0488  1e29     bset   7, $29                      
   048a  81       rts                                
 
 L_048b:    ; xref 047f
   048b  0f59fa   brclr  7, $59, L_0488              
-  048e  1f29     bset   7, $29                      
-  0490  131b     bset   1, $1b                      
-  0492  1b13     bset   5, $13                      
+  048e  1f29     bclr   7, $29                      
+  0490  131b     bclr   1, $1b                      
+  0492  1b13     bclr   5, $13                      
   0494  81       rts                                
 
 L_0495:    ; xref 047c
@@ -620,36 +620,36 @@ L_0495:    ; xref 047c
   049b  0e1b08   brset  7, $1b, L_04a6              
   049e  a637     lda    #$37                        
   04a0  b75d     sta    $5d                         
-  04a2  1e1b     bclr   7, $1b                      
+  04a2  1e1b     bset   7, $1b                      
   04a4  2032     bra    L_04d8                      
 
 L_04a6:    ; xref 049b
   04a6  0f5d2f   brclr  7, $5d, L_04d8              
 
 L_04a9:    ; xref 04ba
-  04a9  1f29     bset   7, $29                      
-  04ab  1d1b     bset   6, $1b                      
+  04a9  1f29     bclr   7, $29                      
+  04ab  1d1b     bclr   6, $1b                      
   04ad  b636     lda    $36                         
   04af  a40f     and    #$0f                        
   04b1  b736     sta    $36                         
-  04b3  1b13     bset   5, $13                      
-  04b5  1f1b     bset   7, $1b                      
-  04b7  171b     bset   3, $1b                      
+  04b3  1b13     bclr   5, $13                      
+  04b5  1f1b     bclr   7, $1b                      
+  04b7  171b     bclr   3, $1b                      
   04b9  81       rts                                
 
 L_04ba:    ; xref 0498
   04ba  091bec   brclr  4, $1b, L_04a9              
   04bd  0d1b18   brclr  6, $1b, L_04d8              
-  04c0  1f29     bset   7, $29                      
+  04c0  1f29     bclr   7, $29                      
   04c2  0a1307   brset  5, $13, L_04cc              
   04c5  a612     lda    #$12                        
   04c7  b759     sta    $59                         
-  04c9  1a13     bclr   5, $13                      
+  04c9  1a13     bset   5, $13                      
   04cb  81       rts                                
 
 L_04cc:    ; xref 04c2
   04cc  0f5908   brclr  7, $59, L_04d7              
-  04cf  1b13     bset   5, $13                      
+  04cf  1b13     bclr   5, $13                      
 
 L_04d1:    ; xref 0506
   04d1  b61b     lda    $1b                         
@@ -663,7 +663,7 @@ L_04d8:    ; xref 0495 04a4 04a6 04bd
   04d8  0a130d   brset  5, $13, L_04e8              
   04db  a601     lda    #$01                        
   04dd  b759     sta    $59                         
-  04df  1a13     bclr   5, $13                      
+  04df  1a13     bset   5, $13                      
 
 sub_04e1:    ; xref 04ef
   04e1  b629     lda    $29                         
@@ -682,7 +682,7 @@ L_04e8:    ; xref 04d8
   04f8  b736     sta    $36                         
   04fa  a170     cmp    #$70                        
   04fc  25d9     bcs    L_04d7                      
-  04fe  1b13     bset   5, $13                      
+  04fe  1b13     bclr   5, $13                      
   0500  b636     lda    $36                         
   0502  a40f     and    #$0f                        
   0504  b736     sta    $36                         
@@ -699,14 +699,14 @@ L_050e:    ; xref 0517
   0514  5c       incx                               
   0515  a303     cpx    #$03                        
   0517  26f5     bne    L_050e                      
-  0519  1511     bset   2, $11                      
+  0519  1511     bclr   2, $11                      
   051b  81       rts                                
 
 sub_051c:    ; xref 02cf
   051c  cd1409   jsr    sub_1409                    
   051f  a613     lda    #$13                        
   0521  b75e     sta    $5e                         
-  0523  1611     bclr   3, $11                      
+  0523  1611     bset   3, $11                      
   0525  81       rts                                
 
 sub_0526:    ; xref 02d5
@@ -714,7 +714,7 @@ sub_0526:    ; xref 02d5
   0529  a6e4     lda    #$e4                        
   052b  cd0be5   jsr    head_send                   
   052e  cd0c73   jsr    sub_0c73                    
-  0531  1711     bset   3, $11                      
+  0531  1711     bclr   3, $11                      
 
 L_0533:    ; xref 0526
   0533  81       rts                                
@@ -722,8 +722,8 @@ L_0533:    ; xref 0526
 sub_0534:    ; xref 02db
   0534  0f5f07   brclr  7, $5f, L_053e              
   0537  061405   brset  3, $14, L_053f              
-  053a  1614     bclr   3, $14                      
-  053c  1b1c     bset   5, $1c                      
+  053a  1614     bset   3, $14                      
+  053c  1b1c     bclr   5, $1c                      
 
 L_053e:    ; xref 0534
   053e  81       rts                                
@@ -740,7 +740,7 @@ tx_timer_start:    ; xref 0364
   054e  0e1c07   brset  7, $1c, L_0558              
   0551  c61f38   lda    $1f38                       
   0554  b767     sta    $67                         
-  0556  1c1c     bclr   6, $1c                      
+  0556  1c1c     bset   6, $1c                      
 
 L_0558:    ; xref 0542 0545 054c 054e
   0558  81       rts                                
@@ -748,10 +748,10 @@ L_0558:    ; xref 0542 0545 054c 054e
 tx_timer_expired:    ; xref 02e1
   0559  b667     lda    $67                         
   055b  2609     bne    L_0566                      
-  055d  1d1c     bset   6, $1c                      
+  055d  1d1c     bclr   6, $1c                      
   055f  cd1360   jsr    sub_1360                    
-  0562  1416     bclr   2, $16                      
-  0564  101b     bclr   0, $1b                      
+  0562  1416     bset   2, $16                      
+  0564  101b     bset   0, $1b                      
 
 L_0566:    ; xref 055b
   0566  81       rts                                
@@ -762,14 +762,14 @@ sub_0567:    ; xref 0328
   056b  81       rts                                
 
 L_056c:    ; xref 0569
-  056c  1c12     bclr   6, $12                      
+  056c  1c12     bset   6, $12                      
   056e  a6c1     lda    #$c1                        
   0570  cd0be5   jsr    head_send                   
   0573  81       rts                                
 
 head_key_dispatch:    ; xref 02a5
   0574  b638     lda    $38                         
-  0576  111a     bset   0, $1a                      
+  0576  111a     bclr   0, $1a                      
   0578  041a20   brset  2, $1a, L_059b              
   057b  061a1d   brset  3, $1a, L_059b              
   057e  a130     cmp    #$30                        
@@ -784,11 +784,11 @@ head_key_dispatch:    ; xref 02a5
   058f  97       tax                                
   0590  a315     cpx    #$15                        
   0592  2205     bhi    L_0599                      
-  0594  1110     bset   0, $10                      
+  0594  1110     bclr   0, $10                      
   0596  dc059c   jmp    $059c, x                    
 
 L_0599:    ; xref 0580 0588 0592
-  0599  1010     bclr   0, $10                      
+  0599  1010     bset   0, $10                      
 
 L_059b:    ; xref 0578 057b
   059b  81       rts                                
@@ -825,7 +825,7 @@ L_05b2:    ; xref 05ba
   05ba  26f6     bne    L_05b2                      
 
 L_05bc:    ; xref 05ce
-  05bc  161b     bclr   3, $1b                      
+  05bc  161b     bset   3, $1b                      
   05be  81       rts                                
   05bf  db 31 32 34 37
 
@@ -837,7 +837,7 @@ L_05c3:    ; xref 05b5
   05cb  97       tax                                
   05cc  a31b     cpx    #$1b                        
   05ce  24ec     bcc    L_05bc                      
-  05d0  1110     bset   0, $10                      
+  05d0  1110     bclr   0, $10                      
   05d2  dc05d6   jmp    $05d6, x                    
 
 L_05d5:    ; xref 059c 05a8 05d6
@@ -874,51 +874,51 @@ fn_monitor_toggle:    ; xref 05d6 05e8
   05f1  04190a   brset  2, $19, L_05fe              
   05f4  09330c   brclr  4, $33, L_0603              
   05f7  0a1b09   brset  5, $1b, L_0603              
-  05fa  1419     bclr   2, $19                      
+  05fa  1419     bset   2, $19                      
   05fc  2002     bra    L_0600                      
 
 L_05fe:    ; xref 05f1
-  05fe  1519     bset   2, $19                      
+  05fe  1519     bclr   2, $19                      
 
 L_0600:    ; xref 05fc
-  0600  121b     bclr   1, $1b                      
+  0600  121b     bset   1, $1b                      
   0602  81       rts                                
 
 L_0603:    ; xref 05f4 05f7
   0603  cc07ea   jmp    sub_07ea                    
 
 L_0606:    ; xref 059c 05a2
-  0606  1014     bclr   0, $14                      
+  0606  1014     bset   0, $14                      
   0608  a638     lda    #$38                        
   060a  b75a     sta    $5a                         
   060c  81       rts                                
 
 sub_060d:    ; xref 035e 059c 05a5
-  060d  1114     bset   0, $14                      
+  060d  1114     bclr   0, $14                      
   060f  81       rts                                
 
 L_0610:    ; xref 059c
-  0610  1215     bclr   1, $15                      
+  0610  1215     bset   1, $15                      
   0612  a638     lda    #$38                        
   0614  b75b     sta    $5b                         
   0616  2004     bra    L_061c                      
   0618  db 20 02
 
 sub_061a:    ; xref 0304
-  061a  1015     bclr   0, $15                      
+  061a  1015     bset   0, $15                      
 
 L_061c:    ; xref 0616
-  061c  1517     bset   2, $17                      
+  061c  1517     bclr   2, $17                      
   061e  81       rts                                
 
 L_061f:    ; xref 044f
   061f  09a20d   brclr  4, $a2, L_062f              
-  0622  191b     bset   4, $1b                      
-  0624  19a2     bset   4, $a2                      
-  0626  1412     bclr   2, $12                      
+  0622  191b     bclr   4, $1b                      
+  0624  19a2     bclr   4, $a2                      
+  0626  1412     bset   2, $12                      
   0628  091904   brclr  4, $19, L_062f              
-  062b  1212     bclr   1, $12                      
-  062d  1512     bset   2, $12                      
+  062b  1212     bset   1, $12                      
+  062d  1512     bclr   2, $12                      
 
 L_062f:    ; xref 061f 0628
   062f  052f03   brclr  2, $2f, L_0635              
@@ -937,29 +937,29 @@ L_0635:    ; xref 062f
   064b  db 81
 
 L_064c:    ; xref 0632 0635 063a 063f 0646
-  064c  101b     bclr   0, $1b                      
+  064c  101b     bset   0, $1b                      
   064e  81       rts                                
 
 sub_064f:    ; xref 0355 059c 059f
-  064f  1315     bset   1, $15                      
+  064f  1315     bclr   1, $15                      
   0651  2002     bra    L_0655                      
 
 sub_0653:    ; xref 030c
-  0653  1115     bset   0, $15                      
+  0653  1115     bclr   0, $15                      
 
 L_0655:    ; xref 0651
   0655  cd1360   jsr    sub_1360                    
-  0658  1417     bclr   2, $17                      
-  065a  1d1c     bset   6, $1c                      
-  065c  111b     bset   0, $1b                      
-  065e  1516     bset   2, $16                      
+  0658  1417     bset   2, $17                      
+  065a  1d1c     bclr   6, $1c                      
+  065c  111b     bclr   0, $1b                      
+  065e  1516     bclr   2, $16                      
   0660  cd1574   jsr    auto_power_off_reset        
   0663  81       rts                                
   0664  db cc 15 74
 
 L_0667:    ; xref 059c 05ab
-  0667  1b1c     bset   5, $1c                      
-  0669  1714     bset   3, $14                      
+  0667  1b1c     bclr   5, $1c                      
+  0669  1714     bclr   3, $14                      
   066b  81       rts                                
 
 sub_066c:    ; xref 033c
@@ -979,7 +979,7 @@ L_0683:    ; xref 066c
   0686  002f1b   brset  0, $2f, L_06a4              
   0689  a611     lda    #$11                        
   068b  b755     sta    $55                         
-  068d  121c     bclr   1, $1c                      
+  068d  121c     bset   1, $1c                      
   068f  b62e     lda    $2e                         
   0691  cd0842   jsr    load_synth                  
 
@@ -991,9 +991,9 @@ L_0694:    ; xref 0681
   069c  81       rts                                
 
 L_069d:    ; xref 0683 0696
-  069d  1810     bclr   4, $10                      
+  069d  1810     bset   4, $10                      
   069f  011102   brclr  0, $11, L_06a4              
-  06a2  1214     bclr   1, $14                      
+  06a2  1214     bset   1, $14                      
 
 L_06a4:    ; xref 066f 0672 0675 067b 0686 069f
   06a4  81       rts                                
@@ -1021,25 +1021,25 @@ tx_start:    ; xref 0457 063c
   06bc  cd1137   jsr    sub_1137                    
   06bf  a611     lda    #$11                        
   06c1  b755     sta    $55                         
-  06c3  121c     bclr   1, $1c                      
-  06c5  151c     bset   2, $1c                      
+  06c3  121c     bset   1, $1c                      
+  06c5  151c     bclr   2, $1c                      
   06c7  cd0bde   jsr    sub_0bde                    
-  06ca  1112     bset   0, $12                      
+  06ca  1112     bclr   0, $12                      
   06cc  002f0b   brset  0, $2f, L_06da              
-  06cf  1211     bclr   1, $11                      
+  06cf  1211     bset   1, $11                      
   06d1  ad10     bsr    sub_06e3                    
   06d3  b62e     lda    $2e                         
   06d5  cd0842   jsr    load_synth                  
   06d8  2506     bcs    L_06e0                      
 
 L_06da:    ; xref 06cc
-  06da  1129     bset   0, $29                      
-  06dc  1011     bclr   0, $11                      
+  06da  1129     bclr   0, $29                      
+  06dc  1011     bset   0, $11                      
   06de  98       clc                                
   06df  81       rts                                
 
 L_06e0:    ; xref 06d8
-  06e0  131c     bset   1, $1c                      
+  06e0  131c     bclr   1, $1c                      
   06e2  81       rts                                
 
 sub_06e3:    ; xref 06d1 0706 07e4
@@ -1049,26 +1049,26 @@ sub_06e3:    ; xref 06d1 0706 07e4
   06e9  81       rts                                
 
 tx_stop:    ; xref 0277 045d 1507
-  06ea  131c     bset   1, $1c                      
-  06ec  1029     bclr   0, $29                      
-  06ee  1213     bclr   1, $13                      
+  06ea  131c     bclr   1, $1c                      
+  06ec  1029     bset   0, $29                      
+  06ee  1213     bset   1, $13                      
 
 L_06f0:    ; xref 06f0
   06f0  0213fd   brset  1, $13, L_06f0              
   06f3  3f4a     clr    $4a                         
-  06f5  1914     bset   4, $14                      
-  06f7  1417     bclr   2, $17                      
+  06f5  1914     bclr   4, $14                      
+  06f7  1417     bset   2, $17                      
   06f9  cd0e0d   jsr    sub_0e0d                    
   06fc  04a105   brset  2, $a1, L_0704              
   06ff  a6a0     lda    #$a0                        
   0701  cd0be5   jsr    head_send                   
 
 L_0704:    ; xref 06fc
-  0704  1111     bset   0, $11                      
+  0704  1111     bclr   0, $11                      
   0706  addb     bsr    sub_06e3                    
-  0708  1c29     bclr   6, $29                      
+  0708  1c29     bset   6, $29                      
   070a  cd07ed   jsr    select_channel              
-  070d  1d29     bset   6, $29                      
+  070d  1d29     bclr   6, $29                      
   070f  2506     bcs    L_0717                      
   0711  0c1818   brset  6, $18, L_072c              
   0714  cc03ee   jmp    update_display              
@@ -1077,16 +1077,16 @@ L_0717:    ; xref 070f
   0717  cc07ea   jmp    sub_07ea                    
 
 sub_071a:    ; xref 02c0
-  071a  131c     bset   1, $1c                      
-  071c  111b     bset   0, $1b                      
+  071a  131c     bclr   1, $1c                      
+  071c  111b     bclr   0, $1b                      
   071e  a6a2     lda    #$a2                        
   0720  cd0be5   jsr    head_send                   
   0723  cc0e2c   jmp    L_0e2c                      
 
 sub_0726:    ; xref 02b7
-  0726  151c     bset   2, $1c                      
-  0728  1318     bset   1, $18                      
-  072a  1118     bset   0, $18                      
+  0726  151c     bclr   2, $1c                      
+  0728  1318     bclr   1, $18                      
+  072a  1118     bclr   0, $18                      
 
 L_072c:    ; xref 0711
   072c  81       rts                                
@@ -1130,7 +1130,7 @@ sub_0764:    ; xref 0736 0744 077c 07a9
   0766  0d1306   brclr  6, $13, L_076f              
   0769  b650     lda    $50                         
   076b  b72e     sta    $2e                         
-  076d  1d13     bset   6, $13                      
+  076d  1d13     bclr   6, $13                      
 
 L_076f:    ; xref 0766
   076f  81       rts                                
@@ -1201,15 +1201,15 @@ L_07bd:    ; xref 07b9
   07cd  25ce     bcs    fn_channel_units            
 
 L_07cf:    ; xref 0760 0790
-  07cf  121b     bclr   1, $1b                      
-  07d1  1b16     bset   5, $16                      
-  07d3  1f18     bset   7, $18                      
+  07cf  121b     bset   1, $1b                      
+  07d1  1b16     bclr   5, $16                      
+  07d3  1f18     bclr   7, $18                      
   07d5  0d130a   brclr  6, $13, L_07e2              
   07d8  b62e     lda    $2e                         
   07da  b750     sta    $50                         
   07dc  b752     sta    $52                         
   07de  3f1f     clr    $1f                         
-  07e0  1e18     bclr   7, $18                      
+  07e0  1e18     bset   7, $18                      
 
 L_07e2:    ; xref 07d5
   07e2  3f10     clr    $10                         
@@ -1217,18 +1217,18 @@ L_07e2:    ; xref 07d5
   07e7  cc03ee   jmp    update_display              
 
 sub_07ea:    ; xref 0603 0717 0792 1062 1462 14a2
-  07ea  161b     bclr   3, $1b                      
+  07ea  161b     bset   3, $1b                      
   07ec  81       rts                                
 
 select_channel:    ; xref 018b 067e 070a 075d 078b 07cb 0fae
   07ed  b62e     lda    $2e                         
 
 select_channel_A:    ; xref 104a 1104
-  07ef  1218     bclr   1, $18                      
-  07f1  141c     bclr   2, $1c                      
+  07ef  1218     bset   1, $18                      
+  07f1  141c     bset   2, $1c                      
   07f3  ae18     ldx    #$18                        
   07f5  bf55     stx    $55                         
-  07f7  1311     bset   1, $11                      
+  07f7  1311     bclr   1, $11                      
   07f9  ad47     bsr    load_synth                  
   07fb  2544     bcs    L_0841                      
   07fd  0c2909   brset  6, $29, L_0809              
@@ -1241,14 +1241,14 @@ select_channel_A:    ; xref 104a 1104
 L_0809:    ; xref 07fd
   0809  cd139e   jsr    sub_139e                    
   080c  ae05     ldx    #$05                        
-  080e  bd21     jsr    $21                         ; byte5 bit3 -> latch $82 bit5 (inverted)
+  080e  bd21     jsr    $21                         ; byte5 bit3 -> latch $82 bit5
   0810  a508     bit    #$08                        
   0812  2604     bne    L_0818                      
-  0814  1b82     bset   5, $82                      
+  0814  1b82     bclr   5, $82                      
   0816  2002     bra    L_081a                      
 
 L_0818:    ; xref 0812
-  0818  1a82     bclr   5, $82                      
+  0818  1a82     bset   5, $82                      
 
 L_081a:    ; xref 0816
   081a  0c2923   brset  6, $29, L_0840              
@@ -1298,44 +1298,44 @@ L_084c:    ; xref 0847
 
 L_085e:    ; xref 085a
   085e  031105   brclr  1, $11, L_0866              
-  0861  1018     bclr   0, $18                      
+  0861  1018     bset   0, $18                      
   0863  cd0ae0   jsr    mute_close                  
 
 L_0866:    ; xref 085e
   0866  021119   brset  1, $11, L_0882              
-  0869  1716     bset   3, $16                      
-  086b  1b1b     bset   5, $1b                      
+  0869  1716     bclr   3, $16                      
+  086b  1b1b     bclr   5, $1b                      
   086d  a510     bit    #$10                        ; Rx: byte2 bit4 (C/R) -> $1B.5 / $19.2
   086f  2704     beq    L_0875                      
-  0871  1a1b     bclr   5, $1b                      
-  0873  1519     bset   2, $19                      
+  0871  1a1b     bset   5, $1b                      
+  0873  1519     bclr   2, $19                      
 
 L_0875:    ; xref 086f
   0875  cd1107   jsr    chan_flags_rx               ; Rx: byte2 bit5 (VOTE) handled in chan_flags_rx
   0878  a508     bit    #$08                        ; Rx: byte2 bit3 -> latch $2C bit5 (VCO band switch)
   087a  2704     beq    L_0880                      
-  087c  1b2c     bset   5, $2c                      
+  087c  1b2c     bclr   5, $2c                      
   087e  2002     bra    L_0882                      
 
 L_0880:    ; xref 087a
-  0880  1a2c     bclr   5, $2c                      
+  0880  1a2c     bset   5, $2c                      
 
 L_0882:    ; xref 0866 087e
   0882  a440     and    #$40                        ; bit6 (injection side) -> $29.1
   0884  2704     beq    L_088a                      
-  0886  1229     bclr   1, $29                      
+  0886  1229     bset   1, $29                      
   0888  2002     bra    L_088c                      
 
 L_088a:    ; xref 0884
-  088a  1329     bset   1, $29                      
+  088a  1329     bclr   1, $29                      
 
 L_088c:    ; xref 0888
   088c  5a       decx                               
   088d  5a       decx                               
   088e  ad32     bsr    synth_strobe                
-  0890  c61f2d   lda    $1f2d                       ; synth: port A = 1F2D, PB6 low (enable), 2 strobes
+  0890  c61f2d   lda    $1f2d                       ; synth: port A = 1F2D, PB6 high (enable), 2 strobes
   0893  b700     sta    $00                         
-  0895  1c01     bclr   6, $01                      
+  0895  1c01     bset   6, $01                      
   0897  ad29     bsr    synth_strobe                
   0899  ad27     bsr    synth_strobe                
 
@@ -1353,11 +1353,11 @@ L_089b:    ; xref 08a8
   08aa  bd21     jsr    $21                         ; synth: digit 5 (byte2/5 | 8)
   08ac  aa08     ora    #$08                        
   08ae  ad10     bsr    synth_write_nibble          
-  08b0  c61f2c   lda    $1f2c                       ; synth: then reference bytes 1F2C, 1F2D; PB6 high
+  08b0  c61f2c   lda    $1f2c                       ; synth: then reference bytes 1F2C, 1F2D; PB6 low again
   08b3  ad0b     bsr    synth_write_nibble          
   08b5  c61f2d   lda    $1f2d                       
   08b8  ad06     bsr    synth_write_nibble          
-  08ba  1d01     bset   6, $01                      
+  08ba  1d01     bclr   6, $01                      
   08bc  ae06     ldx    #$06                        
   08be  98       clc                                
   08bf  81       rts                                
@@ -1366,8 +1366,8 @@ synth_write_nibble:    ; xref 089d 08a3 08ae 08b3 08b8
   08c0  b700     sta    $00                         
 
 synth_strobe:    ; xref 088e 0897 0899
-  08c2  1b01     bset   5, $01                      
-  08c4  1a01     bclr   5, $01                      
+  08c2  1b01     bclr   5, $01                      
+  08c4  1a01     bset   5, $01                      
   08c6  81       rts                                
 
 chan_ptr:    ; xref 0842
@@ -1388,11 +1388,11 @@ chan_ptr:    ; xref 0842
 uart_bit:    ; xref 03c0
   08d8  b617     lda    $17                         
   08da  2704     beq    L_08e0                      
-  08dc  1629     bclr   3, $29                      
+  08dc  1629     bset   3, $29                      
   08de  2002     bra    L_08e2                      
 
 L_08e0:    ; xref 08da
-  08e0  1729     bset   3, $29                      
+  08e0  1729     bclr   3, $29                      
 
 L_08e2:    ; xref 08de
   08e2  b629     lda    $29                         
@@ -1404,18 +1404,18 @@ L_08ea:    ; xref 08e6
   08ea  be00     ldx    $00                         
   08ec  b700     sta    $00                         
   08ee  b729     sta    $29                         
-  08f0  1601     bclr   3, $01                      
-  08f2  1701     bset   3, $01                      
+  08f0  1601     bset   3, $01                      
+  08f2  1701     bclr   3, $01                      
   08f4  bf00     stx    $00                         
-  08f6  1313     bset   1, $13                      
-  08f8  081a3a   brset  4, $1a, L_0935              ; software UART on PB0: 1200 baud, single-wire, 11-bit frames, 4-byte TX FIFO $3D-$40
+  08f6  1313     bclr   1, $13                      
+  08f8  081a3a   brset  4, $1a, L_0935              ; software UART on PB0: ~1200 baud 8E1 (start, 8 data LSB first, even parity, stop), single wire idle-high; PB0 is driven only while sending; 4-byte TX FIFO $3D-$40
   08fb  000564   brset  0, $05, L_0962              
   08fe  000113   brset  0, $01, L_0914              
-  0901  181a     bclr   4, $1a                      
-  0903  1b1a     bset   5, $1a                      
-  0905  1d1a     bset   6, $1a                      
-  0907  151a     bset   2, $1a                      
-  0909  171a     bset   3, $1a                      
+  0901  181a     bset   4, $1a                      
+  0903  1b1a     bclr   5, $1a                      
+  0905  1d1a     bclr   6, $1a                      
+  0907  151a     bclr   2, $1a                      
+  0909  171a     bclr   3, $1a                      
   090b  3f3a     clr    $3a                         
   090d  a680     lda    #$80                        
   090f  b739     sta    $39                         
@@ -1425,8 +1425,8 @@ L_0914:    ; xref 08fe
   0914  031a7a   brclr  1, $1a, L_0991              
   0917  0e1a77   brset  7, $1a, L_0991              
   091a  3f39     clr    $39                         
-  091c  1005     bclr   0, $05                      
-  091e  1101     bset   0, $01                      
+  091c  1005     bset   0, $05                      
+  091e  1101     bclr   0, $01                      
   0920  be3c     ldx    $3c                         
   0922  e63d     lda    $003d, x                    
   0924  b737     sta    $37                         
@@ -1436,7 +1436,7 @@ L_0914:    ; xref 08fe
   092b  b73c     sta    $3c                         
   092d  b13b     cmp    $3b                         
   092f  2660     bne    L_0991                      
-  0931  131a     bset   1, $1a                      
+  0931  131a     bclr   1, $1a                      
   0933  205c     bra    L_0991                      
 
 L_0935:    ; xref 08f8
@@ -1450,24 +1450,24 @@ L_093d:    ; xref 0938
   0941  46       rora                               
   0942  3639     ror    $39                         
   0944  244b     bcc    L_0991                      
-  0946  1a1a     bclr   5, $1a                      
+  0946  1a1a     bset   5, $1a                      
   0948  2047     bra    L_0991                      
 
 L_094a:    ; xref 093e
-  094a  1c1a     bclr   6, $1a                      
+  094a  1c1a     bset   6, $1a                      
   094c  013a42   brclr  0, $3a, L_0991              
-  094f  141a     bclr   2, $1a                      
+  094f  141a     bset   2, $1a                      
   0951  203e     bra    L_0991                      
 
 L_0953:    ; xref 0935
   0953  000102   brset  0, $01, L_0958              
-  0956  161a     bclr   3, $1a                      
+  0956  161a     bset   3, $1a                      
 
 L_0958:    ; xref 0953
   0958  b639     lda    $39                         
   095a  b738     sta    $38                         
-  095c  101a     bclr   0, $1a                      
-  095e  191a     bset   4, $1a                      
+  095c  101a     bset   0, $1a                      
+  095e  191a     bclr   4, $1a                      
   0960  202f     bra    L_0991                      
 
 L_0962:    ; xref 08fb
@@ -1480,7 +1480,7 @@ L_0968:    ; xref 0964
   096a  b739     sta    $39                         
   096c  a10b     cmp    #$0b                        
   096e  2604     bne    L_0974                      
-  0970  1105     bset   0, $05                      
+  0970  1105     bclr   0, $05                      
   0972  201d     bra    L_0991                      
 
 L_0974:    ; xref 096e
@@ -1490,38 +1490,38 @@ L_0974:    ; xref 096e
   097a  2504     bcs    L_0980                      
 
 L_097c:    ; xref 098c
-  097c  1101     bset   0, $01                      
+  097c  1101     bclr   0, $01                      
   097e  2011     bra    L_0991                      
 
 L_0980:    ; xref 097a
-  0980  1001     bclr   0, $01                      
+  0980  1001     bset   0, $01                      
   0982  3c3a     inc    $3a                         
   0984  200b     bra    L_0991                      
 
 L_0986:    ; xref 0976
   0986  2704     beq    L_098c                      
-  0988  1001     bclr   0, $01                      
+  0988  1001     bset   0, $01                      
   098a  2005     bra    L_0991                      
 
 L_098c:    ; xref 0986
   098c  013aed   brclr  0, $3a, L_097c              
-  098f  1001     bclr   0, $01                      
+  098f  1001     bset   0, $01                      
 
 L_0991:    ; xref 0911 0914 0917 092f 0933 0944 0948 094c 0951 0960 0972 097e ...
   0991  3a55     dec    $55                         
   0993  3a56     dec    $56                         
   0995  3ae7     dec    $e7                         
   0997  3ae8     dec    $e8                         
-  0999  1b11     bset   5, $11                      
+  0999  1b11     bclr   5, $11                      
   099b  b61c     lda    $1c                         
   099d  a406     and    #$06                        
   099f  2609     bne    L_09aa                      
-  09a1  1904     bset   4, $04                      
+  09a1  1904     bclr   4, $04                      
   09a3  090002   brclr  4, $00, L_09a8              
-  09a6  1a11     bclr   5, $11                      
+  09a6  1a11     bset   5, $11                      
 
 L_09a8:    ; xref 09a3
-  09a8  1804     bclr   4, $04                      
+  09a8  1804     bset   4, $04                      
 
 L_09aa:    ; xref 099f
   09aa  80       rti                                
@@ -1568,14 +1568,14 @@ L_09e2:    ; xref 09b9 09bf 09c8 09ce 09d8
   09e2  bf44     stx    $44                         ; ADC: select mux via $2A latch, note start time; IRQ (comparator) stores result
   09e4  be00     ldx    $00                         
   09e6  b700     sta    $00                         
-  09e8  1401     bclr   2, $01                      
-  09ea  1501     bset   2, $01                      
+  09e8  1401     bset   2, $01                      
+  09ea  1501     bclr   2, $01                      
   09ec  b608     lda    $08                         
   09ee  b743     sta    $43                         
   09f0  b628     lda    $28                         
   09f2  b742     sta    $42                         
-  09f4  1600     bclr   3, $00                      
-  09f6  1401     bclr   2, $01                      
+  09f4  1600     bset   3, $00                      
+  09f6  1401     bset   2, $01                      
   09f8  bf00     stx    $00                         
   09fa  80       rti                                
 
@@ -1616,7 +1616,7 @@ L_0a2a:    ; xref 0a0c
 L_0a2c:    ; xref 0a28
   0a2c  0831da   brset  4, $31, L_0a09              
   0a2f  0c13d7   brset  6, $13, L_0a09              
-  0a32  1a18     bclr   5, $18                      
+  0a32  1a18     bset   5, $18                      
   0a34  20d3     bra    L_0a09                      
 
 L_0a36:    ; xref 0a14
@@ -1624,7 +1624,7 @@ L_0a36:    ; xref 0a14
   0a39  0a1b0c   brset  5, $1b, L_0a48              
   0a3c  a302     cpx    #$02                        
   0a3e  2204     bhi    L_0a44                      
-  0a40  1419     bclr   2, $19                      
+  0a40  1419     bset   2, $19                      
   0a42  2018     bra    L_0a5c                      
 
 L_0a44:    ; xref 0a3e
@@ -1632,14 +1632,14 @@ L_0a44:    ; xref 0a3e
   0a46  2514     bcs    L_0a5c                      
 
 L_0a48:    ; xref 0a39
-  0a48  1519     bset   2, $19                      
+  0a48  1519     bclr   2, $19                      
   0a4a  2010     bra    L_0a5c                      
   0a4c  db 00 0b 09 15 13 1f 1d 29 27 33 31 3d 3b 47 45 ff
 
 L_0a5c:    ; xref 0a17 0a24 0a36 0a42 0a46 0a4a
   0a5c  0b1805   brclr  5, $18, L_0a64              
   0a5f  cd0ae0   jsr    mute_close                  
-  0a62  1b18     bset   5, $18                      
+  0a62  1b18     bclr   5, $18                      
 
 L_0a64:    ; xref 0a5c
   0a64  0a1172   brset  5, $11, L_0ad9              
@@ -1661,25 +1661,25 @@ L_0a64:    ; xref 0a5c
   0a84  54       lsrx                               
   0a85  d61f24   lda    $1f24, x                    ; squelch tail from table 1F24
   0a88  b74d     sta    $4d                         
-  0a8a  1a19     bclr   5, $19                      
+  0a8a  1a19     bset   5, $19                      
   0a8c  2015     bra    L_0aa3                      
 
 L_0a8e:    ; xref 0a71
   0a8e  d11f14   cmp    $1f14, x                    ; noise ($45) vs open threshold 1F14+setting
   0a91  2412     bcc    L_0aa5                      
-  0a93  1819     bclr   4, $19                      
-  0a95  1b19     bset   5, $19                      
-  0a97  1212     bclr   1, $12                      
-  0a99  1512     bset   2, $12                      
+  0a93  1819     bset   4, $19                      
+  0a95  1b19     bclr   5, $19                      
+  0a97  1212     bset   1, $12                      
+  0a99  1512     bclr   2, $12                      
   0a9b  2008     bra    L_0aa5                      
 
 L_0a9d:    ; xref 0a7b
-  0a9d  1b19     bset   5, $19                      
-  0a9f  1412     bclr   2, $12                      
-  0aa1  1312     bset   1, $12                      
+  0a9d  1b19     bclr   5, $19                      
+  0a9f  1412     bset   2, $12                      
+  0aa1  1312     bclr   1, $12                      
 
 L_0aa3:    ; xref 0a8c
-  0aa3  1919     bset   4, $19                      
+  0aa3  1919     bclr   4, $19                      
 
 L_0aa5:    ; xref 0a77 0a91 0a9b
   0aa5  b64b     lda    $4b                         
@@ -1689,9 +1689,9 @@ L_0aa5:    ; xref 0a77 0a91 0a9b
   0aad  0b190a   brclr  5, $19, L_0aba              
   0ab0  3a4d     dec    $4d                         
   0ab2  2606     bne    L_0aba                      
-  0ab4  1b19     bset   5, $19                      
-  0ab6  1412     bclr   2, $12                      
-  0ab8  1312     bset   1, $12                      
+  0ab4  1b19     bclr   5, $19                      
+  0ab6  1412     bset   2, $12                      
+  0ab8  1312     bclr   1, $12                      
 
 L_0aba:    ; xref 0aad 0ab2
   0aba  b619     lda    $19                         
@@ -1708,29 +1708,29 @@ L_0aca:    ; xref 0abe
   0acd  081104   brset  4, $11, L_0ad4              
 
 L_0ad0:    ; xref 0aca
-  0ad0  1b29     bset   5, $29                      
+  0ad0  1b29     bclr   5, $29                      
   0ad2  2002     bra    L_0ad6                      
 
 L_0ad4:    ; xref 0acd
-  0ad4  1a29     bclr   5, $29                      
+  0ad4  1a29     bset   5, $29                      
 
 L_0ad6:    ; xref 0ad2
-  0ad6  1529     bset   2, $29                      
+  0ad6  1529     bclr   2, $29                      
   0ad8  80       rti                                
 
 L_0ad9:    ; xref 0a64
   0ad9  ad05     bsr    mute_close                  
 
 L_0adb:    ; xref 0a67 0ac2 0ac8
-  0adb  1a29     bclr   5, $29                      
-  0add  1429     bclr   2, $29                      
+  0adb  1a29     bset   5, $29                      
+  0add  1429     bset   2, $29                      
   0adf  80       rti                                
 
 mute_close:    ; xref 0863 0a5f 0ad9
-  0ae0  1412     bclr   2, $12                      
-  0ae2  1312     bset   1, $12                      
-  0ae4  1919     bset   4, $19                      
-  0ae6  1b19     bset   5, $19                      
+  0ae0  1412     bset   2, $12                      
+  0ae2  1312     bclr   1, $12                      
+  0ae4  1919     bclr   4, $19                      
+  0ae6  1b19     bclr   5, $19                      
   0ae8  81       rts                                
 
 soft_timers:    ; xref 038d 03a5
@@ -1788,8 +1788,8 @@ write_latch_PB4:    ; xref 038d 03ab
   0b34  b62c     lda    $2c                         
   0b36  43       coma                               
   0b37  b700     sta    $00                         
-  0b39  1801     bclr   4, $01                      
-  0b3b  1901     bset   4, $01                      
+  0b39  1801     bset   4, $01                      
+  0b3b  1901     bclr   4, $01                      
   0b3d  bf00     stx    $00                         
   0b3f  80       rti                                
 
@@ -1799,7 +1799,7 @@ supervision_task:    ; xref 038d 03a8
   0b46  ad38     bsr    check_signatures            
   0b48  cd0c7a   jsr    sub_0c7a                    
   0b4b  2426     bcc    L_0b73                      
-  0b4d  1c10     bclr   6, $10                      
+  0b4d  1c10     bset   6, $10                      
   0b4f  2022     bra    L_0b73                      
 
 L_0b51:    ; xref 0b43
@@ -1811,26 +1811,26 @@ L_0b53:    ; xref 0b40
   0b59  cd0c95   jsr    check_power_window          
   0b5c  2615     bne    L_0b73                      
   0b5e  2404     bcc    L_0b64                      
-  0b60  1e10     bclr   7, $10                      
+  0b60  1e10     bset   7, $10                      
   0b62  200f     bra    L_0b73                      
 
 L_0b64:    ; xref 0b5e
-  0b64  1f10     bset   7, $10                      
+  0b64  1f10     bclr   7, $10                      
   0b66  200b     bra    L_0b73                      
 
 L_0b68:    ; xref 0b56
   0b68  cd0c86   jsr    sub_0c86                    
   0b6b  2606     bne    L_0b73                      
   0b6d  2404     bcc    L_0b73                      
-  0b6f  1a10     bclr   5, $10                      
-  0b71  1214     bclr   1, $14                      
+  0b6f  1a10     bset   5, $10                      
+  0b71  1214     bset   1, $14                      
 
 L_0b73:    ; xref 0b4b 0b4f 0b51 0b53 0b5c 0b62 0b66 0b6b 0b6d
   0b73  cd013e   jsr    chk_ram_config              
   0b76  b668     lda    $68                         
   0b78  c11f32   cmp    $1f32                       
   0b7b  2702     beq    L_0b7f                      
-  0b7d  1610     bclr   3, $10                      
+  0b7d  1610     bset   3, $10                      
 
 L_0b7f:    ; xref 0b7b
   0b7f  80       rti                                
@@ -1863,11 +1863,11 @@ L_0bad:    ; xref 0b9d 0baa
   0bae  dc0188   jmp    $0188, x                    ; on failure jump to $0189 (power down / stop)
 
 IRQ_ISR:
-  0bb1  1501     bset   2, $01                      ; IRQ = ADC comparator: result = start_time - timer - $1E
+  0bb1  1501     bclr   2, $01                      ; IRQ = ADC comparator: result = start_time - timer - $1E
   0bb3  b628     lda    $28                         
   0bb5  b142     cmp    $42                         
   0bb7  2704     beq    L_0bbd                      
-  0bb9  1410     bclr   2, $10                      
+  0bb9  1410     bset   2, $10                      
   0bbb  2009     bra    L_0bc6                      
 
 L_0bbd:    ; xref 0bb7
@@ -1878,12 +1878,12 @@ L_0bbd:    ; xref 0bb7
   0bc5  f7       sta    , x                         
 
 L_0bc6:    ; xref 0bbb
-  0bc6  1a01     bclr   5, $01                      
+  0bc6  1a01     bset   5, $01                      
   0bc8  be00     ldx    $00                         
   0bca  b62a     lda    $2a                         
   0bcc  b700     sta    $00                         
-  0bce  1401     bclr   2, $01                      
-  0bd0  1501     bset   2, $01                      
+  0bce  1401     bset   2, $01                      
+  0bd0  1501     bclr   2, $01                      
   0bd2  bf00     stx    $00                         
   0bd4  b620     lda    $20                         
   0bd6  a199     cmp    #$99                        
@@ -1896,7 +1896,7 @@ L_0bdd:    ; xref 0bd8
 sub_0bde:    ; xref 06c7 0838
   0bde  ae04     ldx    #$04                        
   0be0  bf5c     stx    $5c                         
-  0be2  1814     bclr   4, $14                      
+  0be2  1814     bset   4, $14                      
   0be4  81       rts                                
 
 head_send:    ; xref 0274 028a 02ee 02fb 0336 0425 050a 0511 052b 0570 0701 0720 ...
@@ -1915,7 +1915,7 @@ L_0bf2:    ; xref 0beb 0bed
   0bf5  4c       inca                               
   0bf6  a403     and    #$03                        
   0bf8  b73b     sta    $3b                         
-  0bfa  121a     bclr   1, $1a                      
+  0bfa  121a     bset   1, $1a                      
   0bfc  be25     ldx    $25                         
   0bfe  98       clc                                
   0bff  81       rts                                
@@ -1923,7 +1923,7 @@ L_0bf2:    ; xref 0beb 0bed
 
 sub_0c09:    ; xref 03e4
   0c09  a6e5     lda    #$e5                        
-  0c0b  171c     bset   3, $1c                      
+  0c0b  171c     bclr   3, $1c                      
   0c0d  20d6     bra    head_send                   
 
 sub_0c0f:    ; xref 0c34 0c3d 0c52 0c5b
@@ -1986,17 +1986,17 @@ L_0c59:    ; xref 0c4d
 L_0c5e:    ; xref 0c55
   0c5e  ad06     bsr    sub_0c66                    
   0c60  071c02   brclr  3, $1c, L_0c65              
-  0c63  1813     bclr   4, $13                      
+  0c63  1813     bset   4, $13                      
 
 L_0c65:    ; xref 0c60
   0c65  81       rts                                
 
 sub_0c66:    ; xref 0c5e
-  0c66  171c     bset   3, $1c                      
+  0c66  171c     bclr   3, $1c                      
   0c68  032f07   brclr  1, $2f, L_0c72              
   0c6b  c61f3b   lda    $1f3b                       
   0c6e  b763     sta    $63                         
-  0c70  161c     bclr   3, $1c                      
+  0c70  161c     bset   3, $1c                      
 
 L_0c72:    ; xref 0c68
   0c72  81       rts                                
@@ -2004,7 +2004,7 @@ L_0c72:    ; xref 0c68
 sub_0c73:    ; xref 052e
   0c73  a638     lda    #$38                        
   0c75  b75f     sta    $5f                         
-  0c77  1a1c     bclr   5, $1c                      
+  0c77  1a1c     bset   5, $1c                      
   0c79  81       rts                                
 
 sub_0c7a:    ; xref 0b48
@@ -2045,15 +2045,15 @@ L_0ca6:    ; xref 0c95
   0cb0  2523     bcs    L_0cd5                      
   0cb2  9b       sei                                
   0cb3  cd0191   jsr    power_down                  
-  0cb6  1804     bclr   4, $04                      
+  0cb6  1804     bset   4, $04                      
 
 L_0cb8:    ; xref 0cc6
   0cb8  a601     lda    #$01                        
   0cba  cd0152   jsr    delay_A                     
-  0cbd  1800     bclr   4, $00                      
+  0cbd  1800     bset   4, $00                      
   0cbf  a601     lda    #$01                        
   0cc1  cd0152   jsr    delay_A                     
-  0cc4  1900     bset   4, $00                      
+  0cc4  1900     bclr   4, $00                      
   0cc6  20f0     bra    L_0cb8                      
 
 L_0cc8:    ; xref 0c7d 0c8a 0c8c 0ca6 0ca9
@@ -2225,7 +2225,7 @@ L_0dac:    ; xref 0da6
   0db2  b6a3     lda    $a3                         
   0db4  a5f0     bit    #$f0                        
   0db6  2602     bne    L_0dba                      
-  0db8  11a3     bset   0, $a3                      
+  0db8  11a3     bclr   0, $a3                      
 
 L_0dba:    ; xref 0daf 0db6
   0dba  0d2a03   brclr  6, $2a, L_0dc0              
@@ -2249,33 +2249,33 @@ sub_0dcf:    ; xref 0d5b 0d76
   0dd7  a53f     bit    #$3f                        
   0dd9  271a     beq    L_0df5                      
   0ddb  081907   brset  4, $19, L_0de5              
-  0dde  1716     bset   3, $16                      
+  0dde  1716     bclr   3, $16                      
   0de0  0a1b0f   brset  5, $1b, L_0df2              
   0de3  200a     bra    L_0def                      
 
 L_0de5:    ; xref 0ddb
   0de5  05820d   brclr  2, $82, L_0df5              
   0de8  0b1b04   brclr  5, $1b, L_0def              
-  0deb  1616     bclr   3, $16                      
+  0deb  1616     bset   3, $16                      
   0ded  2003     bra    L_0df2                      
 
 L_0def:    ; xref 0de3 0de8
   0def  081103   brset  4, $11, L_0df5              
 
 L_0df2:    ; xref 0de0 0ded
-  0df2  1618     bclr   3, $18                      
+  0df2  1618     bset   3, $18                      
   0df4  81       rts                                
 
 L_0df5:    ; xref 0dcf 0dd2 0dd9 0de5 0def
-  0df5  1718     bset   3, $18                      
-  0df7  1716     bset   3, $16                      
+  0df5  1718     bclr   3, $18                      
+  0df7  1716     bclr   3, $16                      
   0df9  81       rts                                
 
 sub_0dfa:    ; xref 0d61
   0dfa  0fe912   brclr  7, $e9, L_0e0f              
 
 L_0dfd:    ; xref 0e13
-  0dfd  1c81     bclr   6, $81                      
+  0dfd  1c81     bset   6, $81                      
   0dff  091109   brclr  4, $11, L_0e0b              
   0e02  b615     lda    $15                         
   0e04  a503     bit    #$03                        
@@ -2283,10 +2283,10 @@ L_0dfd:    ; xref 0e13
   0e08  051604   brclr  2, $16, L_0e0f              
 
 L_0e0b:    ; xref 0dff 0e06 0e22
-  0e0b  1d15     bset   6, $15                      
+  0e0b  1d15     bclr   6, $15                      
 
 sub_0e0d:    ; xref 06f9 0e4b
-  0e0d  1282     bclr   1, $82                      
+  0e0d  1282     bset   1, $82                      
 
 L_0e0f:    ; xref 0dfa 0e08
   0e0f  81       rts                                
@@ -2304,7 +2304,7 @@ L_0e22:    ; xref 0e1a 0e4e
   0e22  0029e6   brset  0, $29, L_0e0b              
   0e25  ae05     ldx    #$05                        
   0e27  bfe9     stx    $e9                         
-  0e29  1d81     bset   6, $81                      
+  0e29  1d81     bclr   6, $81                      
 
 L_0e2b:    ; xref 0e10 0e1c 0e1f
   0e2b  81       rts                                
@@ -2318,10 +2318,10 @@ L_0e2c:    ; xref 0723
   0e38  091109   brclr  4, $11, L_0e44              
 
 L_0e3b:    ; xref 0e35
-  0e3b  1c81     bclr   6, $81                      
-  0e3d  1382     bset   1, $82                      
+  0e3b  1c81     bset   6, $81                      
+  0e3d  1382     bclr   1, $82                      
   0e3f  033002   brclr  1, $30, L_0e44              
-  0e42  1c15     bclr   6, $15                      
+  0e42  1c15     bset   6, $15                      
 
 L_0e44:    ; xref 0e2c 0e33 0e38 0e3f
   0e44  81       rts                                
@@ -2344,10 +2344,10 @@ scan_task:    ; xref 0d6a
   0e83  a604     lda    #$04                        
   0e85  b41f     and    $1f                         
   0e87  b71f     sta    $1f                         
-  0e89  1016     bclr   0, $16                      
-  0e8b  1818     bclr   4, $18                      
-  0e8d  1c11     bclr   6, $11                      
-  0e8f  1d2a     bset   6, $2a                      
+  0e89  1016     bset   0, $16                      
+  0e8b  1818     bset   4, $18                      
+  0e8d  1c11     bset   6, $11                      
+  0e8f  1d2a     bclr   6, $2a                      
   0e91  cd03ee   jsr    update_display              
   0e94  2018     bra    L_0eae                      
 
@@ -2355,14 +2355,14 @@ L_0e96:    ; xref 0eb7
   0e96  cd0f62   jsr    squelch_open_test           
   0e99  240b     bcc    L_0ea6                      
   0e9b  048205   brset  2, $82, L_0ea3              
-  0e9e  1514     bset   2, $14                      
+  0e9e  1514     bclr   2, $14                      
   0ea0  cc0f4c   jmp    L_0f4c                      
 
 L_0ea3:    ; xref 0e9b
   0ea3  0f6107   brclr  7, $61, L_0ead              
 
 L_0ea6:    ; xref 0e99
-  0ea6  1514     bset   2, $14                      
+  0ea6  1514     bclr   2, $14                      
   0ea8  2025     bra    L_0ecf                      
 
 L_0eaa:    ; xref 0eb4
@@ -2393,11 +2393,11 @@ L_0ecf:    ; xref 0ea8 0eaa 0ec3 0f4a
   0ed2  cc0f70   jmp    L_0f70                      
 
 L_0ed5:    ; xref 0ecf
-  0ed5  161f     bclr   3, $1f                      
-  0ed7  1116     bset   0, $16                      
-  0ed9  1f11     bset   7, $11                      
-  0edb  151f     bset   2, $1f                      
-  0edd  1918     bset   4, $18                      
+  0ed5  161f     bset   3, $1f                      
+  0ed7  1116     bclr   0, $16                      
+  0ed9  1f11     bclr   7, $11                      
+  0edb  151f     bclr   2, $1f                      
+  0edd  1918     bclr   4, $18                      
   0edf  a64b     lda    #$4b                        
   0ee1  b760     sta    $60                         
   0ee3  b651     lda    $51                         
@@ -2416,21 +2416,21 @@ L_0efc:    ; xref 0ee8 0eeb 0eee 0ef1 0ef4
   0efc  cc0fb1   jmp    L_0fb1                      
 
 L_0eff:    ; xref 0efa
-  0eff  1e11     bclr   7, $11                      
-  0f01  1a29     bclr   5, $29                      
-  0f03  1429     bclr   2, $29                      
+  0eff  1e11     bset   7, $11                      
+  0f01  1a29     bset   5, $29                      
+  0f03  1429     bset   2, $29                      
   0f05  b62e     lda    $2e                         
   0f07  b751     sta    $51                         
 
 L_0f09:    ; xref 0f27
-  0f09  171f     bset   3, $1f                      
-  0f0b  1016     bclr   0, $16                      
-  0f0d  1818     bclr   4, $18                      
+  0f09  171f     bclr   3, $1f                      
+  0f0b  1016     bset   0, $16                      
+  0f0d  1818     bset   4, $18                      
   0f0f  cc0f9f   jmp    L_0f9f                      
 
 L_0f12:    ; xref 0ec0
   0f12  0e11ae   brset  7, $11, L_0ec3              
-  0f15  121f     bclr   1, $1f                      
+  0f15  121f     bset   1, $1f                      
   0f17  b62e     lda    $2e                         
   0f19  b752     sta    $52                         
   0f1b  cd1065   jsr    sub_1065                    
@@ -2443,7 +2443,7 @@ L_0f27:    ; xref 0f1e
   0f27  051fdf   brclr  2, $1f, L_0f09              
 
 L_0f2a:    ; xref 0ebd
-  0f2a  131f     bset   1, $1f                      
+  0f2a  131f     bclr   1, $1f                      
   0f2c  202b     bra    L_0f59                      
 
 L_0f2e:    ; xref 0ecc
@@ -2454,7 +2454,7 @@ L_0f2e:    ; xref 0ecc
   0f38  b634     lda    $34                         
   0f3a  a53f     bit    #$3f                        
   0f3c  270e     beq    L_0f4c                      
-  0f3e  1414     bclr   2, $14                      
+  0f3e  1414     bset   2, $14                      
   0f40  a60e     lda    #$0e                        
   0f42  b761     sta    $61                         
 
@@ -2473,13 +2473,13 @@ L_0f4c:    ; xref 0ea0 0f32 0f35 0f3c
   0f53  2004     bra    L_0f59                      
 
 L_0f55:    ; xref 0f4c
-  0f55  121b     bclr   1, $1b                      
-  0f57  1f11     bset   7, $11                      
+  0f55  121b     bset   1, $1b                      
+  0f57  1f11     bclr   7, $11                      
 
 L_0f59:    ; xref 0f2c 0f53
-  0f59  1116     bset   0, $16                      
-  0f5b  1918     bset   4, $18                      
-  0f5d  161f     bclr   3, $1f                      
+  0f59  1116     bclr   0, $16                      
+  0f5b  1918     bclr   4, $18                      
+  0f5d  161f     bset   3, $1f                      
   0f5f  cc03ee   jmp    update_display              
 
 squelch_open_test:    ; xref 0e96 0f2e 0f48 0fb4 10ce 1122
@@ -2522,7 +2522,7 @@ L_0f94:    ; xref 0f8b
   0f96  97       tax                                
   0f97  bd21     jsr    $21                         
   0f99  3c4f     inc    $4f                         
-  0f9b  151f     bset   2, $1f                      
+  0f9b  151f     bclr   2, $1f                      
   0f9d  2007     bra    L_0fa6                      
 
 L_0f9f:    ; xref 0f0f
@@ -2530,12 +2530,12 @@ L_0f9f:    ; xref 0f0f
   0fa1  cd1067   jsr    scan_list_read              
 
 L_0fa4:    ; xref 0f77
-  0fa4  141f     bclr   2, $1f                      
+  0fa4  141f     bset   2, $1f                      
 
 L_0fa6:    ; xref 0f24 0f9d
   0fa6  ae3b     ldx    #$3b                        
   0fa8  bf56     stx    $56                         
-  0faa  181f     bclr   4, $1f                      
+  0faa  181f     bset   4, $1f                      
 
 L_0fac:    ; xref 0ee5
   0fac  b72e     sta    $2e                         
@@ -2559,21 +2559,21 @@ L_0fc7:    ; xref 0fe5 0feb 0ff3
   0fd0  0f6108   brclr  7, $61, L_0fdb              
 
 L_0fd3:    ; xref 0fca
-  0fd3  171f     bset   3, $1f                      
-  0fd5  101f     bclr   0, $1f                      
+  0fd3  171f     bclr   3, $1f                      
+  0fd5  101f     bset   0, $1f                      
 
 L_0fd7:    ; xref 0fb1 0fe8 0fed 0ff0
-  0fd7  1d1f     bset   6, $1f                      
-  0fd9  1f1f     bset   7, $1f                      
+  0fd7  1d1f     bclr   6, $1f                      
+  0fd9  1f1f     bclr   7, $1f                      
 
 L_0fdb:    ; xref 0fd0
-  0fdb  111b     bset   0, $1b                      
+  0fdb  111b     bclr   0, $1b                      
   0fdd  81       rts                                
 
 L_0fde:    ; xref 0fcd
   0fde  a67f     lda    #$7f                        
   0fe0  b761     sta    $61                         
-  0fe2  1e1f     bclr   7, $1f                      
+  0fe2  1e1f     bset   7, $1f                      
   0fe4  81       rts                                
 
 L_0fe5:    ; xref 0fb6
@@ -2587,25 +2587,25 @@ L_0fed:    ; xref 0fb8 0fbb 0fc2 0fc4
   0ff3  20d2     bra    L_0fc7                      
 
 L_0ff5:    ; xref 0fc7
-  0ff5  1f1f     bset   7, $1f                      
+  0ff5  1f1f     bclr   7, $1f                      
   0ff7  0c1f0a   brset  6, $1f, L_1004              
   0ffa  001b06   brset  0, $1b, L_1003              
   0ffd  a620     lda    #$20                        
   0fff  b765     sta    $65                         
-  1001  1c1f     bclr   6, $1f                      
+  1001  1c1f     bset   6, $1f                      
 
 L_1003:    ; xref 0ffa 1004
   1003  81       rts                                
 
 L_1004:    ; xref 0ff7
   1004  0f65fc   brclr  7, $65, L_1003              
-  1007  101b     bclr   0, $1b                      
-  1009  1d1f     bset   6, $1f                      
+  1007  101b     bset   0, $1b                      
+  1009  1d1f     bclr   6, $1f                      
   100b  81       rts                                
 
 fn_scan:    ; xref 05d6 05e5
-  100c  121b     bclr   1, $1b                      
-  100e  111c     bset   0, $1c                      
+  100c  121b     bset   1, $1b                      
+  100e  111c     bclr   0, $1c                      
   1010  09304f   brclr  4, $30, L_1062              
   1013  00114c   brset  0, $11, L_1062              
   1016  0c1349   brset  6, $13, L_1062              
@@ -2631,14 +2631,14 @@ L_1037:    ; xref 1027 102b
 
 scan_stop:    ; xref 0f80 101c
   103c  3f1f     clr    $1f                         
-  103e  111b     bset   0, $1b                      
-  1040  1918     bset   4, $18                      
-  1042  1d11     bset   6, $11                      
-  1044  1f11     bset   7, $11                      
+  103e  111b     bclr   0, $1b                      
+  1040  1918     bclr   4, $18                      
+  1042  1d11     bclr   6, $11                      
+  1044  1f11     bclr   7, $11                      
   1046  b650     lda    $50                         
   1048  b72e     sta    $2e                         
   104a  cd07ef   jsr    select_channel_A            
-  104d  1116     bset   0, $16                      
+  104d  1116     bclr   0, $16                      
   104f  81       rts                                
 
 L_1050:    ; xref 1035
@@ -2648,7 +2648,7 @@ L_1050:    ; xref 1035
   1059  b62e     lda    $2e                         
   105b  b750     sta    $50                         
   105d  3f1f     clr    $1f                         
-  105f  101f     bclr   0, $1f                      
+  105f  101f     bset   0, $1f                      
   1061  81       rts                                
 
 L_1062:    ; xref 1010 1013 1016 1050
@@ -2696,12 +2696,12 @@ vote_task:    ; xref 0d70
   10a6  0e180a   brset  7, $18, L_10b3              
   10a9  08190c   brset  4, $19, L_10b8              
   10ac  0fe80e   brclr  7, $e8, L_10bd              
-  10af  1e18     bclr   7, $18                      
+  10af  1e18     bset   7, $18                      
   10b1  2043     bra    L_10f6                      
 
 L_10b3:    ; xref 10a6
   10b3  021f08   brset  1, $1f, L_10be              
-  10b6  121f     bclr   1, $1f                      
+  10b6  121f     bset   1, $1f                      
 
 L_10b8:    ; xref 10a9 10dd
   10b8  c61fb4   lda    $1fb4                       
@@ -2724,7 +2724,7 @@ L_10ca:    ; xref 10c1
   10cc  26ef     bne    L_10bd                      
   10ce  cd0f62   jsr    squelch_open_test           
   10d1  2423     bcc    L_10f6                      
-  10d3  1a16     bclr   5, $16                      
+  10d3  1a16     bset   5, $16                      
   10d5  ad52     bsr    sub_1129                    
   10d7  be2e     ldx    $2e                         
   10d9  bf53     stx    $53                         
@@ -2742,8 +2742,8 @@ L_10e5:    ; xref 10c8
   10e9  4c       inca                               
   10ea  b153     cmp    $53                         
   10ec  2608     bne    L_10f6                      
-  10ee  1f18     bset   7, $18                      
-  10f0  1b16     bset   5, $16                      
+  10ee  1f18     bclr   7, $18                      
+  10f0  1b16     bclr   5, $16                      
   10f2  b652     lda    $52                         
   10f4  2005     bra    L_10fb                      
 
@@ -2758,23 +2758,23 @@ L_10fb:    ; xref 10f4
 
 L_1100:    ; xref 113f
   1100  b72e     sta    $2e                         
-  1102  1ca0     bclr   6, $a0                      
+  1102  1ca0     bset   6, $a0                      
   1104  cc07ef   jmp    select_channel_A            
 
 chan_flags_rx:    ; xref 0875
-  1107  1c13     bclr   6, $13                      
+  1107  1c13     bset   6, $13                      
   1109  a520     bit    #$20                        
   110b  2614     bne    L_1121                      
-  110d  1d13     bset   6, $13                      
-  110f  1b16     bset   5, $16                      
-  1111  1f18     bset   7, $18                      
+  110d  1d13     bclr   6, $13                      
+  110f  1b16     bclr   5, $16                      
+  1111  1f18     bclr   7, $18                      
   1113  073109   brclr  3, $31, L_111f              
   1116  0d2a06   brclr  6, $2a, L_111f              
   1119  041f03   brset  2, $1f, L_111f              
   111c  0c2902   brset  6, $29, L_1121              
 
 L_111f:    ; xref 1113 1116 1119
-  111f  1519     bset   2, $19                      
+  111f  1519     bclr   2, $19                      
 
 L_1121:    ; xref 110b 111c
   1121  81       rts                                
@@ -2810,13 +2810,13 @@ selcall_decode_task:    ; xref 0d7c
   1142  00a33c   brset  0, $a3, L_1181              ; selcall decoder: reads tone digit from $80, compares with 1F8D/1F96/1F9F codes
   1145  0d8021   brclr  6, $80, L_1169              
   1148  b680     lda    $80                         
-  114a  1e80     bclr   7, $80                      
+  114a  1e80     bset   7, $80                      
   114c  ae14     ldx    #$14                        
 
 L_114e:    ; xref 114f
   114e  5a       decx                               
   114f  26fd     bne    L_114e                      
-  1151  1f80     bset   7, $80                      
+  1151  1f80     bclr   7, $80                      
   1153  a40f     and    #$0f                        
   1155  bec2     ldx    $c2                         
   1157  b7c2     sta    $c2                         
@@ -2841,7 +2841,7 @@ L_1169:    ; xref 1145
 
 L_117d:    ; xref 1179
   117d  b7ea     sta    $ea                         
-  117f  16a3     bclr   3, $a3                      
+  117f  16a3     bset   3, $a3                      
 
 L_1181:    ; xref 1142 1169 116c
   1181  81       rts                                
@@ -2862,33 +2862,33 @@ L_1189:    ; xref 1159
 
 L_1195:    ; xref 1184 1187
   1195  bec0     ldx    $c0                         
-  1197  1113     bset   0, $13                      
+  1197  1113     bclr   0, $13                      
   1199  a10a     cmp    #$0a                        
   119b  2609     bne    L_11a6                      
-  119d  1013     bclr   0, $13                      
+  119d  1013     bset   0, $13                      
   119f  053225   brclr  2, $32, L_11c7              
-  11a2  12a3     bclr   1, $a3                      
+  11a2  12a3     bset   1, $a3                      
   11a4  201b     bra    L_11c1                      
 
 L_11a6:    ; xref 119b
   11a6  e1d5     cmp    $00d5, x                    
   11a8  2702     beq    L_11ac                      
-  11aa  19a3     bset   4, $a3                      
+  11aa  19a3     bclr   4, $a3                      
 
 L_11ac:    ; xref 11a8
   11ac  d11f8d   cmp    $1f8d, x                    
   11af  2702     beq    L_11b3                      
-  11b1  1ba3     bset   5, $a3                      
+  11b1  1ba3     bclr   5, $a3                      
 
 L_11b3:    ; xref 11af
   11b3  d11f96   cmp    $1f96, x                    
   11b6  2702     beq    L_11ba                      
-  11b8  1da3     bset   6, $a3                      
+  11b8  1da3     bclr   6, $a3                      
 
 L_11ba:    ; xref 11b6
   11ba  d11f9f   cmp    $1f9f, x                    
   11bd  2702     beq    L_11c1                      
-  11bf  1fa3     bset   7, $a3                      
+  11bf  1fa3     bclr   7, $a3                      
 
 L_11c1:    ; xref 11a4 11bd
   11c1  b6a3     lda    $a3                         
@@ -2910,7 +2910,7 @@ L_11ca:    ; xref 11c5
 
 L_11d9:    ; xref 11d2
   11d9  b7ea     sta    $ea                         
-  11db  17a3     bset   3, $a3                      
+  11db  17a3     bclr   3, $a3                      
   11dd  81       rts                                
 
 selcall_encode_task:    ; xref 0d82
@@ -2955,7 +2955,7 @@ L_1220:    ; xref 1218 121c
   1220  b7c3     sta    $c3                         
   1222  aa50     ora    #$50                        
   1224  cd12c7   jsr    tone_chip_write             
-  1227  1d80     bset   6, $80                      
+  1227  1d80     bclr   6, $80                      
   1229  bebf     ldx    $bf                         
   122b  d61f71   lda    $1f71, x                    
   122e  3cc0     inc    $c0                         
@@ -2984,17 +2984,17 @@ selcall_send_start:    ; xref 0794 146f
   124d  b6a1     lda    $a1                         
   124f  a408     and    #$08                        
   1251  b7a1     sta    $a1                         
-  1253  13a0     bset   1, $a0                      
+  1253  13a0     bclr   1, $a0                      
 
 sub_1255:    ; xref 1053
-  1255  1117     bset   0, $17                      
+  1255  1117     bclr   0, $17                      
   1257  c61f7a   lda    $1f7a                       
   125a  b7d4     sta    $d4                         
   125c  01a003   brclr  0, $a0, L_1262              
   125f  cd13cd   jsr    sub_13cd                    
 
 L_1262:    ; xref 11e1 125c
-  1262  1b15     bset   5, $15                      
+  1262  1b15     bclr   5, $15                      
 
 L_1264:    ; xref 11ea 123b 129c
   1264  81       rts                                
@@ -3004,8 +3004,8 @@ L_1265:    ; xref 11ff
 
 L_1267:    ; xref 1239
   1267  0ca132   brset  6, $a1, L_129c              
-  126a  1ca1     bclr   6, $a1                      
-  126c  1017     bclr   0, $17                      
+  126a  1ca1     bset   6, $a1                      
+  126c  1017     bset   0, $17                      
   126e  aed4     ldx    #$d4                        
   1270  09a102   brclr  4, $a1, L_1275              
   1273  aeca     ldx    #$ca                        
@@ -3013,13 +3013,13 @@ L_1267:    ; xref 1239
 L_1275:    ; xref 1270
   1275  bfc0     stx    $c0                         
   1277  3fbf     clr    $bf                         
-  1279  1880     bclr   4, $80                      
-  127b  1d80     bset   6, $80                      
+  1279  1880     bset   4, $80                      
+  127b  1d80     bclr   6, $80                      
   127d  a6ff     lda    #$ff                        
   127f  b784     sta    $84                         
   1281  a65f     lda    #$5f                        
   1283  ad42     bsr    tone_chip_write             
-  1285  1d80     bset   6, $80                      
+  1285  1d80     bclr   6, $80                      
   1287  c61fab   lda    $1fab                       
   128a  02a008   brset  1, $a0, L_1295              
   128d  06a105   brset  3, $a1, L_1295              
@@ -3038,7 +3038,7 @@ L_129c:    ; xref 1267
   129c  0fe7c5   brclr  7, $e7, L_1264              
   129f  3ac1     dec    $c1                         
   12a1  26f4     bne    L_1297                      
-  12a3  1da1     bset   6, $a1                      
+  12a3  1da1     bclr   6, $a1                      
   12a5  bec0     ldx    $c0                         
   12a7  f6       lda    , x                         
   12a8  b7be     sta    $be                         
@@ -3046,15 +3046,15 @@ L_129c:    ; xref 1267
   12ab  bfc0     stx    $c0                         
   12ad  a6ff     lda    #$ff                        
   12af  b7c3     sta    $c3                         
-  12b1  10a1     bclr   0, $a1                      
+  12b1  10a1     bset   0, $a1                      
   12b3  cc1201   jmp    L_1201                      
 
 L_12b6:    ; xref 1265
   12b6  a65f     lda    #$5f                        
   12b8  ad0d     bsr    tone_chip_write             
-  12ba  1d80     bset   6, $80                      
-  12bc  13a1     bset   1, $a1                      
-  12be  1ea1     bclr   7, $a1                      
+  12ba  1d80     bclr   6, $80                      
+  12bc  13a1     bclr   1, $a1                      
+  12be  1ea1     bset   7, $a1                      
   12c0  c61fac   lda    $1fac                       
   12c3  b7c1     sta    $c1                         
   12c5  20d0     bra    L_1297                      
@@ -3069,36 +3069,36 @@ tone_chip_write:    ; xref 1224 1248 1283 12b8
 
 sub_12d2:    ; xref 0d8e
   12d2  04a340   brset  2, $a3, L_1315              
-  12d5  1ba3     bset   5, $a3                      
+  12d5  1ba3     bclr   5, $a3                      
   12d7  0f343b   brclr  7, $34, L_1315              
   12da  053338   brclr  2, $33, L_1315              
-  12dd  12a1     bclr   1, $a1                      
-  12df  181b     bclr   4, $1b                      
+  12dd  12a1     bset   1, $a1                      
+  12df  181b     bset   4, $1b                      
   12e1  2012     bra    L_12f5                      
 
 sub_12e3:    ; xref 0d88
   12e3  04a32f   brset  2, $a3, L_1315              
-  12e6  19a3     bset   4, $a3                      
+  12e6  19a3     bclr   4, $a3                      
   12e8  03322a   brclr  1, $32, L_1315              
   12eb  0f3427   brclr  7, $34, L_1315              
-  12ee  1ba1     bset   5, $a1                      
+  12ee  1ba1     bclr   5, $a1                      
   12f0  0e330e   brset  7, $33, L_1301              
-  12f3  121b     bclr   1, $1b                      
+  12f3  121b     bset   1, $1b                      
 
 L_12f5:    ; xref 12e1
-  12f5  18a2     bclr   4, $a2                      
+  12f5  18a2     bset   4, $a2                      
   12f7  a6a7     lda    #$a7                        
   12f9  cd0be5   jsr    head_send                   
-  12fc  1518     bset   2, $18                      
+  12fc  1518     bclr   2, $18                      
   12fe  0f3214   brclr  7, $32, L_1315              
 
 L_1301:    ; xref 12f0
   1301  02a311   brset  1, $a3, L_1315              
-  1304  1aa1     bclr   5, $a1                      
-  1306  1a14     bclr   5, $14                      
-  1308  16a1     bclr   3, $a1                      
-  130a  19a1     bset   4, $a1                      
-  130c  1a15     bclr   5, $15                      
+  1304  1aa1     bset   5, $a1                      
+  1306  1a14     bset   5, $14                      
+  1308  16a1     bset   3, $a1                      
+  130a  19a1     bclr   4, $a1                      
+  130c  1a15     bset   5, $15                      
 
 sub_130e:    ; xref 136e
   130e  063204   brset  3, $32, L_1315              
@@ -3110,10 +3110,10 @@ L_1315:    ; xref 12d2 12d7 12da 12e3 12e8 12eb 12fe 1301 130e
 
 sub_1316:    ; xref 0d94
   1316  04a30e   brset  2, $a3, L_1327              
-  1319  1da3     bset   6, $a3                      
+  1319  1da3     bclr   6, $a3                      
   131b  02a309   brset  1, $a3, L_1327              
   131e  073306   brclr  3, $33, L_1327              
-  1321  1a80     bclr   5, $80                      
+  1321  1a80     bset   5, $80                      
   1323  a611     lda    #$11                        
   1325  b7eb     sta    $eb                         
 
@@ -3132,10 +3132,10 @@ L_1333:    ; xref 132b
   1339  02a302   brset  1, $a3, L_133e              
 
 sub_133c:    ; xref 1331 1389
-  133c  1b80     bset   5, $80                      
+  133c  1b80     bclr   5, $80                      
 
 L_133e:    ; xref 1328 132e 1339
-  133e  1fa3     bset   7, $a3                      
+  133e  1fa3     bclr   7, $a3                      
 
 L_1340:    ; xref 1333 1336
   1340  81       rts                                
@@ -3147,8 +3147,8 @@ sub_1341:    ; xref 0d9d
   134a  091109   brclr  4, $11, L_1356              
 
 L_134d:    ; xref 1341 1347
-  134d  1a15     bclr   5, $15                      
-  134f  15a1     bset   2, $a1                      
+  134d  1a15     bset   5, $15                      
+  134f  15a1     bclr   2, $a1                      
   1351  c61faa   lda    $1faa                       
   1354  b7ec     sta    $ec                         
 
@@ -3158,7 +3158,7 @@ L_1356:    ; xref 1344 134a
 sub_1357:    ; xref 0da9
   1357  02a005   brset  1, $a0, L_135f              
   135a  0fec02   brclr  7, $ec, L_135f              
-  135d  15a0     bset   2, $a0                      
+  135d  15a0     bclr   2, $a0                      
 
 L_135f:    ; xref 1357 135a 137f 1399
   135f  81       rts                                
@@ -3174,37 +3174,37 @@ sub_1368:    ; xref 0641
 L_136b:    ; xref 1366
   136b  0f3505   brclr  7, $35, L_1373              
   136e  cd130e   jsr    sub_130e                    
-  1371  1a15     bclr   5, $15                      
+  1371  1a15     bset   5, $15                      
 
 L_1373:    ; xref 1360 1363 1368 136b
   1373  81       rts                                
 
 sub_1374:    ; xref 0dac
   1374  091122   brclr  4, $11, L_1399              
-  1377  1518     bset   2, $18                      
+  1377  1518     bclr   2, $18                      
   1379  023203   brset  1, $32, L_137f              
   137c  053338   brclr  2, $33, L_13b7              
 
 L_137f:    ; xref 1379
   137f  08a0dd   brset  4, $a0, L_135f              
-  1382  18a0     bclr   4, $a0                      
-  1384  191b     bset   4, $1b                      
+  1382  18a0     bset   4, $a0                      
+  1384  191b     bclr   4, $1b                      
   1386  0a3202   brset  5, $32, L_138b              
   1389  adb1     bsr    sub_133c                    
 
 L_138b:    ; xref 1386
-  138b  19a2     bset   4, $a2                      
-  138d  1412     bclr   2, $12                      
+  138b  19a2     bclr   4, $a2                      
+  138d  1412     bset   2, $12                      
   138f  091904   brclr  4, $19, L_1396              
-  1392  1212     bclr   1, $12                      
-  1394  1512     bset   2, $12                      
+  1392  1212     bset   1, $12                      
+  1394  1512     bclr   2, $12                      
 
 L_1396:    ; xref 138f
   1396  cc03ee   jmp    update_display              
 
 L_1399:    ; xref 1374
   1399  09a0c3   brclr  4, $a0, L_135f              
-  139c  19a0     bset   4, $a0                      
+  139c  19a0     bclr   4, $a0                      
 
 sub_139e:    ; xref 0809
   139e  033210   brclr  1, $32, L_13b1              
@@ -3212,17 +3212,17 @@ sub_139e:    ; xref 0809
   13a4  0ca00e   brset  6, $a0, L_13b5              
   13a7  06a107   brset  3, $a1, L_13b1              
   13aa  0e3304   brset  7, $33, L_13b1              
-  13ad  1418     bclr   2, $18                      
+  13ad  1418     bset   2, $18                      
   13af  2002     bra    L_13b3                      
 
 L_13b1:    ; xref 139e 13a1 13a7 13aa
-  13b1  1518     bset   2, $18                      
+  13b1  1518     bclr   2, $18                      
 
 L_13b3:    ; xref 13af
-  13b3  17a1     bset   3, $a1                      
+  13b3  17a1     bclr   3, $a1                      
 
 L_13b5:    ; xref 13a4
-  13b5  1da0     bset   6, $a0                      
+  13b5  1da0     bclr   6, $a0                      
 
 L_13b7:    ; xref 137c
   13b7  81       rts                                
@@ -3239,7 +3239,7 @@ L_13d6:    ; xref 13cf
   13d6  b7db     sta    $db                         
 
 L_13d8:    ; xref 13d4
-  13d8  11a0     bset   0, $a0                      
+  13d8  11a0     bclr   0, $a0                      
   13da  81       rts                                
 
 sub_13db:    ; xref 124a
@@ -3249,9 +3249,9 @@ sub_13de:    ; xref 01fe
   13de  0fa021   brclr  7, $a0, L_1402              
 
 sub_13e1:    ; xref 1488
-  13e1  1fa0     bset   7, $a0                      
-  13e3  131d     bset   1, $1d                      
-  13e5  131e     bset   1, $1e                      
+  13e1  1fa0     bclr   7, $a0                      
+  13e3  131d     bclr   1, $1d                      
+  13e5  131e     bclr   1, $1e                      
   13e7  b6ce     lda    $ce                         
   13e9  b7de     sta    $de                         
   13eb  b6cf     lda    $cf                         
@@ -3301,12 +3301,12 @@ fn_selcall_send:    ; xref 05d6 05eb
   1422  01323d   brclr  0, $32, L_1462              
   1425  0f343a   brclr  7, $34, L_1462              
   1428  09a20d   brclr  4, $a2, L_1438              
-  142b  19a2     bset   4, $a2                      
-  142d  191b     bset   4, $1b                      
-  142f  1412     bclr   2, $12                      
+  142b  19a2     bclr   4, $a2                      
+  142d  191b     bclr   4, $1b                      
+  142f  1412     bset   2, $12                      
   1431  091904   brclr  4, $19, L_1438              
-  1434  1212     bclr   1, $12                      
-  1436  1512     bset   2, $12                      
+  1434  1212     bset   1, $12                      
+  1436  1512     bclr   2, $12                      
 
 L_1438:    ; xref 1428 1431
   1438  02a02d   brset  1, $a0, L_1468              
@@ -3314,18 +3314,18 @@ L_1438:    ; xref 1428 1431
   143e  081921   brset  4, $19, L_1462              
 
 L_1441:    ; xref 143b
-  1441  18a1     bclr   4, $a1                      
+  1441  18a1     bset   4, $a1                      
   1443  04a01f   brset  2, $a0, L_1465              
   1446  0c1119   brset  6, $11, L_1462              
   1449  001103   brset  0, $11, L_144f              
   144c  cd1574   jsr    auto_power_off_reset        
 
 L_144f:    ; xref 1449
-  144f  121b     bclr   1, $1b                      
-  1451  14a0     bclr   2, $a0                      
-  1453  12a0     bclr   1, $a0                      
-  1455  13a1     bset   1, $a1                      
-  1457  14a1     bclr   2, $a1                      
+  144f  121b     bset   1, $1b                      
+  1451  14a0     bset   2, $a0                      
+  1453  12a0     bset   1, $a0                      
+  1455  13a1     bclr   1, $a1                      
+  1457  14a1     bset   2, $a1                      
   1459  001105   brset  0, $11, L_1461              
   145c  a6a3     lda    #$a3                        
   145e  cd0be5   jsr    head_send                   
@@ -3337,13 +3337,13 @@ L_1462:    ; xref 141c 141f 1422 1425 143e 1446
   1462  cd07ea   jsr    sub_07ea                    
 
 L_1465:    ; xref 1443
-  1465  19a1     bset   4, $a1                      
+  1465  19a1     bclr   4, $a1                      
   1467  81       rts                                
 
 L_1468:    ; xref 1438
   1468  03330f   brclr  1, $33, L_147a              
-  146b  121b     bclr   1, $1b                      
-  146d  15a0     bset   2, $a0                      
+  146b  121b     bset   1, $1b                      
+  146d  15a0     bclr   2, $a0                      
   146f  cd1242   jsr    selcall_send_start          
 
 sub_1472:    ; xref 1056
@@ -3357,14 +3357,14 @@ L_147a:    ; xref 1468 1472
 fn_selcall_toggle:    ; xref 05d6 05ee
   147b  013224   brclr  0, $32, L_14a2              
   147e  0d3321   brclr  6, $33, L_14a2              
-  1481  121b     bclr   1, $1b                      
+  1481  121b     bset   1, $1b                      
   1483  0fa007   brclr  7, $a0, L_148d              
-  1486  1fa0     bset   7, $a0                      
+  1486  1fa0     bclr   7, $a0                      
   1488  cd13e1   jsr    sub_13e1                    
   148b  2012     bra    L_149f                      
 
 L_148d:    ; xref 1483
-  148d  1ea0     bclr   7, $a0                      
+  148d  1ea0     bset   7, $a0                      
   148f  b6ce     lda    $ce                         
   1491  b7e0     sta    $e0                         
   1493  b6cf     lda    $cf                         
@@ -3395,7 +3395,7 @@ L_14ab:    ; xref 14a7
   14b1  7f       clr    , x                         
 
 L_14b2:    ; xref 14af
-  14b2  121b     bclr   1, $1b                      
+  14b2  121b     bset   1, $1b                      
   14b4  cc03ee   jmp    update_display              
 
 sub_14b7:    ; xref 0416
@@ -3405,13 +3405,13 @@ sub_14b7:    ; xref 0416
   14bb  48       lsla                               
   14bc  48       lsla                               
   14bd  bacf     ora    $cf                         
-  14bf  121d     bclr   1, $1d                      
-  14c1  121e     bclr   1, $1e                      
+  14bf  121d     bset   1, $1d                      
+  14c1  121e     bset   1, $1e                      
   14c3  cc0c24   jmp    display_digits              
 
 sub_14c6:    ; xref 0da3
   14c6  0f8107   brclr  7, $81, L_14d0              
-  14c9  1f14     bset   7, $14                      
+  14c9  1f14     bclr   7, $14                      
   14cb  c61fa9   lda    $1fa9                       
   14ce  b7c8     sta    $c8                         
 
@@ -3435,11 +3435,11 @@ L_14ed:    ; xref 14d4 14ee 14fd
 
 L_14ee:    ; xref 14e7
   14ee  0f60fc   brclr  7, $60, L_14ed              
-  14f1  151f     bset   2, $1f                      
+  14f1  151f     bclr   2, $1f                      
 
 L_14f3:    ; xref 14ea
-  14f3  1c18     bclr   6, $18                      
-  14f5  182a     bclr   4, $2a                      
+  14f3  1c18     bset   6, $18                      
+  14f5  182a     bset   4, $2a                      
   14f7  c61fb3   lda    $1fb3                       
   14fa  b760     sta    $60                         
   14fc  81       rts                                
@@ -3450,17 +3450,17 @@ L_14fd:    ; xref 14d1
   1502  c61fb2   lda    $1fb2                       
   1505  b760     sta    $60                         
   1507  cd06ea   jsr    tx_stop                     
-  150a  1d18     bset   6, $18                      
+  150a  1d18     bclr   6, $18                      
   150c  81       rts                                
 
 L_150d:    ; xref 14d7 14da 14dd 14e0 14e5
-  150d  141f     bclr   2, $1f                      
+  150d  141f     bset   2, $1f                      
   150f  c61fb1   lda    $1fb1                       
   1512  b760     sta    $60                         
   1514  81       rts                                
 
 sub_1515:    ; xref 1500 154a
-  1515  192a     bset   4, $2a                      
+  1515  192a     bclr   4, $2a                      
   1517  a60c     lda    #$0c                        
   1519  cd0152   jsr    delay_A                     
   151c  81       rts                                
@@ -3472,7 +3472,7 @@ econ_setup:    ; xref 0298 083d
   1533  053511   brclr  2, $35, L_1547              
   1536  0c110e   brset  6, $11, L_1547              
   1539  0c130b   brset  6, $13, L_1547              
-  153c  1c2a     bclr   6, $2a                      
+  153c  1c2a     bset   6, $2a                      
   153e  c61fb2   lda    $1fb2                       
   1541  b760     sta    $60                         
 
@@ -3486,8 +3486,8 @@ L_1547:    ; xref 1533 1536 1539
   154c  c61f00   lda    $1f00                       
   154f  4c       inca                               
   1550  b748     sta    $48                         
-  1552  1d18     bset   6, $18                      
-  1554  1d2a     bset   6, $2a                      
+  1552  1d18     bclr   6, $18                      
+  1554  1d2a     bclr   6, $2a                      
   1556  81       rts                                
 
 auto_power_off_task:    ; xref 0dc9
@@ -3501,7 +3501,7 @@ auto_power_off_task:    ; xref 0dc9
   1568  260f     bne    L_1579                      
   156a  a602     lda    #$02                        
   156c  b767     sta    $67                         
-  156e  121b     bclr   1, $1b                      
+  156e  121b     bset   1, $1b                      
 
 L_1570:    ; xref 1557 155a 155d 1562
   1570  81       rts                                

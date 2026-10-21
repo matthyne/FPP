@@ -3,8 +3,21 @@ import capstone,struct,sys,re,collections
 md=capstone.Cs(capstone.CS_ARCH_M680X,capstone.CS_MODE_M680X_6805)
 md.detail=True
 def load(p): return open(p,'rb').read()
+class _Insn:
+    """Capstone instruction with the 6805 BSET/BCLR mnemonics corrected.
+
+    Capstone 5.0.x (M680X, 6805 mode) prints opcode $10+2n as "bclr" and $11+2n
+    as "bset"; the Motorola manual defines $10+2n = BSET n, $11+2n = BCLR n.
+    (BRSET/BRCLR are decoded correctly.)"""
+    __slots__=('address','bytes','size','mnemonic','op_str')
+    def __init__(self,i):
+        self.address=i.address; self.bytes=bytes(i.bytes); self.size=i.size
+        self.op_str=i.op_str; self.mnemonic=i.mnemonic
+        op=self.bytes[0]
+        if 0x10<=op<=0x1f:
+            self.mnemonic='bset' if op%2==0 else 'bclr'
 def dis1(img,a):
-    for i in md.disasm(img[a:a+4],a): return i
+    for i in md.disasm(img[a:a+4],a): return _Insn(i)
     return None
 BR=re.compile(r'\$([0-9a-f]{4})$')
 def targets(i):
