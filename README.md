@@ -14,6 +14,7 @@ It also holds a Linux replacement for the image-building part:
 * **`firmware/`**: disassembly of the radio's own 68HC05 firmware (FM92R and FM92L masters).
   * `FIRMWARE.md` explains what L vs R means, the hardware interface, the scheduler, and how the radio uses every channel and config byte.
   * The folder also holds annotated listings and the disassembler tools.
+  * `patch_startup_msg.py` builds a patched FM92R master that shows a start-up message (e.g. `AA`) on the remote head.
 
 ## Quick start
 

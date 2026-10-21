@@ -393,3 +393,33 @@ python3 tools/mklist.py FM92L
 * `tools/d6805.py` is a recursive-descent 6805 disassembler that also follows `JMP table,X` jump tables.
 * The `.ann` files hold routine names (`=addr name`) and per-address comments.
 * The FM92L names were transferred from FM92R by aligning the two instruction streams.
+
+## 11. Modification: start-up message on the remote head (FM92R)
+
+`patch_startup_msg.py` makes a patched copy of the FM92R master. With it, the control head
+shows a 2-character message (default `AA`) for about 2 s at power-up, before the channel
+number appears.
+
+```sh
+firmware/patch_startup_msg.py --text AA --seconds 2 -o FM92R_AA.BIN
+./fm900gen.py build ch.csv --hw 9234.... --sw ... --master-file FM92R_AA.BIN -o radio.bin
+```
+
+The patch changes 36 bytes:
+
+* **0x0272:** the start-up `LDA #$AA ; JSR head_send` becomes `JSR $1700 ; NOP ; NOP`.
+* **0x1700** (previously empty EPROM):
+  1. Re-sends `$AA`.
+  2. Sends `$80` + the left character and `$82` + the right character, the same messages `display_digits` uses.
+  3. Busy-waits on tick counter bit 7 (256 ticks ≈ 106 ms per loop).
+  4. Returns.
+
+  The normal start-up then displays the channel number over the message.
+* **Checks:** none of the firmware-signature sample bytes is touched, so 0x1F65 is unchanged. `fm900gen`/FM900.EXE recompute the 0x1F64 checksum as usual.
+
+**Untested on hardware.** The stock firmware only ever sends `'0'`–`'9'` and space to the head.
+Whether the head can draw letters depends on the head's own character generator. Digits
+(e.g. `--text 88`) are certain to work.
+
+FM92L is not supported by this patch. Its 2-digit display is fed 4-bit BCD values through
+latches, which almost certainly use BCD-to-7-segment decoders that can only show 0–9.
