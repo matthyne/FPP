@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 *.BIN.patched
 firmware/FM92R_*.BIN
+
+# Reference documents (copyrighted, kept local only)
+docs/*.pdf
