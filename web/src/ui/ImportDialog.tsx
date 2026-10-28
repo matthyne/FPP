@@ -69,6 +69,39 @@ export function ImportDialog({ hw, nextNum, existing, initial, close, apply }: {
             <p class="hint">Import a CSV from <b>CHIRP</b> or <b>RepeaterBook</b> (its CHIRP export), a <b>RadioReference</b> CSV
               download, or any spreadsheet with a header row. You can also paste a table copied from a RadioReference page or a
               spreadsheet. Columns are matched by name and can be changed before importing.</p>
+            <div class="guides">
+              <h3>Where to get a list</h3>
+              <details>
+                <summary>RadioReference</summary>
+                <ol>
+                  <li>In the RadioReference database, browse to the county, agency or system you want.</li>
+                  <li>Select the frequency table on the page, from its header row down. Copy it (Ctrl+C / ⌘C).</li>
+                  <li>Paste it in the box below and press Next. Analogue (FM / FMN) rows are kept; P25, DMR and other digital rows are skipped.</li>
+                </ol>
+                <p class="hint">Premium members can download a CSV instead; choose that file here. Mobile (input) frequencies become the Tx.</p>
+              </details>
+              <details>
+                <summary>RepeaterBook</summary>
+                <ol>
+                  <li>Search RepeaterBook for repeaters near you (by location, or by band and distance).</li>
+                  <li>Use the results page's export option and pick the <b>CHIRP</b> format. This may need a free account.</li>
+                  <li>Choose the downloaded <code>.csv</code> here. Offsets and access tones are converted automatically.</li>
+                </ol>
+              </details>
+              <details>
+                <summary>CHIRP</summary>
+                <ol>
+                  <li>Open your radio image or file in CHIRP.</li>
+                  <li>Use <b>File → Export</b> and save it as CSV.</li>
+                  <li>Choose that file here. CHIRP's 0-based memory numbers are shifted to start at channel 1.</li>
+                </ol>
+              </details>
+              <details>
+                <summary>A spreadsheet</summary>
+                <p>Give it a header row naming the columns: frequency (or Rx), Tx or offset, tone, name, mode. Then copy the cells
+                  and paste them below, or save as CSV. If a column is matched wrongly, fix it under <i>Change column mapping</i>.</p>
+              </details>
+            </div>
             <div class="actions left">
               <button class="primary" onClick={openFile}>Choose CSV file…</button>
               <span class="hint">or drop it here</span>

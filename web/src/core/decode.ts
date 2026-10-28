@@ -91,7 +91,7 @@ export function readImage(img: Uint8Array, hw: string, stepOverride?: number): R
   const slots: number[] = [];
   for (let i = 0; i < n; i++) if (img.subarray(base + 8 * i, base + 8 * i + 8).some((x) => x)) slots.push(i);
 
-  // pick the step that puts the decoded frequencies inside the band
+  // pick the step that puts the decoded frequencies near the band (no warning: radios get re-tuned)
   const vhf = hw[2] <= '4', wide = hw[3] <= '4';
   const cands = stepOverride ? [stepOverride] : vhf ? (wide ? [500, 625] : [625, 500]) : (wide ? [2500] : [1250]);
   const [lo, hi] = BAND_MHZ[hw[2]] ?? [0, 1e9];
@@ -102,7 +102,6 @@ export function readImage(img: Uint8Array, hw: string, stepOverride?: number): R
     return f >= lo - tol && f <= hi + tol;
   });
   const step = cands.find(inBand) ?? cands[0];
-  if (!inBand(step)) warnings.push('some decoded frequencies are far outside the band: check the HW code');
 
   const rec = (i: number) => img.subarray(base + 8 * i, base + 8 * i + 8);
   const primaryOf = (i: number): number => {

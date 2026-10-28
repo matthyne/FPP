@@ -1,6 +1,5 @@
 // Live analysis of a project for the UI: per-row problems plus a trial build.
 import { Builder, Channel, FM900Error, F_VOTE, freqUnits } from './fm900';
-import { BAND_MHZ } from './codes';
 import { master } from './masters';
 import { Project, isBlank, parseDate, rowToChannel } from './project';
 
@@ -21,7 +20,6 @@ export function analyze(p: Project): Analysis {
   const a: Analysis = { chans: [], rowErrors: new Map(), rowWarnings: new Map(), codeError: null,
     buildError: null, img: null, builder: null, vcoWarnings: [], defaultKeys: null, nmax: p.hw[1] === '1' ? 120 : 99 };
   const warn = (i: number, m: string) => a.rowWarnings.set(i, [...(a.rowWarnings.get(i) ?? []), m]);
-  const band = BAND_MHZ[p.hw[2]];
   const rowOf: number[] = [];
   const seen = new Map<number, number>();
 
@@ -36,13 +34,7 @@ export function analyze(p: Project): Analysis {
       return;
     }
     if (c.num < 1 || c.num > a.nmax) a.rowErrors.set(i, `channel number must be 1..${a.nmax}`);
-    if (band) {
-      for (const [lab, f] of [['Rx', c.rx], ['Tx', c.tx]]) {
-        if (f.startsWith('X')) continue;
-        const mhz = freqUnits(f) / 10000;
-        if (mhz < band[0] || mhz > band[1]) warn(i, `${lab} ${f} is outside the nominal ${band[0]}–${band[1]} MHz band`);
-      }
-    }
+    // No out-of-band warning: radios are often re-tuned outside their nominal band (e.g. into the amateur bands).
     if (seen.has(c.num) && !(c.flags & F_VOTE)) warn(i, `duplicate of channel ${c.num} (row ${seen.get(c.num)! + 1}): uses a ring slot`);
     if (!seen.has(c.num)) seen.set(c.num, i);
     a.chans.push(c);

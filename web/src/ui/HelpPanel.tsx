@@ -15,8 +15,8 @@ export function HelpPanel() {
           <li><b>Radio</b>: enter the hardware and software codes from the radio's label, PIRS sheet or old <code>.JOB</code> file.
             The digit menus explain each one.</li>
           <li><b>Channels</b>: enter Rx and Tx frequencies. Leave Tx blank for simplex; type <code>X</code> for receive-only.
-            Enter and the arrow keys move between rows. Use <i>Fill range</i> for a run of channels and <i>Paste text</i> for a list
-            from a spreadsheet.</li>
+            Enter and the arrow keys move between rows. Use <i>Fill range</i> for a run of channels, <i>Channel plans</i> for UHF CB, and
+            <i>Import CSV / paste</i> for lists from CHIRP, RepeaterBook, RadioReference or a spreadsheet.</li>
           <li><b>Scan &amp; Keys</b>: set up the scan blocks and, on the FM92, the head's function keys.</li>
           <li><b>Build</b>: download the <code>.BIN</code> and burn it to a 2764 / 27C64.</li>
         </ol>
@@ -35,6 +35,8 @@ export function HelpPanel() {
         <ul>
           <li><b>Row order matters.</b> FM900.EXE writes scan lists in entry order. Duplicate channel numbers and VOTE channels
             take ring slots from the top of the table, in row order.</li>
+          <li>Frequencies outside the radio's nominal band are allowed without a warning, because many radios have been
+            re-tuned (e.g. into the amateur bands). Make sure yours actually covers them.</li>
           <li>The synthesiser step comes from the band and spacing. VHF falls back from 5 to 6.25 kHz (or the reverse) if a
             frequency is off-raster.</li>
           <li>On FM92 VHF, L power is stored as M (as FM900.EXE does).</li>

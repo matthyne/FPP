@@ -43,7 +43,7 @@ describe('CSV import', () => {
     expect(format).toBe('RadioReference');
     expect(rows[0].row).toMatchObject({ num: '10', rx: '146.8500', tx: '146.2500', ctcss: 'B', name: 'City Rptr' });
     expect(rows[1].row).toMatchObject({ num: '11', ctcss: '', tx: '' });
-    expect(rows[1].include).toBe(true);           // 154 MHz is within 5 MHz of B band (132-153)
+    expect(rows[1].include).toBe(true);
     expect(rows[2].ok).toBe(false);               // P25
     expect(rows[3].row.ctcss).toBe('');
     expect(rows[3].reason).toMatch(/DCS/);
@@ -63,10 +63,9 @@ describe('CSV import', () => {
     expect(g.rows[1].row).toMatchObject({ rx: '439.9875', tx: '' });
   });
 
-  it('deselects channels far outside the band', () => {
-    const r = run('Frequency\n162.4000\n', { ...opts, hw: '92340000' }).rows[0];
-    expect(r).toMatchObject({ ok: true, include: false });
-    expect(r.reason).toMatch(/outside/);
+  it('accepts channels outside the nominal band (re-tuned radios)', () => {
+    const r = run('Frequency\n146.5000\n', { ...opts, hw: '92340000' }).rows[0];
+    expect(r).toMatchObject({ ok: true, include: true, reason: '' });
   });
 
   it('flags frequencies that need more than 4 decimals', () => {

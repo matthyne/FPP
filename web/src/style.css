@@ -171,6 +171,18 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
 .grid td.name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .grid input.name { width: 11em; }
 
+/* channel plans, import guides */
+.plans { display: grid; gap: 8px; margin-bottom: 12px; }
+.plan { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+.plan.active { border-color: var(--accent); background: var(--accent-soft); }
+.plan input { margin-top: 3px; }
+.guides { margin: 6px 0 12px; }
+.guides h3 { font-size: 13.5px; margin: 0 0 6px; }
+.guides details { border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; margin-bottom: 6px; background: var(--surface-2); }
+.guides summary { cursor: pointer; font-weight: 600; }
+.guides ol { margin: 8px 0; padding-left: 20px; }
+.guides p { margin: 6px 0; }
+
 /* scan */
 .blocks { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 .block { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface-2); }

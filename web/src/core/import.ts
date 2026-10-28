@@ -3,7 +3,6 @@
 // or any table with a header row (columns mapped by name, or by hand in the UI).
 import { CTCSS, F_CR, F_ECON, F_SELCALL, F_VOTE, FM900Error, normFreq } from './fm900';
 import { COLS, powerFlag, scanFlags, yes } from './channels';
-import { BAND_MHZ } from './codes';
 import { Row } from './project';
 
 export type Field = 'ch' | 'rx' | 'tx' | 'offset' | 'duplex' | 'tone' | 'txTone' | 'rxTone' | 'toneMode' | 'mode' | 'name' | 'power' | 'scan'
@@ -153,7 +152,6 @@ export function parseTone(s: string): string {
 
 export function convert(table: string[][], start: number, mapping: Mapping, o: ImportOptions): ImportRow[] {
   const get = (r: string[], f: Field) => (mapping.map[f] !== undefined ? (r[mapping.map[f]!] ?? '').trim() : '');
-  const band = BAND_MHZ[o.hw[2]];
   const nmax = o.hw[1] === '1' ? 120 : 99;
   let next = o.firstNum;
   const out: ImportRow[] = [];
@@ -229,13 +227,6 @@ export function convert(table: string[][], start: number, mapping: Mapping, o: I
     if (res.ok) {
       next = num + 1;
       if (num < 1 || num > nmax) flag(`channel ${num} is outside 1..${nmax}`);
-      if (band) {
-        for (const f of [res.row.rx, res.row.tx]) {
-          if (!f || f === 'X') continue;
-          const mhz = units(f) / 10000;
-          if (mhz < band[0] - 5 || mhz > band[1] + 5) { flag(`${f} MHz is outside this radio's band`); break; }
-        }
-      }
     }
     out.push(res);
   }

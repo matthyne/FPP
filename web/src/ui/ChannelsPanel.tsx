@@ -8,6 +8,7 @@ import { Project, Row } from '../core/project';
 import type { Update } from './App';
 import { errMsg } from './App';
 import { ImportDialog, ImportSource } from './ImportDialog';
+import { PlansDialog } from './PlansDialog';
 
 const POWER: [number, string][] = [[F_HIGH, 'H 25 W'], [F_MED, 'M 5 W'], [F_LOW, 'L 1 W'], [F_SELPWR, 'S select'], [0, '—']];
 const PWR_MASK = F_HIGH | F_MED | F_LOW | F_SELPWR;
@@ -50,7 +51,7 @@ export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport
   pendingImport: ImportSource | null; clearImport: () => void;
 }) {
   const [sel, setSel] = useState<Set<number>>(new Set());
-  const [dialog, setDialog] = useState<'none' | 'import' | 'fill' | 'offset'>(pendingImport ? 'import' : 'none');
+  const [dialog, setDialog] = useState<'none' | 'import' | 'plans' | 'fill' | 'offset'>(pendingImport ? 'import' : 'none');
   useEffect(() => { if (pendingImport) setDialog('import'); }, [pendingImport]);
   const fm91 = p.hw[1] === '1';
   const cols = FLAG_COLS.filter((c) => fm91 || !c.fm91);
@@ -112,6 +113,7 @@ export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport
       <div class="toolbar">
         <button class="primary" onClick={addRow}>+ Channel</button>
         <button onClick={() => setDialog('fill')}>Fill range…</button>
+        <button onClick={() => setDialog('plans')} title="Built-in channel plans, e.g. UHF CB">Channel plans…</button>
         <button onClick={() => setDialog('import')} title="CSV from CHIRP, RepeaterBook, RadioReference or a spreadsheet">Import CSV / paste…</button>
         <button onClick={renumber} title="Number the rows 1, 2, 3… in their current order">Renumber</button>
         <button onClick={sortByNum}>Sort by Ch</button>
@@ -144,7 +146,7 @@ export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport
       {p.rows.length === 0 ? (
         <div class="empty">
           <p>No channels yet.</p>
-          <p><button class="primary" onClick={addRow}>+ Add a channel</button> <button onClick={() => setDialog('import')}>Import a CSV / paste a list</button> <button onClick={() => setDialog('fill')}>Fill a range</button></p>
+          <p><button class="primary" onClick={addRow}>+ Add a channel</button> <button onClick={() => setDialog('import')}>Import a CSV / paste a list</button> <button onClick={() => setDialog('fill')}>Fill a range</button> <button onClick={() => setDialog('plans')}>Use a channel plan</button></p>
           <p class="hint">Or drop a <code>.JOB</code> + <code>.CHL</code> pair, a CSV, or a project file anywhere on the page.</p>
         </div>
       ) : (
@@ -225,6 +227,13 @@ export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport
           notify(`${mode === 'replace' ? 'Replaced with' : 'Added'} ${rows.length} channels`);
           setDialog('none');
           clearImport();
+        }} />}
+      {dialog === 'plans' && <PlansDialog hw={p.hw} existing={a.chans.length} close={() => setDialog('none')}
+        apply={(rows, mode) => {
+          if (mode === 'replace' && p.rows.length && !window.confirm('Replace the current channel list? (Undo is available.)')) return;
+          setRows((old) => (mode === 'replace' ? rows : [...old, ...rows]));
+          notify(`${mode === 'replace' ? 'Replaced with' : 'Added'} ${rows.length} channels`);
+          setDialog('none');
         }} />}
       {dialog === 'fill' && <FillDialog start={parseInt(nextNum(), 10)} close={() => setDialog('none')} apply={(rows) => {
         setRows((old) => [...old, ...rows]);
