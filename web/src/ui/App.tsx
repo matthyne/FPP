@@ -1,0 +1,220 @@
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { analyze } from '../core/analyze';
+import { formatChannels, parseChannels } from '../core/channels';
+import { FM900Error, readChl, readJob, writeChl, writeJob } from '../core/fm900';
+import { Project, Row, channelToRow, fromProject, loadProjectJson, newProject } from '../core/project';
+import { BuildPanel } from './BuildPanel';
+import { ChannelsPanel } from './ChannelsPanel';
+import { HelpPanel } from './HelpPanel';
+import { RadioPanel } from './RadioPanel';
+import { ReadPanel } from './ReadPanel';
+import { ScanKeysPanel } from './ScanKeysPanel';
+import { download, loadSaved, pickFiles, readBytes, safeName, save } from './files';
+
+export type Tab = 'radio' | 'channels' | 'scan' | 'build' | 'read' | 'help';
+const TABS: [Tab, string][] = [
+  ['radio', 'Radio'], ['channels', 'Channels'], ['scan', 'Scan & Keys'],
+  ['build', 'Build'], ['read', 'Read image'], ['help', 'Help'],
+];
+
+export type Update = (fn: (p: Project) => Project) => void;
+
+export function App() {
+  const [project, setProject] = useState<Project>(() => loadSaved() ?? newProject());
+  const [tab, setTab] = useState<Tab>(() => (loadSaved()?.rows.length ? 'channels' : 'radio'));
+  const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
+  const [readImg, setReadImg] = useState<{ name: string; data: Uint8Array } | null>(null);
+  const [drag, setDrag] = useState(false);
+  const undo = useRef<Project[]>([]);
+  const redo = useRef<Project[]>([]);
+  const lastPush = useRef(0);
+
+  const update: Update = (fn) => {
+    setProject((p) => {
+      const n = fn(p);
+      const now = Date.now();
+      if (now - lastPush.current > 800) {     // coalesce typing into one undo step
+        undo.current = [...undo.current.slice(-99), p];
+        redo.current = [];
+      }
+      lastPush.current = now;
+      return n;
+    });
+  };
+  const replace = (p: Project) => {
+    lastPush.current = 0;
+    update(() => p);
+  };
+  const doUndo = () => {
+    const prev = undo.current.pop();
+    if (!prev) return;
+    redo.current.push(project);
+    lastPush.current = 0;
+    setProject(prev);
+  };
+  const doRedo = () => {
+    const next = redo.current.pop();
+    if (!next) return;
+    undo.current.push(project);
+    lastPush.current = 0;
+    setProject(next);
+  };
+
+  useEffect(() => save(project), [project]);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), toast.err ? 7000 : 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const inField = (e.target as HTMLElement)?.closest?.('input, textarea, select');
+      if (!(e.ctrlKey || e.metaKey) || inField) return;
+      if (e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
+      if ((e.key.toLowerCase() === 'z' && e.shiftKey) || e.key.toLowerCase() === 'y') { e.preventDefault(); doRedo(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  const a = useMemo(() => analyze(project), [project]);
+  const notify = (msg: string, err = false) => setToast({ msg, err });
+  const fail = (e: unknown) => notify(e instanceof Error ? e.message : String(e), true);
+
+  const confirmReplace = () =>
+    !project.rows.length || window.confirm('Replace the current channel list? (Undo is available.)');
+
+  async function openFiles(files: File[]) {
+    try {
+      const by = (ext: string) => files.filter((f) => f.name.toLowerCase().endsWith(ext));
+      const [json, job, chl, bin] = [by('.json')[0], by('.job')[0], by('.chl')[0], by('.bin')[0]];
+      const text = files.find((f) => /\.(csv|txt|tsv)$/i.test(f.name));
+      if (json) {
+        if (!confirmReplace()) return;
+        replace(loadProjectJson(await json.text()));
+        notify(`Opened ${json.name}`);
+        setTab('channels');
+      } else if (job || chl) {
+        if (!confirmReplace()) return;
+        let p = { ...project };
+        if (job) {
+          const j = readJob(await readBytes(job));
+          p = { ...p, hw: j.hw, sw: j.sw, comments: j.comments.filter((c) => c), name: safeName(job.name.replace(/\.job$/i, '')), keys: null };
+        }
+        if (chl) p = { ...p, rows: readChl(await readBytes(chl)).map(channelToRow) };
+        replace(p);
+        notify(`Opened ${[job?.name, chl?.name].filter(Boolean).join(' + ')}${job && !chl ? ' (codes only: add the .CHL for channels)' : ''}`);
+        setTab(chl ? 'channels' : 'radio');
+      } else if (text) {
+        const chans = parseChannels(await text.text());
+        if (!confirmReplace()) return;
+        update((p) => ({ ...p, rows: chans.map(channelToRow) }));
+        notify(`Imported ${chans.length} channels from ${text.name}`);
+        setTab('channels');
+      } else if (bin) {
+        setReadImg({ name: bin.name, data: await readBytes(bin) });
+        setTab('read');
+      } else if (files.length) {
+        notify('Unrecognised file type: use .json, .JOB/.CHL, .csv or .BIN', true);
+      }
+    } catch (e) {
+      fail(e);
+    }
+  }
+
+  const exportJob = () => {
+    try {
+      const chans = fromProject(project);
+      const n = safeName(project.name);
+      download(`${n}.JOB`, writeJob(project.hw, project.sw, project.comments));
+      setTimeout(() => download(`${n}.CHL`, writeChl(chans)), 300);
+    } catch (e) {
+      fail(e);
+    }
+  };
+  const exportCsv = () => {
+    try {
+      download(`${safeName(project.name)}.csv`, formatChannels(fromProject(project)), 'text/csv');
+    } catch (e) {
+      fail(e);
+    }
+  };
+  const saveJson = () =>
+    download(`${safeName(project.name)}.fm900.json`, JSON.stringify(project, null, 1), 'application/json');
+  const newProj = () => {
+    if (!project.rows.length || window.confirm('Start a new project? (Undo is available.)')) {
+      replace({ ...newProject(), hw: project.hw, sw: project.sw });
+      setTab('radio');
+    }
+  };
+  const loadRows = (rows: Row[], hw: string, keys: number[] | null) => {
+    if (!confirmReplace()) return;
+    update((p) => ({ ...p, rows, hw, keys }));
+    setTab('channels');
+    notify(`Loaded ${rows.length} channels from the image`);
+  };
+
+  const status = a.codeError ?? a.buildError;
+  const nch = a.chans.length;
+
+  return (
+    <div
+      class={`app${drag ? ' dragging' : ''}`}
+      onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+      onDragLeave={(e) => { if (!(e.relatedTarget as Node | null)) setDrag(false); }}
+      onDrop={(e) => { e.preventDefault(); setDrag(false); openFiles([...(e.dataTransfer?.files ?? [])]); }}
+    >
+      <header class="topbar">
+        <div class="brand">
+          <span class="logo" aria-hidden="true">FM900</span>
+          <span class="brand-text">Web CPS <small>Philips FM91 / FM92 EPROM builder</small></span>
+        </div>
+        <div class="file-actions">
+          <button onClick={newProj}>New</button>
+          <button onClick={async () => openFiles(await pickFiles('.json,.job,.chl,.csv,.txt,.bin,.JOB,.CHL,.BIN'))}>Open…</button>
+          <button onClick={saveJson} title="Save the whole project as JSON">Save</button>
+          <button onClick={exportJob} title="Write .JOB + .CHL for the DOS FM900.EXE">Export JOB/CHL</button>
+          <button onClick={exportCsv}>Export CSV</button>
+          <span class="sep" />
+          <button onClick={doUndo} disabled={!undo.current.length} title="Undo (Ctrl+Z)">Undo</button>
+          <button onClick={doRedo} disabled={!redo.current.length} title="Redo (Ctrl+Y)">Redo</button>
+        </div>
+      </header>
+
+      <nav class="tabs" role="tablist">
+        {TABS.map(([id, label]) => (
+          <button role="tab" aria-selected={tab === id} class={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
+            {label}
+            {id === 'channels' && <span class="pill">{nch}</span>}
+            {id === 'build' && <span class={`dot ${a.img ? 'ok' : 'bad'}`} />}
+          </button>
+        ))}
+      </nav>
+
+      <main class="main">
+        {tab === 'radio' && <RadioPanel p={project} a={a} update={update} />}
+        {tab === 'channels' && <ChannelsPanel p={project} a={a} update={update} notify={notify} />}
+        {tab === 'scan' && <ScanKeysPanel p={project} a={a} update={update} />}
+        {tab === 'build' && <BuildPanel p={project} a={a} update={update} notify={notify} />}
+        {tab === 'read' && <ReadPanel p={project} img={readImg} setImg={setReadImg} load={loadRows} />}
+        {tab === 'help' && <HelpPanel />}
+      </main>
+
+      <footer class="statusbar">
+        <span>{project.hw[1] === '1' ? 'FM91' : project.hw[1] === '2' ? 'FM92' : 'FM9?'}</span>
+        <span>{a.builder ? a.builder.masterName() : '—'}</span>
+        <span>{nch}/{a.nmax} ch</span>
+        {a.img && a.builder && <span>step {a.builder.step / 100} kHz</span>}
+        {a.img && <span>sum {a.img[0x1F64].toString(16).padStart(2, '0').toUpperCase()}</span>}
+        <span class={`grow ${status ? 'bad' : 'ok'}`}>{status ? `⚠ ${status}` : '✓ ready to build'}</span>
+      </footer>
+
+      {toast && <div class={`toast ${toast.err ? 'err' : ''}`} role="status" onClick={() => setToast(null)}>{toast.msg}</div>}
+      {drag && <div class="dropzone">Drop .json, .JOB + .CHL, .csv or .BIN</div>}
+    </div>
+  );
+}
+
+export function errMsg(e: unknown): string {
+  return e instanceof FM900Error || e instanceof Error ? e.message : String(e);
+}

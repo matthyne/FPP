@@ -10,6 +10,7 @@ This directory holds the original DOS **Philips Field Personality Programmer**:
 It also holds a Linux replacement for the image-building part:
 
 * **`fm900gen.py`**: builds the 8 KB 2764 EPROM image for FM91 and FM92 radios from a list of frequencies. It is Python 3 with no dependencies.
+* **`web/`**: the same builder as a **web CPS** that runs in the browser: a channel grid, HW/SW code menus, scan and key setup, `.BIN` download, `.JOB`/`.CHL`/CSV import and export, and read-back of an existing `.BIN`. See [Web CPS](#web-cps).
 * **`FM900_FORMAT.md`**: full documentation of FPP.EXE, FM900.EXE, the job file formats, the hardware/software codes, and the EPROM layout.
 * **`firmware/`**: disassembly of the radio's own 68HC05 firmware (FM92R and FM92L masters).
   * `FIRMWARE.md` explains what L vs R means, the hardware interface, the scheduler, and how the radio uses every channel and config byte.
@@ -112,6 +113,36 @@ Options:
 
 * `--date YYYY-MM-DD` sets the build date stamped in the image.
 * `--masters DIR` sets where the master images are read from. The default is `fm900/MASTERS`.
+
+## Web CPS
+
+`web/` is a browser version of `fm900gen.py`, in the style of the OpenGD77 web CPS. Nothing is uploaded: the image is built in the page, and the factory masters are built in. GitHub Actions publishes it to GitHub Pages at `https://matthyne.github.io/FPP/`.
+
+| Tab | What it does |
+|---|---|
+| Radio | Job name, comments and build date. The HW and SW codes, as digits or as a menu per digit. Shows the master, band, IF and step it implies. |
+| Channels | Grid of Rx, Tx (`X` = receive only), power, CTCSS, scan S1/P1/S2/P2 (plus S3/P3 on FM91), operator scan, VOTE, ECON, SELCALL and C/R. Fill a range, paste from a spreadsheet, set a Tx offset on the selected rows, duplicate, move, renumber. Each row flags problems (off-raster, out of band, duplicate). |
+| Scan & Keys | Scan block members and priority, with the 10-channel limit. FM92 head function keys (the same as `--keys`). |
+| Build | Downloads the `.BIN`. Shows a summary, VCO warnings, a hex view with the bytes changed from the master highlighted, and the decoded dump. |
+| Read image | Opens a `.BIN`. Enter the radio's HW code and it decodes the image into channels, which you can load into the project. |
+
+* **Open** takes `.JOB` + `.CHL` (select both), `.csv`/`.txt`, `.json` projects and `.BIN` images. Drag and drop works too.
+* **Save** writes a `.json` project. **Export JOB/CHL** writes files FM900.EXE can open.
+* Work is kept in the browser automatically, with undo/redo.
+
+Row order matters, just as it does in FM900.EXE. It sets the scan-list order and which ring slots duplicate or VOTE channels get.
+
+Developing:
+
+```sh
+cd web
+npm install
+npm run dev        # http://localhost:5173/FPP/
+npm test           # golden jobs, ~3000 random cases vs fm900gen.py, BIN read-back
+npm run build      # static site in web/dist
+```
+
+The TypeScript core (`web/src/core/fm900.ts`) is a line-by-line port of `fm900gen.py`. The tests require it to produce byte-identical images to the Python reference.
 
 ## Accuracy
 

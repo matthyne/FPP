@@ -1,0 +1,27 @@
+{
+  "name": "fm900-web-cps",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "masters": "node scripts/gen-masters.mjs",
+    "predev": "npm run masters",
+    "dev": "vite",
+    "prebuild": "npm run masters",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "pretest": "npm run masters",
+    "test": "vitest run",
+    "vectors": "python3 test/gen_vectors.py 3000 > /dev/null"
+  },
+  "dependencies": {
+    "preact": "^10.29.8"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.5",
+    "vitest": "^3.2.7"
+  }
+}
