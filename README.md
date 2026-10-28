@@ -10,7 +10,7 @@ This directory holds the original DOS **Philips Field Personality Programmer**:
 It also holds a Linux replacement for the image-building part:
 
 * **`fm900gen.py`**: builds the 8 KB 2764 EPROM image for FM91 and FM92 radios from a list of frequencies. It is Python 3 with no dependencies.
-* **`web/`**: the same builder as a **web CPS** that runs in the browser: a channel grid, HW/SW code menus, scan and key setup, `.BIN` download, `.JOB`/`.CHL`/CSV import and export, and read-back of an existing `.BIN`. See [Web CPS](#web-cps).
+* **`web/`**: the same builder as **Web FPP (FM900 CPS)**, a web CPS that runs in the browser: a channel grid, HW/SW code menus, scan and key setup, `.BIN` download, `.JOB`/`.CHL`/CSV import and export, and read-back of an existing `.BIN`. See [Web FPP](#web-fpp-fm900-cps).
 * **`FM900_FORMAT.md`**: full documentation of FPP.EXE, FM900.EXE, the job file formats, the hardware/software codes, and the EPROM layout.
 * **`firmware/`**: disassembly of the radio's own 68HC05 firmware (FM92R and FM92L masters).
   * `FIRMWARE.md` explains what L vs R means, the hardware interface, the scheduler, and how the radio uses every channel and config byte.
@@ -114,9 +114,9 @@ Options:
 * `--date YYYY-MM-DD` sets the build date stamped in the image.
 * `--masters DIR` sets where the master images are read from. The default is `fm900/MASTERS`.
 
-## Web CPS
+## Web FPP (FM900 CPS)
 
-`web/` is a browser version of `fm900gen.py`, in the style of the OpenGD77 web CPS. Nothing is uploaded: the image is built in the page, and the factory masters are built in. GitHub Actions publishes it to GitHub Pages at `https://matthyne.github.io/FPP/`.
+`web/` is Web FPP (FM900 CPS), a browser version of `fm900gen.py`, in the style of the OpenGD77 web CPS. Nothing is uploaded: the image is built in the page, and the factory masters are built in. GitHub Actions publishes it to GitHub Pages at `https://matthyne.github.io/FPP/`.
 
 | Tab | What it does |
 |---|---|

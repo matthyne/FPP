@@ -1,5 +1,5 @@
-# Test the web CPS (golden + differential vs fm900gen.py) and publish it to GitHub Pages.
-name: Web CPS
+# Test Web FPP (golden + differential vs fm900gen.py) and publish it to GitHub Pages.
+name: Web FPP
 
 on:
   push:

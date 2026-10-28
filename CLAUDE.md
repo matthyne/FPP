@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 * The original DOS **Philips FM900 Field Personality Programmer**.
 * A Linux re-implementation of its EPROM image builder.
-* A browser version of that builder (`web/`), in the style of a web CPS.
+* A browser version of that builder (`web/`), in the style of a web CPS, named **Web FPP (FM900 CPS)**.
 
 ## Layout
 
@@ -24,7 +24,7 @@ The original DOS files are reference material. **Never modify them.**
 | `firmware/FIRMWARE.md` | Radio firmware (FM92R/FM92L) documentation. |
 | `firmware/*.lst` | Annotated 68HC05 listings. These are generated: edit `firmware/*.ann` (`=addr name` or `addr comment`) and re-run `python3 firmware/tools/mklist.py FM92R` (needs `pip install capstone`). |
 | `firmware/FM92L.ann` | FM92L routine names, ported from FM92R by aligning the two instruction streams. |
-| `web/` | Web CPS: Vite + TypeScript + Preact static site. See "Web CPS" below. |
+| `web/` | Web FPP (FM900 CPS): Vite + TypeScript + Preact static site. See "Web FPP" below. |
 | `.github/workflows/pages.yml` | Runs the web tests and deploys `web/dist` to GitHub Pages (`/FPP/`). |
 
 ## Rules when changing fm900gen.py
@@ -38,7 +38,7 @@ The original DOS files are reference material. **Never modify them.**
   * `fm900/JOBS/477`, first 20 channels, with channel 11's `F_SCAN1` flag cleared (that `.CHL` was edited after its `.BIN` was made)
 * **Unsupported paths.** FM93, FM97WP/waterproof and the selcall tone editor are not implemented. The relevant routines are listed in FM900_FORMAT.md §5.
 
-## Web CPS (`web/`)
+## Web FPP (`web/`)
 
 * `src/core/fm900.ts` is a **faithful port of `fm900gen.py`**: same routine order, the same FUNC address comments, the same quirks. Change both together. `fm900gen.py` stays the reference.
   * The x87 `Fraction` comparison in `vco_bit` becomes a double comparison of `f - ip`. That subtraction is exact (Sterbenz).
