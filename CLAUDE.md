@@ -52,6 +52,7 @@ The original DOS files are reference material. **Never modify them.**
   * `project.ts`: the UI's project model.
   * `analyze.ts`: per-row problems plus a trial build.
   * `masters.ts`: masters embedded as base64.
+* Theming: `style.css` defines colour tokens on `:root`, with dark values under `prefers-color-scheme` (guarded by `:root:not([data-theme='light'])`) and under `:root[data-theme='dark']`. Use the tokens, not literal colours. `src/ui/theme.ts` sets or clears `<html data-theme>` and stores the choice in `localStorage` (`fm900-web:theme`; absent = system). An inline script in `index.html` applies it before first paint. Keep its key in sync with `theme.ts`.
 * `src/core/masters.gen.ts` is generated from `fm900/MASTERS` by `scripts/gen-masters.mjs`, which runs before dev, build and test. It is gitignored. Don't copy the masters into `web/`.
 * **No out-of-band warnings** in the grid, importer or read-back: radios are often re-tuned (e.g. to the amateur bands). The band table is only used to pick the read-back step.
 * `Row.name` is UI-only. It goes in the project JSON and the CSV `name` column, never in the `.CHL` or the EPROM.

@@ -11,6 +11,7 @@ import { RadioPanel } from './RadioPanel';
 import { ReadPanel } from './ReadPanel';
 import { ScanKeysPanel } from './ScanKeysPanel';
 import { download, loadSaved, pickFiles, readBytes, safeName, save } from './files';
+import { Theme, applyTheme, loadTheme } from './theme';
 
 export type Tab = 'radio' | 'channels' | 'scan' | 'build' | 'read' | 'help';
 const TABS: [Tab, string][] = [
@@ -27,6 +28,7 @@ export function App() {
   const [readImg, setReadImg] = useState<{ name: string; data: Uint8Array } | null>(null);
   const [drag, setDrag] = useState(false);
   const [pendingImport, setPendingImport] = useState<ImportSource | null>(null);
+  const [theme, setTheme] = useState<Theme>(loadTheme);
   const undo = useRef<Project[]>([]);
   const redo = useRef<Project[]>([]);
   const lastPush = useRef(0);
@@ -63,6 +65,7 @@ export function App() {
   };
 
   useEffect(() => save(project), [project]);
+  useEffect(() => applyTheme(theme), [theme]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), toast.err ? 7000 : 3500);
@@ -177,6 +180,13 @@ export function App() {
           <span class="sep" />
           <button onClick={doUndo} disabled={!undo.current.length} title="Undo (Ctrl+Z)">Undo</button>
           <button onClick={doRedo} disabled={!redo.current.length} title="Redo (Ctrl+Y)">Redo</button>
+          <span class="sep" />
+          <select class="theme" value={theme} aria-label="Colour theme" title="Colour theme"
+            onChange={(e) => setTheme((e.target as HTMLSelectElement).value as Theme)}>
+            <option value="system">Theme: System</option>
+            <option value="light">Theme: Light</option>
+            <option value="dark">Theme: Dark</option>
+          </select>
         </div>
       </header>
 

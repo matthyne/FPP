@@ -136,6 +136,7 @@ Options:
   The dialog has short guides for getting a list out of RadioReference, RepeaterBook, CHIRP and spreadsheets. The preview marks rows it can't import: non-FM modes such as DMR, P25 and D-STAR, and frequencies needing more than 4 decimals. DCS codes are dropped with a note, because the FM900 only does CTCSS. CHIRP's 0-based memory numbers are shifted to start at 1.
 * **Save** writes a `.json` project. **Export JOB/CHL** writes files FM900.EXE can open. **Export CSV** writes the README format, with a trailing `name` column that `fm900gen.py` ignores.
 * Work is kept in the browser automatically, with undo/redo.
+* Light and dark themes. The **Theme** menu in the top bar picks System (follows the OS setting), Light or Dark. The choice is remembered in the browser.
 
 Row order matters, just as it does in FM900.EXE. It sets the scan-list order and which ring slots duplicate or VOTE channels get.
 
