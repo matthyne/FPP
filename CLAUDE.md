@@ -26,7 +26,7 @@ The original DOS files are reference material. **Never modify them.**
 | `firmware/FM92L.ann` | FM92L routine names, ported from FM92R by aligning the two instruction streams. |
 | `web/` | Web FPP (FM900 CPS): Vite + TypeScript + Preact static site. See "Web FPP" below. |
 | `docs/` | Reference PDFs: FM93 service manual (control schematic = page 54, Fig. 7.6B), VK2DOT FM92E guide, VK3BYY FM92 notes. `docs/README.md` lists what each is used for. Scanned pages have no text: render at 300 dpi to read. |
-| `STM900/` | Planning docs for an STM32 replacement of the 146805E2 + EPROM, with new open-source C firmware. `README.md` = plan, `HARDWARE.md` = original control hardware (from the FM93 service manual + FM92 disassembly). The STM900 firmware must be written from documented behaviour, never translated from the disassembly. The service manuals are in `docs/`. |
+| `STM900/` | Planning docs for an STM32 replacement of the 146805E2 + EPROM, with new open-source C firmware. `README.md` = plan, `HARDWARE.md` = original control hardware (from the FM93 service manual + FM92 disassembly). `capture/` = logic-analyser plan (`CAPTURE.md`, probe maps by IC408 pin) and `fm92cap.py`, a stdlib-only PulseView `.sr` decoder (`info`/`ports`/`bus`; channels found by name; test: `cd STM900/capture && python3 -m unittest test_fm92cap`). Captures go in `capture/data/`. The STM900 firmware must be written from documented behaviour, never translated from the disassembly. The service manuals are in `docs/`. |
 | `.github/workflows/pages.yml` | Runs the web tests and deploys `web/dist` to GitHub Pages (`/FPP/`). |
 
 ## Rules when changing fm900gen.py
