@@ -44,18 +44,21 @@ The original DOS files are reference material. **Never modify them.**
   * The x87 `Fraction` comparison in `vco_bit` becomes a double comparison of `f - ip`. That subtraction is exact (Sterbenz).
   * Use `.slice()` (copy) where the Python slices a bytearray.
 * Other core modules (DOM-free, so they're testable in Node):
-  * `channels.ts`: CSV parse and format.
+  * `channels.ts`: CSV parse and format (the README format, with an optional trailing `name` column).
+  * `import.ts`: foreign CSV import. It parses the table, guesses the header mapping (CHIRP/RepeaterBook, RadioReference, generic), and converts rows with a per-row ok/include/reason. The UI is `src/ui/ImportDialog.tsx`.
   * `decode.ts`: `dump` port, plus `readImage` (BIN → channels, best effort).
   * `codes.ts`: HW/SW digit tables.
   * `project.ts`: the UI's project model.
   * `analyze.ts`: per-row problems plus a trial build.
   * `masters.ts`: masters embedded as base64.
 * `src/core/masters.gen.ts` is generated from `fm900/MASTERS` by `scripts/gen-masters.mjs`, which runs before dev, build and test. It is gitignored. Don't copy the masters into `web/`.
+* `Row.name` is UI-only. It goes in the project JSON and the CSV `name` column, never in the `.CHL` or the EPROM.
 * **Rows are an ordered list, not slots.** Duplicate numbers and VOTE rings need several records per number, and record order decides ring slots and scan-list order. Never key the grid by channel number.
 * Tests (`cd web && npm test`):
   * `golden.test.ts`: the five regression jobs, byte-identical, both directly and through the UI project model.
   * `vectors.test.ts`: runs `test/gen_vectors.py`, about 3000 random cases built by `fm900gen.py`. Hash, error/no-error and VCO warnings must match. It is skipped if `python3` is missing. `FM900_VECTORS=n` changes the count.
   * `readback.test.ts`: decodes each reference `.BIN` back to channels and rebuilds it identically.
+  * `import.test.ts`: CHIRP, RadioReference (pasted), README, headerless and generic tables, plus tone parsing.
 * Dev: `cd web && npm install && npm run dev`, then open `http://localhost:5173/FPP/`. Vite `base` is `/FPP/` (override with `FM900_BASE`).
 
 ## Facts confirmed from both sides

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { analyze } from '../core/analyze';
-import { formatChannels, parseChannels } from '../core/channels';
+import { formatChannels } from '../core/channels';
 import { FM900Error, readChl, readJob, writeChl, writeJob } from '../core/fm900';
-import { Project, Row, channelToRow, fromProject, loadProjectJson, newProject } from '../core/project';
+import { Project, Row, channelToRow, fromProject, isBlank, loadProjectJson, newProject } from '../core/project';
 import { BuildPanel } from './BuildPanel';
 import { ChannelsPanel } from './ChannelsPanel';
 import { HelpPanel } from './HelpPanel';
+import type { ImportSource } from './ImportDialog';
 import { RadioPanel } from './RadioPanel';
 import { ReadPanel } from './ReadPanel';
 import { ScanKeysPanel } from './ScanKeysPanel';
@@ -25,6 +26,7 @@ export function App() {
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
   const [readImg, setReadImg] = useState<{ name: string; data: Uint8Array } | null>(null);
   const [drag, setDrag] = useState(false);
+  const [pendingImport, setPendingImport] = useState<ImportSource | null>(null);
   const undo = useRef<Project[]>([]);
   const redo = useRef<Project[]>([]);
   const lastPush = useRef(0);
@@ -106,10 +108,7 @@ export function App() {
         notify(`Opened ${[job?.name, chl?.name].filter(Boolean).join(' + ')}${job && !chl ? ' (codes only: add the .CHL for channels)' : ''}`);
         setTab(chl ? 'channels' : 'radio');
       } else if (text) {
-        const chans = parseChannels(await text.text());
-        if (!confirmReplace()) return;
-        update((p) => ({ ...p, rows: chans.map(channelToRow) }));
-        notify(`Imported ${chans.length} channels from ${text.name}`);
+        setPendingImport({ name: text.name, text: await text.text() });
         setTab('channels');
       } else if (bin) {
         setReadImg({ name: bin.name, data: await readBytes(bin) });
@@ -133,7 +132,8 @@ export function App() {
   };
   const exportCsv = () => {
     try {
-      download(`${safeName(project.name)}.csv`, formatChannels(fromProject(project)), 'text/csv');
+      const names = project.rows.filter((r) => !isBlank(r)).map((r) => r.name ?? '');
+      download(`${safeName(project.name)}.csv`, formatChannels(fromProject(project), names), 'text/csv');
     } catch (e) {
       fail(e);
     }
@@ -192,7 +192,8 @@ export function App() {
 
       <main class="main">
         {tab === 'radio' && <RadioPanel p={project} a={a} update={update} />}
-        {tab === 'channels' && <ChannelsPanel p={project} a={a} update={update} notify={notify} />}
+        {tab === 'channels' && <ChannelsPanel p={project} a={a} update={update} notify={notify}
+          pendingImport={pendingImport} clearImport={() => setPendingImport(null)} />}
         {tab === 'scan' && <ScanKeysPanel p={project} a={a} update={update} />}
         {tab === 'build' && <BuildPanel p={project} a={a} update={update} notify={notify} />}
         {tab === 'read' && <ReadPanel p={project} img={readImg} setImg={setReadImg} load={loadRows} />}

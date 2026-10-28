@@ -121,13 +121,20 @@ Options:
 | Tab | What it does |
 |---|---|
 | Radio | Job name, comments and build date. The HW and SW codes, as digits or as a menu per digit. Shows the master, band, IF and step it implies. |
-| Channels | Grid of Rx, Tx (`X` = receive only), power, CTCSS, scan S1/P1/S2/P2 (plus S3/P3 on FM91), operator scan, VOTE, ECON, SELCALL and C/R. Fill a range, paste from a spreadsheet, set a Tx offset on the selected rows, duplicate, move, renumber. Each row flags problems (off-raster, out of band, duplicate). |
+| Channels | Grid of Rx, Tx (`X` = receive only), power, CTCSS, a name (kept in the project and CSV only, not in the radio), scan S1/P1/S2/P2 (plus S3/P3 on FM91), operator scan, VOTE, ECON, SELCALL and C/R. Fill a range, **import a CSV or pasted table** (see below), set a Tx offset on the selected rows, duplicate, move, renumber. Each row flags problems (off-raster, out of band, duplicate). |
 | Scan & Keys | Scan block members and priority, with the 10-channel limit. FM92 head function keys (the same as `--keys`). |
 | Build | Downloads the `.BIN`. Shows a summary, VCO warnings, a hex view with the bytes changed from the master highlighted, and the decoded dump. |
 | Read image | Opens a `.BIN`. Enter the radio's HW code and it decodes the image into channels, which you can load into the project. |
 
 * **Open** takes `.JOB` + `.CHL` (select both), `.csv`/`.txt`, `.json` projects and `.BIN` images. Drag and drop works too.
-* **Save** writes a `.json` project. **Export JOB/CHL** writes files FM900.EXE can open.
+* **Import CSV / paste** (Channels tab, or opening a `.csv`) reads:
+  * CHIRP CSV, which is also what RepeaterBook exports. Tone mode `Tone` uses rToneFreq and `TSQL` uses cToneFreq. Duplex `+`/`-`/`split`/`off` sets Tx.
+  * RadioReference CSV downloads, or a frequency table copied straight from a RadioReference page (tab separated). Tones like `100.0 PL` are read; `CSQ` means none.
+  * The README format, including the VOTE/ECON/SELCALL/C/R columns.
+  * Any table with a header row. Columns are matched by name and can be remapped in the dialog.
+
+  The preview marks rows it can't import (non-FM modes such as DMR, P25 and D-STAR, or frequencies needing more than 4 decimals), and leaves rows far outside the radio's band unticked. DCS codes are dropped with a note, because the FM900 only does CTCSS. CHIRP's 0-based memory numbers are shifted to start at 1.
+* **Save** writes a `.json` project. **Export JOB/CHL** writes files FM900.EXE can open. **Export CSV** writes the README format, with a trailing `name` column that `fm900gen.py` ignores.
 * Work is kept in the browser automatically, with undo/redo.
 
 Row order matters, just as it does in FM900.EXE. It sets the scan-list order and which ring slots duplicate or VOTE channels get.
@@ -138,7 +145,7 @@ Developing:
 cd web
 npm install
 npm run dev        # http://localhost:5173/FPP/
-npm test           # golden jobs, ~3000 random cases vs fm900gen.py, BIN read-back
+npm test           # golden jobs, ~3000 random cases vs fm900gen.py, BIN read-back, CSV import
 npm run build      # static site in web/dist
 ```
 

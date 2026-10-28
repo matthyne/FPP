@@ -10,6 +10,7 @@ export interface Row {
   tx: string;      // MHz, 'X' = receive only, '' = same as rx
   flags: number;   // .CHL flag word (F_*)
   ctcss: string;   // CTCSS letter code, '' = none
+  name?: string;   // label for the user only: not stored in the .CHL or the EPROM
 }
 
 export interface Project {

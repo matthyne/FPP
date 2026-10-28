@@ -155,6 +155,22 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
 .issues ul { margin: 0; padding-left: 18px; }
 .issues li { margin: 3px 0; }
 
+/* import */
+.modal.wide { width: min(1000px, 100%); }
+.actions.left { justify-content: flex-start; align-items: center; }
+.importhead { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; margin-bottom: 10px; }
+.mapgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0 12px; padding: 10px 12px 2px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; }
+.importopts { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; margin-bottom: 8px; }
+.importopts .check { margin: 0; }
+.field.inline { flex-direction: row; align-items: center; gap: 8px; margin: 0; }
+.gridwrap.preview { max-height: 45vh; overflow: auto; }
+.grid tr.skip td { color: var(--muted); text-decoration: line-through; }
+.grid tr.skip td.bad, .grid tr.skip td.sel { text-decoration: none; }
+.grid tr.off td { color: var(--muted); }
+.grid td.name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.grid input.name { width: 11em; }
+
 /* scan */
 .blocks { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 .block { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface-2); }

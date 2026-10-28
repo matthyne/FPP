@@ -115,14 +115,23 @@ export function scanText(flags: number): string {
   return s;
 }
 
-/** Write the README CSV format with a header row; parseChannels reads it back unchanged. */
-export function formatChannels(chans: Channel[]): string {
+/**
+ * Write the README CSV format with a header row; parseChannels reads it back unchanged.
+ * Optional names go in a trailing `name` column, which fm900gen.py ignores.
+ */
+export function formatChannels(chans: Channel[], names?: string[]): string {
   const yn = (b: number) => (b ? 'Y' : '');
-  const lines = [COLS.join(',')];
-  for (const c of chans) {
+  const withNames = !!names?.some((n) => n);
+  const quote = (n: string) => {
+    const t = n.replace(/#/g, '').replace(/[\r\n]+/g, ' ');
+    return /[",]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  const lines = [[...COLS, ...(withNames ? ['name'] : [])].join(',')];
+  for (const [i, c] of chans.entries()) {
     const ct = c.ctcss ? (CTCSS_HZ_BY_CODE.get(c.ctcss)?.toFixed(1) ?? '') : '';
     lines.push([c.num, c.rx, c.tx.startsWith('X') ? 'X' : c.tx, powerLetter(c.flags), scanText(c.flags), ct,
-      yn(c.flags & F_VOTE), yn(c.flags & F_ECON), yn(c.flags & F_SELCALL), yn(c.flags & F_CR)].join(','));
+      yn(c.flags & F_VOTE), yn(c.flags & F_ECON), yn(c.flags & F_SELCALL), yn(c.flags & F_CR),
+      ...(withNames ? [quote(names![i] ?? '')] : [])].join(','));
   }
   return lines.join('\n') + '\n';
 }

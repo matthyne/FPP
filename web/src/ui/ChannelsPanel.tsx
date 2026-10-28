@@ -1,13 +1,13 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { Analysis } from '../core/analyze';
-import { parseChannels } from '../core/channels';
 import {
   CTCSS, F_CR, F_ECON, F_HIGH, F_LOW, F_MED, F_PRI1, F_PRI2, F_PRI3, F_SCAN1, F_SCAN2, F_SCAN3,
   F_SCANSEL, F_SELCALL, F_SELPWR, F_VOTE, normFreq,
 } from '../core/fm900';
-import { Project, Row, channelToRow } from '../core/project';
+import { Project, Row } from '../core/project';
 import type { Update } from './App';
 import { errMsg } from './App';
+import { ImportDialog, ImportSource } from './ImportDialog';
 
 const POWER: [number, string][] = [[F_HIGH, 'H 25 W'], [F_MED, 'M 5 W'], [F_LOW, 'L 1 W'], [F_SELPWR, 'S select'], [0, '—']];
 const PWR_MASK = F_HIGH | F_MED | F_LOW | F_SELPWR;
@@ -45,9 +45,13 @@ function focusCell(row: number, col: string) {
   if (el instanceof HTMLInputElement) el.select();
 }
 
-export function ChannelsPanel({ p, a, update, notify }: { p: Project; a: Analysis; update: Update; notify: (m: string, e?: boolean) => void }) {
+export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport }: {
+  p: Project; a: Analysis; update: Update; notify: (m: string, e?: boolean) => void;
+  pendingImport: ImportSource | null; clearImport: () => void;
+}) {
   const [sel, setSel] = useState<Set<number>>(new Set());
-  const [dialog, setDialog] = useState<'none' | 'paste' | 'fill' | 'offset'>('none');
+  const [dialog, setDialog] = useState<'none' | 'import' | 'fill' | 'offset'>(pendingImport ? 'import' : 'none');
+  useEffect(() => { if (pendingImport) setDialog('import'); }, [pendingImport]);
   const fm91 = p.hw[1] === '1';
   const cols = FLAG_COLS.filter((c) => fm91 || !c.fm91);
   const selected = [...sel].filter((i) => i < p.rows.length).sort((x, y) => x - y);
@@ -108,7 +112,7 @@ export function ChannelsPanel({ p, a, update, notify }: { p: Project; a: Analysi
       <div class="toolbar">
         <button class="primary" onClick={addRow}>+ Channel</button>
         <button onClick={() => setDialog('fill')}>Fill range…</button>
-        <button onClick={() => setDialog('paste')}>Paste text…</button>
+        <button onClick={() => setDialog('import')} title="CSV from CHIRP, RepeaterBook, RadioReference or a spreadsheet">Import CSV / paste…</button>
         <button onClick={renumber} title="Number the rows 1, 2, 3… in their current order">Renumber</button>
         <button onClick={sortByNum}>Sort by Ch</button>
         <span class="count">{a.chans.length} / {a.nmax} channels</span>
@@ -140,7 +144,7 @@ export function ChannelsPanel({ p, a, update, notify }: { p: Project; a: Analysi
       {p.rows.length === 0 ? (
         <div class="empty">
           <p>No channels yet.</p>
-          <p><button class="primary" onClick={addRow}>+ Add a channel</button> <button onClick={() => setDialog('paste')}>Paste a list</button> <button onClick={() => setDialog('fill')}>Fill a range</button></p>
+          <p><button class="primary" onClick={addRow}>+ Add a channel</button> <button onClick={() => setDialog('import')}>Import a CSV / paste a list</button> <button onClick={() => setDialog('fill')}>Fill a range</button></p>
           <p class="hint">Or drop a <code>.JOB</code> + <code>.CHL</code> pair, a CSV, or a project file anywhere on the page.</p>
         </div>
       ) : (
@@ -151,7 +155,7 @@ export function ChannelsPanel({ p, a, update, notify }: { p: Project; a: Analysi
                 <th class="sel"><input type="checkbox" aria-label="Select all" checked={allSel}
                   onChange={() => setSel(allSel ? new Set() : new Set(p.rows.map((_, i) => i)))} /></th>
                 <th class="st" />
-                <th>Ch</th><th>Rx MHz</th><th>Tx MHz <small>(X = Rx only)</small></th><th>Power</th><th>CTCSS Hz</th>
+                <th>Ch</th><th>Rx MHz</th><th>Tx MHz <small>(X = Rx only)</small></th><th>Power</th><th>CTCSS Hz</th><th>Name</th>
                 {cols.map((c) => <th class="flag" title={c.title}>{c.label}</th>)}
               </tr>
             </thead>
@@ -184,6 +188,8 @@ export function ChannelsPanel({ p, a, update, notify }: { p: Project; a: Analysi
                       {!ctKnown && <option value={r.ctcss}>{r.ctcss} (invalid)</option>}
                       {TONES.map(([c, , hz]) => <option value={c}>{hz.toFixed(1)}</option>)}
                     </select></td>
+                    <td><input class="name" data-row={i} data-col="name" value={r.name ?? ''} placeholder="—" aria-label="Name (not stored in the radio)"
+                      onInput={(e) => setRow(i, { name: (e.target as HTMLInputElement).value })} onKeyDown={onKey(i, 'name')} /></td>
                     {cols.map((c) => (
                       <td class="flag"><input type="checkbox" aria-label={`${c.title}, row ${i + 1}`} checked={!!(r.flags & c.f)}
                         onChange={() => setRow(i, { flags: r.flags ^ c.f })} /></td>
@@ -211,11 +217,15 @@ export function ChannelsPanel({ p, a, update, notify }: { p: Project; a: Analysi
         </section>
       )}
 
-      {dialog === 'paste' && <PasteDialog close={() => setDialog('none')} apply={(rows, mode) => {
-        setRows((old) => (mode === 'replace' ? rows : [...old, ...rows]));
-        notify(`${mode === 'replace' ? 'Replaced with' : 'Added'} ${rows.length} channels`);
-        setDialog('none');
-      }} />}
+      {dialog === 'import' && <ImportDialog hw={p.hw} nextNum={parseInt(nextNum(), 10)} existing={a.chans.length} initial={pendingImport}
+        close={() => { setDialog('none'); clearImport(); }}
+        apply={(rows, mode) => {
+          if (mode === 'replace' && p.rows.length && !window.confirm('Replace the current channel list? (Undo is available.)')) return;
+          setRows((old) => (mode === 'replace' ? rows : [...old, ...rows]));
+          notify(`${mode === 'replace' ? 'Replaced with' : 'Added'} ${rows.length} channels`);
+          setDialog('none');
+          clearImport();
+        }} />}
       {dialog === 'fill' && <FillDialog start={parseInt(nextNum(), 10)} close={() => setDialog('none')} apply={(rows) => {
         setRows((old) => [...old, ...rows]);
         notify(`Added ${rows.length} channels`);
@@ -242,28 +252,6 @@ function Modal({ title, close, children }: { title: string; close: () => void; c
         {children}
       </div>
     </div>
-  );
-}
-
-function PasteDialog({ close, apply }: { close: () => void; apply: (rows: Row[], mode: 'append' | 'replace') => void }) {
-  const [text, setText] = useState('');
-  let rows: Row[] = [], err = '';
-  if (text.trim()) {
-    try { rows = parseChannels(text.replace(/\t/g, ',')).map(channelToRow); } catch (e) { err = errMsg(e); }
-  }
-  return (
-    <Modal title="Paste channels" close={close}>
-      <p class="hint">One channel per line, comma, tab or space separated: <code>rx tx power scan ctcss vote econ selcall cr</code>,
-        or a header row naming the columns (<code>ch,rx,tx,power,scan,ctcss…</code>). Copy straight from a spreadsheet.</p>
-      <textarea class="mono" rows={10} autoFocus value={text} placeholder={'ch,rx,tx,power,scan,ctcss\n1,147.000,147.000,H,,\n2,146.400,147.000,H,1,173.8'}
-        onInput={(e) => setText((e.target as HTMLTextAreaElement).value)} />
-      <p class={err ? 'msg bad' : 'hint'}>{err || (rows.length ? `${rows.length} channels parsed` : ' ')}</p>
-      <div class="actions">
-        <button onClick={close}>Cancel</button>
-        <button disabled={!rows.length || !!err} onClick={() => apply(rows, 'replace')}>Replace all</button>
-        <button class="primary" disabled={!rows.length || !!err} onClick={() => apply(rows, 'append')}>Append</button>
-      </div>
-    </Modal>
   );
 }
 
