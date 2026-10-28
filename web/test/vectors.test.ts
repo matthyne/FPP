@@ -16,10 +16,12 @@ interface Case {
 function pythonCases(n: number): Case[] | null {
   try {
     const out = execFileSync('python3', [join(__dirname, 'gen_vectors.py'), String(n)],
-      { maxBuffer: 256 << 20, stdio: ['ignore', 'pipe', 'ignore'] });
+      { maxBuffer: 256 << 20, stdio: ['ignore', 'pipe', 'inherit'] });
     return JSON.parse(out.toString());
-  } catch {
-    return null;
+  } catch (e) {
+    // skip only when python3 isn't installed, and never in CI; any other failure is a test failure
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT' && !process.env.CI) return null;
+    throw e;
   }
 }
 

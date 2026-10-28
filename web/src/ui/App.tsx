@@ -122,12 +122,11 @@ export function App() {
     }
   }
 
+  const [jobDialog, setJobDialog] = useState(false);
   const exportJob = () => {
     try {
-      const chans = fromProject(project);
-      const n = safeName(project.name);
-      download(`${n}.JOB`, writeJob(project.hw, project.sw, project.comments));
-      setTimeout(() => download(`${n}.CHL`, writeChl(chans)), 300);
+      fromProject(project);
+      setJobDialog(true);
     } catch (e) {
       fail(e);
     }
@@ -209,6 +208,21 @@ export function App() {
         <span class={`grow ${status ? 'bad' : 'ok'}`}>{status ? `⚠ ${status}` : '✓ ready to build'}</span>
       </footer>
 
+      {jobDialog && (
+        <div class="modal-bg" onClick={(e) => { if (e.target === e.currentTarget) setJobDialog(false); }}>
+          <div class="modal" role="dialog" aria-label="Export JOB/CHL">
+            <h2>Export for FM900.EXE</h2>
+            <p class="hint">FM900.EXE needs both files, with the same name, in its <code>JOBS</code> folder.</p>
+            <div class="actions">
+              <button onClick={() => download(`${safeName(project.name)}.JOB`, writeJob(project.hw, project.sw, project.comments))}>
+                Download {safeName(project.name)}.JOB</button>
+              <button onClick={() => download(`${safeName(project.name)}.CHL`, writeChl(fromProject(project)))}>
+                Download {safeName(project.name)}.CHL</button>
+              <button class="primary" onClick={() => setJobDialog(false)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
       {toast && <div class={`toast ${toast.err ? 'err' : ''}`} role="status" onClick={() => setToast(null)}>{toast.msg}</div>}
       {drag && <div class="dropzone">Drop .json, .JOB + .CHL, .csv or .BIN</div>}
     </div>

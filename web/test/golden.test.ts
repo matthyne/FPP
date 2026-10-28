@@ -44,3 +44,15 @@ describe('golden sample jobs', () => {
     });
   }
 });
+
+describe('FM92 key override', () => {
+  it('blocks an FM91 build until it is cleared', async () => {
+    const { analyze } = await import('../src/core/analyze');
+    const { newProject } = await import('../src/core/project');
+    const p = { ...newProject(), hw: '92440150', keys: [1, 2, 5, 6],
+      rows: [{ num: '1', rx: '147.0000', tx: '', flags: 1, ctcss: '' }] };
+    expect(analyze(p).img).not.toBeNull();
+    expect(analyze({ ...p, hw: '91440150' }).codeError).toMatch(/FM92/);
+    expect(analyze({ ...p, hw: '91440150', keys: null }).img).not.toBeNull();
+  });
+});

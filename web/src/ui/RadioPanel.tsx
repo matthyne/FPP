@@ -26,7 +26,10 @@ function DigitSelect({ code, len, i, d, onSet }: { code: string; len: number; i:
 }
 
 export function RadioPanel({ p, a, update }: { p: Project; a: Analysis; update: Update }) {
-  const set = (patch: Partial<Project>) => update((q) => ({ ...q, ...patch }));
+  const set = (patch: Partial<Project>) => update((q) => {
+    const n = { ...q, ...patch };
+    return n.hw[1] !== '2' ? { ...n, keys: null } : n;   // key remapping is FM92-only
+  });
   const b = a.builder;
   const band = BAND_MHZ[p.hw[2]];
   const enc = p.sw.slice(11, 13), dec = p.sw.slice(13, 15);

@@ -73,7 +73,13 @@ export function ScanKeysPanel({ p, a, update }: { p: Project; a: Analysis; updat
       <section class="card wide">
         <h2>Head function keys {fm92 ? '' : <small>(FM92 only)</small>}</h2>
         {!fm92 ? (
-          <p class="hint">On the FM91 the key bytes 0x1F58–0x1F5B hold scan block 3, so they can't be remapped.</p>
+          <>
+            <p class="hint">On the FM91 the key bytes 0x1F58–0x1F5B hold scan block 3, so they can't be remapped.</p>
+            {p.keys !== null && (
+              <p class="msg bad">This project has a key override, which blocks the FM91 build.{' '}
+                <button onClick={() => update((q) => ({ ...q, keys: null }))}>Clear key override</button></p>
+            )}
+          </>
         ) : (
           <>
             <p class="hint">The FM92 acts on four key codes from the control head: 1, 2, 4 and 7. Each runs the function stored at
