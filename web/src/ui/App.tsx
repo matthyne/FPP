@@ -12,6 +12,7 @@ import { ReadPanel } from './ReadPanel';
 import { ScanKeysPanel } from './ScanKeysPanel';
 import { download, loadSaved, pickFiles, readBytes, safeName, save } from './files';
 import { Theme, applyTheme, loadTheme } from './theme';
+import radioPhoto from '../assets/fm900.webp';
 
 export type Tab = 'radio' | 'channels' | 'scan' | 'build' | 'read' | 'help';
 const TABS: [Tab, string][] = [
@@ -168,7 +169,7 @@ export function App() {
     >
       <header class="topbar">
         <div class="brand">
-          <span class="logo" aria-hidden="true">FM900</span>
+          <img class="logo" src={radioPhoto} alt="" width={110} height={40} />
           <span class="brand-text">Web CPS <small>Philips FM91 / FM92 EPROM builder</small></span>
         </div>
         <div class="file-actions">

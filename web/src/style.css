@@ -16,7 +16,6 @@
   --info-soft: #e3eefc;
   --head: #1f2125;
   --head-ink: #f2efe9;
-  --lcd: #f59e0b;
   --sel: #fff3e8;
   --chg: #fcd9c4;
   --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
@@ -52,8 +51,7 @@ small { color: var(--muted); font-weight: normal; }
 .topbar { background: var(--head); color: var(--head-ink); display: flex; flex-wrap: wrap; gap: 8px 16px;
   align-items: center; justify-content: space-between; padding: 10px 16px; }
 .brand { display: flex; align-items: center; gap: 10px; }
-.logo { font: 700 13px/1 var(--mono); letter-spacing: 1px; color: #111; background: var(--lcd); padding: 6px 8px;
-  border-radius: 3px; box-shadow: inset 0 0 0 2px rgba(0,0,0,.15); }
+.logo { display: block; height: 40px; width: auto; border-radius: 4px; box-shadow: 0 0 0 1px #4a4d55; }
 .brand-text { font-weight: 600; font-size: 16px; display: flex; flex-direction: column; line-height: 1.15; }
 .brand-text small { color: #a8a39a; font-size: 11.5px; }
 .file-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
