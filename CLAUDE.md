@@ -53,7 +53,7 @@ The original DOS files are reference material. **Never modify them.**
   * `analyze.ts`: per-row problems plus a trial build.
   * `masters.ts`: masters embedded as base64.
 * Theming: `style.css` defines colour tokens on `:root`, with dark values under `prefers-color-scheme` (guarded by `:root:not([data-theme='light'])`) and under `:root[data-theme='dark']`. Use the tokens, not literal colours. `src/ui/theme.ts` sets or clears `<html data-theme>` and stores the choice in `localStorage` (`fm900-web:theme`; absent = system). An inline script in `index.html` applies it before first paint. Keep its key in sync with `theme.ts`.
-* The Help tab (`src/ui/HelpPanel.tsx`) calls FM900.EXE "the Original FPP" and does not mention the Python version.
+* User-facing UI text calls FM900.EXE "the Original FPP". The Help tab (`src/ui/HelpPanel.tsx`) does not mention the Python version. Code comments and the other docs still say FM900.EXE.
 * `src/assets/fm900.webp` is the top-bar logo: a 96 px-tall resize of the MWRS FM900 front-panel photo (`https://www.mwrs.org.au/wp-content/uploads/2016/07/Clubs-FM900.png`). Shown at 40 px tall. `tsconfig.json` includes `vite/client` types for asset imports.
 * `src/core/masters.gen.ts` is generated from `fm900/MASTERS` by `scripts/gen-masters.mjs`, which runs before dev, build and test. It is gitignored. Don't copy the masters into `web/`.
 * **No out-of-band warnings** in the grid, importer or read-back: radios are often re-tuned (e.g. to the amateur bands). The band table is only used to pick the read-back step.

@@ -176,7 +176,7 @@ export function App() {
           <button onClick={newProj}>New</button>
           <button onClick={async () => openFiles(await pickFiles('.json,.job,.chl,.csv,.txt,.bin,.JOB,.CHL,.BIN'))}>Open…</button>
           <button onClick={saveJson} title="Save the whole project as JSON">Save</button>
-          <button onClick={exportJob} title="Write .JOB + .CHL for the DOS FM900.EXE">Export JOB/CHL</button>
+          <button onClick={exportJob} title="Write .JOB + .CHL for the Original FPP">Export JOB/CHL</button>
           <button onClick={exportCsv}>Export CSV</button>
           <span class="sep" />
           <button onClick={doUndo} disabled={!undo.current.length} title="Undo (Ctrl+Z)">Undo</button>
@@ -223,8 +223,8 @@ export function App() {
       {jobDialog && (
         <div class="modal-bg" onClick={(e) => { if (e.target === e.currentTarget) setJobDialog(false); }}>
           <div class="modal" role="dialog" aria-label="Export JOB/CHL">
-            <h2>Export for FM900.EXE</h2>
-            <p class="hint">FM900.EXE needs both files, with the same name, in its <code>JOBS</code> folder.</p>
+            <h2>Export for the Original FPP</h2>
+            <p class="hint">The Original FPP needs both files, with the same name, in its <code>JOBS</code> folder.</p>
             <div class="actions">
               <button onClick={() => download(`${safeName(project.name)}.JOB`, writeJob(project.hw, project.sw, project.comments))}>
                 Download {safeName(project.name)}.JOB</button>

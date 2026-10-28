@@ -82,7 +82,7 @@ export function RadioPanel({ p, a, update }: { p: Project; a: Analysis; update: 
           </dl>
         )}
         {p.sw.slice(11, 15) !== '0000' && /^\d{15}$/.test(p.sw) && (
-          <p class="msg warn">Selcall codes are set. FM900.EXE would continue into its selcall editor; this tool leaves the selcall tones at their defaults.</p>
+          <p class="msg warn">Selcall codes are set. The Original FPP would continue into its selcall editor; this tool leaves the selcall tones at their defaults.</p>
         )}
       </section>
 

@@ -21,7 +21,7 @@ export function ScanKeysPanel({ p, a, update }: { p: Project; a: Analysis; updat
     <div class="panel scan">
       <section class="card wide">
         <h2>Scan blocks</h2>
-        <p class="hint">Members are listed in row order, which is the order FM900.EXE writes them. Each block holds at most 10 channels.
+        <p class="hint">Members are listed in row order, which is the order the Original FPP writes them. Each block holds at most 10 channels.
           You can also tick S1/P1/S2/P2 in the channel grid.</p>
         <div class="blocks">
           {blocks.map(([n, fm, fp]) => {
@@ -83,8 +83,8 @@ export function ScanKeysPanel({ p, a, update }: { p: Project; a: Analysis; updat
         ) : (
           <>
             <p class="hint">The FM92 acts on four key codes from the control head: 1, 2, 4 and 7. Each runs the function stored at
-              0x1F58–0x1F5B. FM900.EXE fills these from the software code. Overriding them is the one deliberate
-              deviation from FM900.EXE; it only changes the image checksum.</p>
+              0x1F58–0x1F5B. The Original FPP fills these from the software code. Overriding them is the one deliberate
+              deviation from the Original FPP; it only changes the image checksum.</p>
             <label class="check">
               <input type="checkbox" checked={p.keys !== null}
                 onChange={() => update((q) => ({ ...q, keys: q.keys === null ? [...(a.defaultKeys ?? [1, 2, 5, 0])] : null }))} />

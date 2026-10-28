@@ -39,7 +39,7 @@ export function ReadPanel({ p, img, setImg, load }: {
       <div class="panel read">
         <section class="card wide empty">
           <h2>Read an EPROM image</h2>
-          <p>Open an 8 KB <code>.BIN</code> read from a radio's 2764, or one made by FM900.EXE, to decode it back into a channel list.</p>
+          <p>Open an 8 KB <code>.BIN</code> read from a radio's 2764, or one made by the Original FPP, to decode it back into a channel list.</p>
           <p><button class="primary" onClick={open}>Open .BIN…</button></p>
           <p class="hint">You can also drop the file anywhere on the page.</p>
         </section>

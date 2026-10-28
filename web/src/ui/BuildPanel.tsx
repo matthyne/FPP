@@ -89,7 +89,7 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
           )}
           {a.vcoWarnings.map((w) => <p class="msg warn">{w}! The radio may not operate correctly.</p>)}
           {p.sw.slice(11, 15) !== '0000' && <p class="msg warn">Selcall codes are set: the selcall tones are left at their defaults.</p>}
-          {p.keys && <p class="msg info">Head function keys are overridden (not FM900.EXE behaviour).</p>}
+          {p.keys && <p class="msg info">Head function keys are overridden (not Original FPP behaviour).</p>}
         </div>
         <div class="buildactions">
           <label class="field">
