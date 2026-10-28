@@ -61,7 +61,7 @@ part (inferred).
 | `$08` / `$09` | Timer data / timer control |
 | `$10–$68` | On-chip RAM: flags, current channel, soft timers, ADC results |
 | `$21–$24` | Small self-modifying RAM routine (`LDA $hhll,X ; RTS` or `ADD …`), used to index the channel table and scan lists in EPROM |
-| `$80–$86` | External peripherals: `$80` selcall tone encoder/decoder, `$81` CTCSS tone generator, `$82` output latch, `$84–$86` tone-chip set-up |
+| `$80–$86` | External peripherals: `$80` selcall tone encoder/decoder, `$81` CTCSS tone generator, `$82` output latch, `$84–$86` tone-chip set-up. These offsets match an NSC810 RAM-I/O-timer (ports A–C, then their direction registers), which the FM93 service manual shows as IC415 **(inferred; see `../STM900/HARDWARE.md` §6)** |
 | `$A0–$EC` | External RAM: selcall buffers and flags, additional soft timers |
 | `$0100–$1AFF` | Firmware |
 | `$1BE8–$1EFF` | Channel table: 99 × 8 bytes (FM900_FORMAT.md §4.2) |

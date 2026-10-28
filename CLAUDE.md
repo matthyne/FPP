@@ -25,6 +25,7 @@ The original DOS files are reference material. **Never modify them.**
 | `firmware/*.lst` | Annotated 68HC05 listings. These are generated: edit `firmware/*.ann` (`=addr name` or `addr comment`) and re-run `python3 firmware/tools/mklist.py FM92R` (needs `pip install capstone`). |
 | `firmware/FM92L.ann` | FM92L routine names, ported from FM92R by aligning the two instruction streams. |
 | `web/` | Web FPP (FM900 CPS): Vite + TypeScript + Preact static site. See "Web FPP" below. |
+| `STM900/` | Planning docs for an STM32 replacement of the 146805E2 + EPROM, with new open-source C firmware. `README.md` = plan, `HARDWARE.md` = original control hardware (from the FM93 service manual + FM92 disassembly). The STM900 firmware must be written from documented behaviour, never translated from the disassembly. Don't commit the service manual (copyright, 14 MB). |
 | `.github/workflows/pages.yml` | Runs the web tests and deploys `web/dist` to GitHub Pages (`/FPP/`). |
 
 ## Rules when changing fm900gen.py
