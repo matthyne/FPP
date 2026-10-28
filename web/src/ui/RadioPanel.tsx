@@ -61,10 +61,13 @@ export function RadioPanel({ p, a, update }: { p: Project; a: Analysis; update: 
           <span class="lab">Start from an example</span>
           <select value="" onChange={(e) => {
             const ex = EXAMPLES[+(e.target as HTMLSelectElement).value];
-            if (ex) set({ hw: ex.hw, sw: ex.sw });
+            if (!ex) return;
+            if (!ex.project) set({ hw: ex.hw, sw: ex.sw });
+            else if (!p.rows.length || window.confirm('Replace the current project with this example? (Undo is available.)'))
+              update(() => structuredClone(ex.project!));
           }}>
             <option value="">Choose…</option>
-            {EXAMPLES.map((ex, i) => <option value={i}>{ex.name} — {ex.hw} / {ex.sw}</option>)}
+            {EXAMPLES.map((ex, i) => <option value={i}>{ex.name} — {ex.hw} / {ex.sw}{ex.project ? ` + ${ex.project.rows.length} channels` : ''}</option>)}
           </select>
         </label>
       </section>

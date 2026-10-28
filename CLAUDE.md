@@ -48,7 +48,7 @@ The original DOS files are reference material. **Never modify them.**
   * `presets.ts`: built-in channel plans (UHF CB 80/40), UI in `src/ui/PlansDialog.tsx`. Only regulation-fixed plans go here; regional amateur lists come in through the importer.
   * `import.ts`: foreign CSV import. It parses the table, guesses the header mapping (CHIRP/RepeaterBook, RadioReference, generic), and converts rows with a per-row ok/include/reason. The UI is `src/ui/ImportDialog.tsx`.
   * `decode.ts`: `dump` port, plus `readImage` (BIN → channels, best effort).
-  * `codes.ts`: HW/SW digit tables.
+  * `codes.ts`: HW/SW digit tables and `EXAMPLES` (the Radio tab's "Start from an example"). An example with a `project` loads the whole project (channels, keys) instead of only setting the codes. The 2 m channelised example's project is `src/core/examples/2m-channelised.json`, in the saved-project format.
   * `project.ts`: the UI's project model.
   * `analyze.ts`: per-row problems plus a trial build.
   * `masters.ts`: masters embedded as base64.
@@ -64,7 +64,7 @@ The original DOS files are reference material. **Never modify them.**
   * `vectors.test.ts`: runs `test/gen_vectors.py`, about 3000 random cases built by `fm900gen.py`. Hash, error/no-error and VCO warnings must match. It is skipped if `python3` is missing. `FM900_VECTORS=n` changes the count.
   * `readback.test.ts`: decodes each reference `.BIN` back to channels and rebuilds it identically.
   * `import.test.ts`: CHIRP, RadioReference (pasted), README, headerless and generic tables, plus tone parsing.
-  * `presets.test.ts`: the UHF CB 80 plan equals the `80CHCB.CHL` sample channel for channel, and both plans build.
+  * `presets.test.ts`: the UHF CB 80 plan equals the `80CHCB.CHL` sample channel for channel, and both plans build. Every full-project example builds with no row errors or warnings.
 * Dev: `cd web && npm install && npm run dev`, then open `http://localhost:5173/FPP/`. Vite `base` is `/FPP/` (override with `FM900_BASE`).
 
 ## Facts confirmed from both sides

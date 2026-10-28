@@ -120,7 +120,7 @@ Options:
 
 | Tab | What it does |
 |---|---|
-| Radio | Job name, comments and build date. The HW and SW codes, as digits or as a menu per digit. Shows the master, band, IF and step it implies. |
+| Radio | Job name, comments and build date. The HW and SW codes, as digits or as a menu per digit. Shows the master, band, IF and step it implies. **Start from an example** sets the codes for a common radio. The *2 m ham channelised* example loads a complete FM92R A-band project: 96 channels covering the 2 m simplex, repeater and high-band repeater channels (CTCSS `W` on the repeaters), with the remaining channels padded to the 146.500 calling frequency. |
 | Channels | Grid of Rx, Tx (`X` = receive only), power, CTCSS, a name (kept in the project and CSV only, not in the radio), scan S1/P1/S2/P2 (plus S3/P3 on FM91), operator scan, VOTE, ECON, SELCALL and C/R. Fill a range, pick a **channel plan** (UHF CB 80- or 40-channel, with the repeater duplex channels), **import a CSV or pasted table** (see below), set a Tx offset on the selected rows, duplicate, move, renumber. Each row flags problems (off-raster, duplicate). Frequencies outside the radio's nominal band are allowed without a warning, because many radios have been re-tuned (e.g. into the amateur bands). |
 | Scan & Keys | Scan block members and priority, with the 10-channel limit. FM92 head function keys (the same as `--keys`). |
 | Build | Downloads the `.BIN`. Shows a summary, VCO warnings, a hex view with the bytes changed from the master highlighted, and the decoded dump. |

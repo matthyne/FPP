@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { readChl } from '../src/core/fm900';
 import { PLANS } from '../src/core/presets';
+import { EXAMPLES } from '../src/core/codes';
 import { analyze } from '../src/core/analyze';
 import { newProject } from '../src/core/project';
 
@@ -34,5 +35,19 @@ describe('channel plans', () => {
     const a = analyze({ ...newProject(), hw: '92740000', sw: '110000000000000', rows });
     expect(a.buildError).toBeNull();
     expect(a.rowWarnings.size).toBe(0);
+  });
+});
+
+describe('examples', () => {
+  it('every full-project example builds without problems', () => {
+    for (const ex of EXAMPLES.filter((e) => e.project)) {
+      const a = analyze(ex.project!);
+      expect(a.codeError, ex.name).toBeNull();
+      expect(a.buildError, ex.name).toBeNull();
+      expect(a.rowErrors.size, ex.name).toBe(0);
+      expect(a.rowWarnings.size, ex.name).toBe(0);
+      expect(a.chans, ex.name).toHaveLength(ex.project!.rows.length);
+      expect(ex.project!.hw + ex.project!.sw, ex.name).toBe(ex.hw + ex.sw);
+    }
   });
 });

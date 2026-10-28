@@ -1,5 +1,10 @@
 // Hardware / software code digit tables (FM900_FORMAT.md §3), for the code editor UI.
 
+import { Project, loadProjectJson } from './project';
+import ham2mJson from './examples/2m-channelised.json';
+
+const ham2m = loadProjectJson(JSON.stringify(ham2mJson));
+
 export interface Digit {
   label: string;
   options: [string, string][];   // [digit, meaning]
@@ -54,9 +59,10 @@ export const SW_DIGITS: Digit[] = [
 ];
 // SW digits 11-12 and 13-14 are the 2-digit selcall encode / decode format codes.
 
-export interface Example { name: string; hw: string; sw: string }
+// An example sets the codes; one with a project also loads its channels and key settings.
+export interface Example { name: string; hw: string; sw: string; project?: Project }
 export const EXAMPLES: Example[] = [
-  { name: '2 m ham, FM92R A-band', hw: '92440150', sw: '110100201000000' },
+  { name: '2 m ham channelised, FM92R A-band', hw: ham2m.hw, sw: ham2m.sw, project: ham2m },
   { name: 'VHF B-band, FM92R', hw: '92340000', sw: '110300200000000' },
   { name: 'UHF CB, FM92R W1-band', hw: '92740000', sw: '110401200000000' },
   { name: 'UHF CB, FM91, 12.5 kHz', hw: '91785000', sw: '110000000000000' },
