@@ -6,9 +6,9 @@ export function HelpPanel() {
       <section class="card wide prose">
         <h2>About</h2>
         <p>This builds the 8 KB personality EPROM (2764) for <b>Philips FM91 and FM92</b> mobile radios. It runs entirely in your
-          browser; nothing is uploaded. It's a port of <a href={REPO + 'fm900gen.py'}>fm900gen.py</a>, which re-implements the image
-          builder in the DOS <i>FM900 Field Personality Programmer</i> (FM900.EXE). Its output is byte-identical to FM900.EXE on the
-          sample jobs. The factory master images are built in.</p>
+          browser; nothing is uploaded. It re-implements the image builder in the DOS <i>FM900 Field Personality Programmer</i>
+          (the Original FPP). Its output is byte-identical to the Original FPP on the sample jobs. The factory master images are
+          built in.</p>
 
         <h3>Workflow</h3>
         <ol>
@@ -21,11 +21,11 @@ export function HelpPanel() {
           <li><b>Build</b>: download the <code>.BIN</code> and burn it to a 2764 / 27C64.</li>
         </ol>
         <p>Your work is saved in this browser automatically. Use <b>Save</b> for a project file you can open anywhere, and
-          <b> Export JOB/CHL</b> for files the DOS FM900.EXE can open.</p>
+          <b> Export JOB/CHL</b> for files the Original FPP can open.</p>
 
         <h3>Files it opens</h3>
         <ul>
-          <li><code>.JOB</code> + <code>.CHL</code> from FM900.EXE (select or drop both together)</li>
+          <li><code>.JOB</code> + <code>.CHL</code> from the Original FPP (select or drop both together)</li>
           <li><code>.csv</code> / <code>.txt</code> channel lists in the <a href={REPO + 'README.md#channel-list-format'}>README format</a></li>
           <li><code>.json</code> projects saved by this page</li>
           <li><code>.BIN</code> EPROM images, opened in <b>Read image</b> to decode back into channels</li>
@@ -33,23 +33,23 @@ export function HelpPanel() {
 
         <h3>Things to know</h3>
         <ul>
-          <li><b>Row order matters.</b> FM900.EXE writes scan lists in entry order. Duplicate channel numbers and VOTE channels
+          <li><b>Row order matters.</b> The Original FPP writes scan lists in entry order. Duplicate channel numbers and VOTE channels
             take ring slots from the top of the table, in row order.</li>
           <li>Frequencies outside the radio's nominal band are allowed without a warning, because many radios have been
             re-tuned (e.g. into the amateur bands). Make sure yours actually covers them.</li>
           <li>The synthesiser step comes from the band and spacing. VHF falls back from 5 to 6.25 kHz (or the reverse) if a
             frequency is off-raster.</li>
-          <li>On FM92 VHF, L power is stored as M (as FM900.EXE does).</li>
+          <li>On FM92 VHF, L power is stored as M (as the Original FPP does).</li>
           <li><b>Not supported:</b> FM93, FM97WP / waterproof radios, and the selcall tone editor (selcall tones keep their defaults).</li>
         </ul>
 
         <h3>Paths the sample jobs don't cover</h3>
         <p>VOTE rings, duplicate channel numbers, the FM92L and selcall (<code>*S</code>) masters, the VHF 6.25 kHz step, L or S power,
-          the VOTE, C/R and SELCALL flags, receive-only channels, and the E, T, U and W2 bands have been checked against the Python
-          reference on thousands of random cases, but not against FM900.EXE itself. Before burning one of these, cross-check it in DOSBox:</p>
+          the VOTE, C/R and SELCALL flags, receive-only channels, and the E, T, U and W2 bands have been checked on thousands of random
+          test cases, but not against the Original FPP itself. Before burning one of these, cross-check it in DOSBox:</p>
         <ol>
           <li>Export JOB/CHL here and copy both into <code>fm900/JOBS</code>.</li>
-          <li>In FM900.EXE, open the job and press F10 so it writes the <code>.BIN</code>.</li>
+          <li>In the Original FPP, open the job and press F10 so it writes the <code>.BIN</code>.</li>
           <li>Set the same build date here and compare. Only bytes 0x1FE0–0x1FE4 (version and date) may differ.</li>
         </ol>
 
