@@ -93,7 +93,7 @@ Each external latch is loaded by putting a byte on port A and pulsing a port-B s
 | PB5 | Synthesiser data strobe (idles high, low-going pulses) |
 | PB6 | Synthesiser load enable (high while loading) |
 | PB0 | FM92R: serial link to the control head. FM92L: display low-digit strobe. |
-| PB1 | FM92R: 1.2 kHz square wave toggled every tick (inferred: clock or charge pump). FM92L: display high-digit strobe. |
+| PB1 | FM92R: 1.2 kHz square wave toggled every tick, very probably the head-link clock: the head cable carries a shielded data/clock pair (VK3BYY notes, `../docs/Philips FM92 .pdf`) (inferred). FM92L: display high-digit strobe. |
 | PB7 | FM92L: indicator LED latch strobe |
 | PA5 | On/off switch sense at reset (inferred) |
 | PA6 | PTT input (inferred) |
@@ -114,7 +114,7 @@ Each external latch is loaded by putting a byte on port A and pulsing a port-B s
 
 The receiver is loaded with slot bytes 0–2 and the transmitter with bytes 3–5. That is why
 FM900.EXE folds the IF offset into the Rx divider. This 4-bit, strobed, BCD-loaded interface
-matches the Philips HEF4750/HEF4751 synthesiser family (inferred).
+matches the Philips HEF4750/HEF4751 synthesiser family. A photo of an FM92E synthesiser/control board (VK2DOT guide, `../docs/FM92E-Modification.pdf` §16) shows an HEF4751VD in the synthesiser can; the HEF4750 is still inferred.
 
 ## 4. Interrupt-driven scheduler
 

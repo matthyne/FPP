@@ -1,126 +1,128 @@
 # Original control hardware
 
-This is what an STM32 has to replace or drive. It combines two sources:
+This is what an STM32 has to replace or drive. It is put together from:
 
-* **FM93** = the *Philips FM93 Service Manual*, §3.3 "Central Control" and §3.5 "Local Control". The FM93 uses the same control design as the FM92: a 146805E2 with an external 8 KB EPROM, and the same signalling hybrids.
-* **FM92** = the disassembly of the FM92R and FM92L masters (`../firmware/FIRMWARE.md`).
-* **VK2DOT** = *Philips FM92E Conversion to 6 Meters*, Rod McCosker VK2DOT, v3.9 (2007). It covers practical FM92 details and the FM900 series service notes compiled by VK4KCS.
+* **FM93**: *Philips FM93 Service Manual* (`../docs/PHILIPS FM93 SERVICE MANUAL.pdf`). §3.3 "Central Control", §3.5 "Local Control", and the schematic **Figure 7.6B, Synthesiser/Control P.C. Board (Control Section)**, on PDF page 54.
+* **FM92**: the disassembly of the FM92R and FM92L masters (`../firmware/FIRMWARE.md`).
+* **VK2DOT**: *Philips FM92E Conversion to 6 Meters*, Rod McCosker VK2DOT, v3.9, 2007 (`../docs/FM92E-Modification.pdf`). Board photos, connectors, and the FM900 service notes compiled by VK4KCS. Its FM91 schematic page (§42) is blank in this copy.
+* **VK3BYY**: *Philips FM92 (FM900) tech notes*, Mark Harrison VK3BYY, 2006 (`../docs/Philips FM92 .pdf`).
 
-Unconfirmed points are marked **(inferred)**. The manual's schematics and parts lists are scanned images, so pin numbers and the control board's full parts list still have to be read from them.
+Statements not shown directly by a source are marked **(inferred)**.
 
-## 1. Parts the STM32 replaces or talks to
+## 1. The FM92 uses the FM93's control design
 
-| Ref (FM93) | Part | Job | STM32 |
-|---|---|---|---|
-| IC408 | MC146805E2 (40-pin DIP) | CPU, 112 bytes of RAM, two 8-bit ports, timer, multiplexed external bus | **Replaced** |
-| (EPROM) | 2764 / 27C64, 8 KB | Firmware and channel data (SA No. 99997 "8k EPROM"). On the FM92 it sits in a socket under a screening can on the synthesiser/control board (VK2DOT §16–17) | **Replaced** (internal flash) |
-| (address latch) | not named in the text **(inferred: 74HC373-type)** | Latches the low address byte for the EPROM | Not needed once the EPROM is gone |
-| IC405 | hex latch ("latch 2") | Tx/Rx control lines | Kept, driven from port A plus a strobe |
-| IC415 | NSC810 RAM / I/O / timer (optional on FM92 as well: the "I/O Exp" hardware option. Voting can't be selected without it, VK2DOT §34) | Memory-mapped ports for the signalling hybrids, 128 bytes of RAM, timers | Kept and driven over an emulated bus, *or* removed with the hybrids wired straight to the STM32 |
-| IC407 | monostable + Schmitt trigger | On/off key and power-up reset | Kept: it drives RESET and PA5 |
-| IC401 | permanent 5 V regulator (+5VP) | Always-on supply to IC408, IC407, IC405 and IC415 | Powers the STM32 board through a 3.3 V LDO |
-| IC411 | switched 5 V regulator (+5VS) | Everything else | See §3 |
-| U402 / U403 | selcall hybrid modules | Selcall encode/decode | Via the NSC810 or STM32 GPIO |
-| U405 | CTCSS encoder or encoder/decoder/RTB module | CTCSS | Via the NSC810 or STM32 GPIO; could later be replaced by the STM32 DAC |
+The VK2DOT photo of an FM92E synthesiser/control board with its cans off (§16, PDF page 25) shows the same parts, with the **same reference numbers in the silkscreen**, as the FM93 schematic:
 
-## 2. Clock and timing
-
-* FM93 (UHF): 5 MHz crystal XL401 on the 146805E2 oscillator, divided by 5 internally, gives a **1 MHz** bus clock.
-* The timer divides by 416, giving the **≈2.4 kHz** foreground interrupt. This matches the 415 µs tick found in the FM92 disassembly.
-* Latch 2 is rewritten every **833 µs** (every second tick).
-* The keys are scanned every **13.3 ms** (32 ticks), matching the FM92's 16-slot table.
-* The CTCSS module needs a **1 MHz clock** input (FM93 manual, U405). Where it comes from isn't stated in the text. If it is the 146805E2's bus clock, the STM32 must supply it **(inferred)**.
-
-## 3. Power: AS keeps the switched supply on
-
-The CPU and the critical CMOS parts sit on +5VP, which is always on. "Off" means the firmware has executed `STOP`.
-
-The switched rail +5VS is enabled by **address-strobe pulses**. AS drives TR404, which charges R435/C432, and that holds TR406/TR405 on and feeds IC411. After the third or fourth AS pulse the rail comes up. When the CPU stops, AS sits at 0 and +5VS turns off.
-
-A replacement CPU must therefore:
-
-* produce a steady AS pulse train whenever the radio is on (otherwise most of the radio has no power);
-* hold AS low when it is off;
-* draw very little current from +5VP while off.
-
-### Memory backup
-
-The FM900 series had *Battery Backup* and *Cap Backup* options that keep the CPU's RAM (current channel and state) alive through supply loss (VK2DOT §6). The STM32 has to keep the same state through power loss: battery-backed registers, RAM retention in stop mode, or flash.
-
-## 4. Port usage
-
-### Port B
-
-| Pin | FM93 (manual) | FM92 (disassembly) |
+| Ref | Part (FM93 schematic) | Seen on the FM92E board |
 |---|---|---|
-| PB0 | units display latch strobe | FM92R: serial link to the head. FM92L: display low digit |
-| PB1 | tens display latch strobe | FM92R: 1.2 kHz square wave. FM92L: display high digit |
-| PB2 | mute detect (input) | strobe for latch `$2A` (ADC mux select) |
-| PB3 | latch 2 strobe | strobe for latch `$29` (audio / mute) |
-| PB4 | power relay | strobe for latch `$2C` (Tx power, VCO band) |
-| PB5 | VHF oscillator frequency switch | synthesiser data strobe |
-| PB6 | synthesiser program enable | synthesiser load enable |
-| PB7 | indicator latch strobe | FM92L: LED latch strobe |
+| IC408 | MC146805E2 microcomputer | MC146805E2P, socketed |
+| IC409 | 74HC373 address latch | yes |
+| IC410, IC414 | 74LS00 quad NAND | 2 × SN74LS00N |
+| IC412 | 27C64 EPROM | 28-pin EPROM, socketed |
+| IC413 | 74LS260 dual 5-input NOR | yes |
+| IC415 | NSC810 RAM / I/O / timer | NSC810AN-3I |
+| IC405 | 4174B hex D latch ("latch 2") | **three** MC14174BCP. The FM92 firmware drives three port-A latches (`$29`, `$2A`, `$2C`); the FM93 has one |
+| synthesiser | NJ8822 (FM93) | **HEF4751VD** plus a second large IC in the synthesiser can, which supports the FM92's HEF4750/4751 BCD loading **(inferred for the HEF4750)** |
 
-The two are clearly the same family but **not pin-identical**. The FM92 board must be traced in its own right.
+So the bus, decode, power and reset circuitry below (taken from the FM93 schematic) should apply to the FM92. The port-A latches, the synthesiser and the port-B assignments differ (§5, §6).
 
-### Port A
+VK3BYY also notes that both the EPROM and the microprocessor are in **IC sockets**, so an adapter that plugs into the IC408 socket is practical.
 
-* **FM93:** PA0–PA3 are the shared data lines for the display BCD digits, the indicator latch (PA0 red Tx LED, PA1 display blanking, PA2 amber Rx LED, PA3 decimal point) and latch 2. Every 13.3 ms they are briefly switched to inputs to read the keys (active low, through series resistors R511/R513/R514). PA5 tells an on/off reset from a supply-transient reset.
-* **FM92:** port A is the data bus to the external latches and the synthesiser. PA6/PA7 are inputs (PTT, hook/monitor **(inferred)**). PA5 senses the power switch.
+## 2. IC408 (MC146805E2) pinout as wired
 
-### Connectors (FM92, VK2DOT §26, §32)
+From Figure 7.6B:
 
-* **SK405** on the synthesiser/control board: pins 1 and 3 carry the microphone cradle reed switch (scan inhibit). Shorting them enables scanning with the microphone off the hook.
-* **Handset socket:** 1 cradle, 2 power ground, 3 microphone ground, 4 speaker, 5 microphone active, 6 Rx audio out, 7 PTT, 8 not used.
-* **Remote head (FM92R):** DB-15. The pinout in VK2DOT §33 is an image and still has to be read.
-
-### Latch 2 (IC405), from the manual
-
-Transmit enable, VCO offset, Rx AF / speaker enable, microphone inhibit, alarm tone, PA enable. Tx on/off timing is done in software.
-
-## 5. Synthesiser: FM93 and FM92 differ
-
-VK2DOT §6: the FM93 "differs considerably from the other FM900 series radios": a cheaper receiver, a different PLL, and no A-D (so no voting). The FM92 is therefore closer to the FM91 than to the FM93 on the control side. The FM97 is an FM92 with an FM91 CPU board.
-
-* **FM93:** NJ8822 with a ÷64/65 prescaler, loaded serially. PA0 is the clock (data taken on the falling edge), PA1 is data, and PB6 is the program enable. 28 bits, MSB first: 17 frequency bits, then 11 reference-divider bits. The firmware watches the out-of-lock line and retries up to 16 times (~500 ms) on transmit.
-* **FM92:** loaded as 4-bit one's-complemented BCD nibbles with a strobe on PB5 and an enable on PB6, matching the HEF4750/4751 family **(inferred)**.
-
-## 6. The NSC810 and the FM92's `$80`–`$86`
-
-The FM92 firmware reads and writes `$80`, `$81`, `$82` and `$84`–`$86`, and uses external RAM at `$A0`–`$EC`. That fits an NSC810 on the multiplexed bus **(inferred: check the register offsets against the NSC810 data sheet and the board)**:
-
-| Address | NSC810 register | FM92 use |
+| Pin | Signal | Connection |
 |---|---|---|
-| `$80` | port A data | selcall hybrid (FM93 manual: U402 on NSC810 port A) |
-| `$81` | port B data | CTCSS module |
-| `$82` | port C data | output latch |
-| `$84`–`$86` | data-direction registers A, B, C | tone-chip set-up |
-| `$A0`–`$EC` | on-chip RAM **(inferred mapping)** | selcall buffers, extra timers |
+| 1 | RESET | from IC407 (on/off and power-fail reset, §4) |
+| 2 | IRQ | 10 k pull-up R424 to +5VP and a test point; unused on the FM93, which has no A-D. FM92: ADC comparator |
+| 3 | LI | grounded |
+| 4 | DS | to IC410/IC414 (RD/WR generation, EPROM OE) |
+| 5 | R/W | to IC410/IC414 |
+| 6 | AS | IC409 latch enable, NSC810 ALE, **and the +5VS power switch (§4)** |
+| 7–14 | PA7–PA0 | data to the latches and display; key inputs; SD/SCLK to the synthesiser (FM93) |
+| 15–19 | A12–A8 | EPROM A12–A8; IC413 NOR (page-0 decode for the NSC810) |
+| 20 | VSS | |
+| 21–28 | AD7–AD0 | multiplexed bus to IC409, EPROM data, NSC810 AD0–AD7, IC413 |
+| 29–36 | PB7–PB0 | §5 |
+| 37 | TIMER | grounded through R429 10 k; the timer runs from the internal clock |
+| 38, 39 | OSC2, OSC1 | UHF: crystal XL401 (5 MHz). VHF: an external 5.0 MHz oscillator (XL402, TR409/TR410/TR411, fed from unswitched 13.8 V via D405) drives OSC1 through R431 |
+| 40 | VDD | +5VP |
 
-The selcall wiring given in the FM93 manual is: PA0–PA3 tone code (output to encode, input to decode), PA4 encode/decode select, PA5 external alarm, PA6 bidirectional. CTCSS module (encoder only): D0–D5 tone select, pin 15 tone gate, pin 17 reverse tone burst (active low), pin 16 decode output (active low).
+## 3. Address decoding
 
-## 7. Signals an STM32 in the CPU socket must provide
+| Device | Decode | Result |
+|---|---|---|
+| EPROM IC412 | A0–A7 from IC409 (latched on AS); A8–A12 from the CPU; data on AD0–AD7; OE from DS/R/W through IC410 | The 8 KB image appears at `$0000`–`$1FFF`; the CPU's own RAM and I/O hide `$0000`–`$00FF` |
+| NSC810 IC415 | **CE** (active high, pull-up R449) = A8–A12 all low (IC413 NOR) AND AD7, through IC410 and IC414: selected for `$0080`–`$00FF` only. **IO/M̄** (pin 7, pull-up R450) = NOR(AD5, AD6) from the second half of IC413. ALE = AS. RD/WR from DS and R/W through IC414 | `$80`–`$9F` = NSC810 I/O registers; `$A0`–`$FF` = NSC810 RAM |
 
-| Group | Count | Direction | Notes |
-|---|---|---|---|
-| PA0–PA7 | 8 | bidirectional | Latch data, key inputs, PA5 on/off sense |
-| PB0–PB7 | 8 | mostly out | Strobes, synthesiser enable, serial link (FM92R) |
-| B0–B7 (multiplexed address/data) | 8 | bidirectional | Only needed if the NSC810 stays |
-| A8–A12 | 5 | out | Probably unneeded without the EPROM; check the NSC810 chip-select decode |
-| AS, DS, R/W | 3 | out | **AS also keeps +5VS on (§3)** |
-| RESET | 1 | in | From IC407 |
-| IRQ | 1 | in | FM92: ADC comparator, timed against the timer |
-| TIMER | 1 | in | Check whether it is used |
-| OSC1/OSC2 | 2 | – | The crystal is no longer needed. The 1 MHz to U405 may have to be generated (§2) |
-| VDD / VSS | 2 | power | +5VP |
+This confirms the FM92 firmware's use of `$80`–`$86` (NSC810 ports and direction registers) and `$A0`–`$EC` (NSC810 RAM). The NSC810 is optional on the FM92 (the "I/O Exp" hardware option; VK2DOT §34: voting isn't selectable without it).
 
-All of these are 5 V CMOS levels; the NSC810 ports driving the hybrids are TTL-compatible.
+## 4. Power, reset and the clock
 
-## 8. Still to find on a real board
+| Part | Job |
+|---|---|
+| IC401 78L05 → **+5VP** | Always on, from unswitched 13.8 V through D402/R405. Supplies IC408, IC407, IC405 and the NSC810 |
+| C427 0.047 F | Super-capacitor on +5VP: memory backup through short supply loss (VK3BYY "Super Cap") |
+| Battery pack PCB 3502 349 97190 | Optional battery on +5VP |
+| D403 (9V1 zener), TR401/TR402 | Supply monitor feeding the reset logic |
+| IC407 4011B | On/off key monostable and power-fail reset → RESET; also drives PA5 so the firmware can tell an on/off press from a supply transient |
+| TR404 → R435/C432 → TR406 → TR405 → IC411 LM340-T5 → **+5VS** | AS pulses drive TR404; the integrated pulses hold TR406/TR405 on and feed IC411. No AS pulses = +5VS off. The EPROM, IC409, the 74LS logic and the option modules are on +5VS |
+| D404 | Diode linking +5VS and +5VP (direction not legible) |
 
-1. The FM92 control board's schematic or trace (the FM91 schematics in VK2DOT §42 are the closest published source, but are images): where AS, DS, R/W, A8–A12 and the NSC810 chip select go, and what the address latch is.
-2. The source of U405's 1 MHz clock.
-3. The 146805E2 pins actually used (TIMER, NUM).
-4. The standby current budget on +5VP.
-5. A logic-analyser capture of a working radio: ports, AS/DS, and the synthesiser load. This is the reference trace for the adapter.
+The bus clock is OSC ÷ 5 = **1 MHz**. The timer divides by 416, giving the **≈2.4 kHz** tick seen in the FM92 disassembly. Latch 2 is rewritten every 833 µs, and the keys are scanned every 13.3 ms.
+
+The CTCSS module U405 needs an "external 1 MHz clock input" (FM93 manual). On the schematic its pin 11 is fed from the NSC810 area, and NSC810 timer 0 has its input (T0 IN, pin 3) and output (T0 OUT, pin 6) wired out. So the 1 MHz is probably NSC810 timer 0 clocked from the bus **(inferred)**.
+
+## 5. Port B
+
+| Pin | FM93 (manual + schematic) | FM92 (disassembly) |
+|---|---|---|
+| PB0 (36) | units display latch | FM92R: serial link to the head. FM92L: display low digit |
+| PB1 (35) | tens display latch | FM92R: 1.2 kHz square wave, very probably the link **clock** (the head cable has a shielded data/clock pair, VK3BYY). FM92L: display high digit |
+| PB2 (34) | mute detect (input) | strobe for latch `$2A` (ADC mux select) |
+| PB3 (33) | latch 2 (IC405) clock | strobe for latch `$29` (audio / mute) |
+| PB4 (32) | power relay | strobe for latch `$2C` (Tx power, VCO band) |
+| PB5 (31) | VHF oscillator switch | synthesiser data strobe |
+| PB6 (30) | synthesiser program enable (PE) | synthesiser load enable |
+| PB7 (29) | indicator latch | FM92L: LED latch strobe |
+
+## 6. Port A, latches and synthesiser
+
+* **FM93:** PA0/PA1 are SCLK/SD to the NJ8822 (28 bits, MSB first, clocked on the falling edge, PE = PB6). PA0–PA3 also carry the display BCD, the indicator latch bits and the latch 2 data, and are switched to inputs every 13.3 ms to read the keys (active low through R511/R513/R514). Latch 2 (IC405, 4174B) outputs: Tx enable, VCO offset, Rx AF enable, microphone inhibit, alarm tone, PA enable.
+* **FM92:** port A is the data bus to three 4174B latches and the HEF4750/4751 synthesiser (4-bit one's-complemented BCD, strobe PB5, enable PB6). PA6/PA7 are inputs (PTT, hook/monitor **(inferred)**); PA5 senses the on/off key.
+
+## 7. NSC810 to the option modules
+
+| NSC810 | Module |
+|---|---|
+| PA0–PA7 (pins 21–28) | U402 selcall hybrid pins 5, 2, 3, 4, 21, 17, 14, 6. PA0–PA3 tone code, PA4 encode/decode, PA5 alarm, PA6 bidirectional |
+| PB0–PB5 (pins 29–34) | U405 CTCSS pins 7, 6, 4, 13, 22, 14 = D0–D5 tone select |
+| PB6, PB7, PC… | U405 pins 15 (tone gate), 16 (decode out, active low), 17 (RTB, active low); external input / alarm |
+| T0 OUT (pin 6) | U405 pin 11, 1 MHz clock **(inferred)** |
+
+The module pins are TTL-compatible.
+
+## 8. Connectors
+
+* **SK407 → front panel SK501 (FM93 local control):** 5 on/off, 7 Rx output, 8 PTT, 9/12 power ground, 11/13/15/17 PA3/PA2/PA1/PA0, 14 Rx PA input, 16 indicator latch, 18 mute adjust, 19 units latch, 20 tens latch.
+* **SK405 (FM92):** pins 1 and 3 carry the microphone cradle reed switch (VK2DOT §26).
+* **Handset socket (FM92E):** 1 cradle, 2 power ground, 3 microphone ground, 4 speaker, 5 microphone active, 6 Rx audio out, 7 PTT, 8 not used (VK2DOT §32).
+* **Remote head cable (FM92R), DB-15:** 6 unshielded wires (power, ground, mute, speaker, PTT, on/off), 2 single shielded (Rx audio in, Rx audio out), 2 shielded pairs (microphone; data/clock) (VK3BYY). The remote head has its own microprocessor.
+
+## 9. What this means for the STM32
+
+* **AS must keep pulsing.** It powers +5VS, latches the NSC810 address (ALE) and feeds IC409. While the radio is on, the STM32 must keep producing AS pulses even when it isn't using the bus.
+* **Bus only for the NSC810.** With the EPROM gone, the STM32 needs AD0–AD7, AS, DS and R/W, and must hold A8–A12 low when it addresses `$80`–`$FF`. Alternatively, remove the NSC810 and drive the modules from STM32 GPIO.
+* **Logic levels.** The 74LS00, the 74LS260 and the NSC810 bus inputs are TTL-level, so 3.3 V outputs drive them. Port A and port B go to **4000-series CMOS** latches (4174B, 4011B) at 5 V, which need about 3.5 V for a high. Those lines need 5 V buffers (74HCT). The inputs (keys, PTT, IRQ, RESET, PA5) need 5 V-tolerant pins.
+* **No clock output needed.** The STM32 replaces the oscillator. The 1 MHz to U405 comes from the NSC810 timer **(inferred)**, so the STM32 must keep the bus timing that clocks it (or generate 1 MHz itself if the NSC810 goes).
+* **Standby.** +5VP is backed by a 0.047 F super-cap (and optionally a battery). The STM32's off-state current has to be comparable with a 146805E2 in STOP (a few µA) to keep the same hold-up time.
+* **Unused pins.** TIMER (grounded), LI (grounded) and, on the FM93, IRQ.
+
+## 10. Still to find
+
+1. FM92 port-A latch wiring: which 4174B outputs drive what (the three latches `$29`, `$2A` and `$2C`), and the ADC comparator on IRQ. An FM92 schematic or a board trace is needed; the FM91 schematic in VK2DOT §42 is missing from this copy.
+2. Confirm that U405's 1 MHz comes from NSC810 T0 OUT, and what drives T0 IN.
+3. The FM92R remote-head link: confirm PB0 = data and PB1 = clock on the DB-15, and find the pinout.
+4. Measure the standby current on +5VP.
+5. A logic-analyser capture of a working FM92: ports, AS/DS, and synthesiser loads. This is the reference trace for the adapter.
