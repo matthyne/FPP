@@ -4,6 +4,7 @@ This is what an STM32 has to replace or drive. It combines two sources:
 
 * **FM93** = the *Philips FM93 Service Manual*, §3.3 "Central Control" and §3.5 "Local Control". The FM93 uses the same control design as the FM92: a 146805E2 with an external 8 KB EPROM, and the same signalling hybrids.
 * **FM92** = the disassembly of the FM92R and FM92L masters (`../firmware/FIRMWARE.md`).
+* **VK2DOT** = *Philips FM92E Conversion to 6 Meters*, Rod McCosker VK2DOT, v3.9 (2007). It covers practical FM92 details and the FM900 series service notes compiled by VK4KCS.
 
 Unconfirmed points are marked **(inferred)**. The manual's schematics and parts lists are scanned images, so pin numbers and the control board's full parts list still have to be read from them.
 
@@ -12,10 +13,10 @@ Unconfirmed points are marked **(inferred)**. The manual's schematics and parts 
 | Ref (FM93) | Part | Job | STM32 |
 |---|---|---|---|
 | IC408 | MC146805E2 (40-pin DIP) | CPU, 112 bytes of RAM, two 8-bit ports, timer, multiplexed external bus | **Replaced** |
-| (EPROM) | 2764 / 27C64, 8 KB | Firmware and channel data (SA No. 99997 "8k EPROM") | **Replaced** (internal flash) |
+| (EPROM) | 2764 / 27C64, 8 KB | Firmware and channel data (SA No. 99997 "8k EPROM"). On the FM92 it sits in a socket under a screening can on the synthesiser/control board (VK2DOT §16–17) | **Replaced** (internal flash) |
 | (address latch) | not named in the text **(inferred: 74HC373-type)** | Latches the low address byte for the EPROM | Not needed once the EPROM is gone |
 | IC405 | hex latch ("latch 2") | Tx/Rx control lines | Kept, driven from port A plus a strobe |
-| IC415 | NSC810 RAM / I/O / timer (optional) | Memory-mapped ports for the signalling hybrids, 128 bytes of RAM, timers | Kept and driven over an emulated bus, *or* removed with the hybrids wired straight to the STM32 |
+| IC415 | NSC810 RAM / I/O / timer (optional on FM92 as well: the "I/O Exp" hardware option. Voting can't be selected without it, VK2DOT §34) | Memory-mapped ports for the signalling hybrids, 128 bytes of RAM, timers | Kept and driven over an emulated bus, *or* removed with the hybrids wired straight to the STM32 |
 | IC407 | monostable + Schmitt trigger | On/off key and power-up reset | Kept: it drives RESET and PA5 |
 | IC401 | permanent 5 V regulator (+5VP) | Always-on supply to IC408, IC407, IC405 and IC415 | Powers the STM32 board through a 3.3 V LDO |
 | IC411 | switched 5 V regulator (+5VS) | Everything else | See §3 |
@@ -42,6 +43,10 @@ A replacement CPU must therefore:
 * hold AS low when it is off;
 * draw very little current from +5VP while off.
 
+### Memory backup
+
+The FM900 series had *Battery Backup* and *Cap Backup* options that keep the CPU's RAM (current channel and state) alive through supply loss (VK2DOT §6). The STM32 has to keep the same state through power loss: battery-backed registers, RAM retention in stop mode, or flash.
+
 ## 4. Port usage
 
 ### Port B
@@ -64,11 +69,19 @@ The two are clearly the same family but **not pin-identical**. The FM92 board mu
 * **FM93:** PA0–PA3 are the shared data lines for the display BCD digits, the indicator latch (PA0 red Tx LED, PA1 display blanking, PA2 amber Rx LED, PA3 decimal point) and latch 2. Every 13.3 ms they are briefly switched to inputs to read the keys (active low, through series resistors R511/R513/R514). PA5 tells an on/off reset from a supply-transient reset.
 * **FM92:** port A is the data bus to the external latches and the synthesiser. PA6/PA7 are inputs (PTT, hook/monitor **(inferred)**). PA5 senses the power switch.
 
+### Connectors (FM92, VK2DOT §26, §32)
+
+* **SK405** on the synthesiser/control board: pins 1 and 3 carry the microphone cradle reed switch (scan inhibit). Shorting them enables scanning with the microphone off the hook.
+* **Handset socket:** 1 cradle, 2 power ground, 3 microphone ground, 4 speaker, 5 microphone active, 6 Rx audio out, 7 PTT, 8 not used.
+* **Remote head (FM92R):** DB-15. The pinout in VK2DOT §33 is an image and still has to be read.
+
 ### Latch 2 (IC405), from the manual
 
 Transmit enable, VCO offset, Rx AF / speaker enable, microphone inhibit, alarm tone, PA enable. Tx on/off timing is done in software.
 
 ## 5. Synthesiser: FM93 and FM92 differ
+
+VK2DOT §6: the FM93 "differs considerably from the other FM900 series radios": a cheaper receiver, a different PLL, and no A-D (so no voting). The FM92 is therefore closer to the FM91 than to the FM93 on the control side. The FM97 is an FM92 with an FM91 CPU board.
 
 * **FM93:** NJ8822 with a ÷64/65 prescaler, loaded serially. PA0 is the clock (data taken on the falling edge), PA1 is data, and PB6 is the program enable. 28 bits, MSB first: 17 frequency bits, then 11 reference-divider bits. The firmware watches the out-of-lock line and retries up to 16 times (~500 ms) on transmit.
 * **FM92:** loaded as 4-bit one's-complemented BCD nibbles with a strobe on PB5 and an enable on PB6, matching the HEF4750/4751 family **(inferred)**.
@@ -106,7 +119,7 @@ All of these are 5 V CMOS levels; the NSC810 ports driving the hybrids are TTL-c
 
 ## 8. Still to find on a real board
 
-1. The FM92 control board's schematic or trace: where AS, DS, R/W, A8–A12 and the NSC810 chip select go, and what the address latch is.
+1. The FM92 control board's schematic or trace (the FM91 schematics in VK2DOT §42 are the closest published source, but are images): where AS, DS, R/W, A8–A12 and the NSC810 chip select go, and what the address latch is.
 2. The source of U405's 1 MHz clock.
 3. The 146805E2 pins actually used (TIMER, NUM).
 4. The standby current budget on +5VP.
