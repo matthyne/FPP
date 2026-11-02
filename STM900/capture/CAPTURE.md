@@ -42,6 +42,8 @@ Name the channels in PulseView **exactly** as shown; the decoder finds signals b
 | AS | 6 | | IRQ | 2 |
 | DS | 4 | | RESET | 1 |
 
+Optional 21st channel **ONOFF**: the DB-15 on/off wire. It isn't on IC408, and the pin number isn't known yet. Find it with a meter at the DB-15 (or at the head end): the conductor whose level changes while the head's on/off key is held. Probe it through the connector shell or a breakout, never by forcing a probe into the socket.
+
 Sample rate **4 MHz** or more. Port events take microseconds; the head link runs at about 1200 baud.
 
 ### Setup B: full bus (24 channels)
@@ -67,13 +69,13 @@ Save each as a `.sr` file (PulseView *File → Save*) with the name given. Note 
 
 | File | Trigger | Do |
 |---|---|---|
-| `a1-poweron.sr` | RESET rising | Power on from the head. Capture ~1 s: start-up, head configuration, the first synthesiser load |
+| `a1-poweron.sr` | RESET rising, pre-trigger ~100 ms | Power on from the head. Capture ~4 s: the on/off pulse, RESET with PA5, start-up (`$AA`, `$E7` config), the first synthesiser load, and the first keep-alive polls |
 | `a2-chanup.sr` | PB6 rising | Channel up, then channel down |
 | `a3-ptt.sr` | PB6 rising, pre-trigger ~50 ms | Press PTT for ~1 s (into a dummy load), release |
 | `a4-power.sr` | PB6 rising | PTT on a high-power channel, then on a low-power one (if the radio has one) |
 | `a5-mute.sr` | none, ~2 s | Sweep the mute knob slowly from one end to the other |
-| `a6-idle.sr` | none, ~2 s | Do nothing: the steady rhythm of latch refreshes, ADC readings and link traffic |
-| `a7-poweroff.sr` | none | Power off from the head; AS should stop when the CPU executes STOP |
+| `a6-idle.sr` | none, ~2 s | Do nothing: the steady rhythm of latch refreshes, ADC readings and link traffic, including the `$E4` poll / `$49` reply about every 0.5 s |
+| `a7-poweroff.sr` | none | Power off from the head; AS should stop when the CPU executes STOP. Shows whether the head pulses ONOFF, stops answering `$E4`, or both |
 
 ### Setup B
 
@@ -93,4 +95,6 @@ Put the files in `STM900/capture/data/` and commit them (or tell me if they are 
 * **Synthesiser loads:** each window with PB6 high, listing port A at every PB5 strobe and its low nibble (the one's-complemented BCD digits in `FIRMWARE.md` §3.1).
 * **IRQ:** each falling edge, with the time since the last latch `$2A` write: the single-slope ADC conversion time for that mux channel.
 * **Head link:** 8E1 frames on PB0 at 1200 baud (`--baud` to change). The link is half-duplex on one wire, so bytes from both the radio and the head appear. PB1's average frequency is printed too.
+* **Power events:** RESET edges (with PA5 as RESET is released: 1 = on/off pressed), ONOFF edges, and AS starting or stopping (gaps over 1 ms mean the CPU is in STOP).
+* **Keep-alive:** bytes `$AA`, `$E7`, `$E4` and `$49` are labelled. A summary line counts the radio's `$E4` polls and the head's `$49` replies, with the average poll interval and the reply delays (`../../firmware/FIRMWARE.md` §6.3).
 * **Bus:** each cycle's address (AD0–AD7 latched on AS falling, plus A8–A12), data (AD0–AD7 just before DS falls) and R/W. It summarises AS gaps (STOP or WAIT) and all accesses to `$80`–`$FF`.

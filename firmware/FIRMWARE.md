@@ -170,12 +170,25 @@ The ADC is a single-slope type built from a multiplexer, the timer and a compara
 
 ### 6.1 Reset and power control
 
+While "off", the radio is not unpowered. The CPU sits in `STOP` with its RAM held up by +5VP and the super-cap. `STOP` halts the oscillator, so AS stops and **+5VS** (EPROM, logic) drops (`../STM900/HARDWARE.md` §4). Nothing on the serial link can wake it. Only a hardware `RESET` restarts it. The on/off key (FM92L), or the head cable's **on/off wire** (FM92R), drives IC407, which pulses `RESET` and holds **PA5** high so the firmware can tell a key press from a supply glitch.
+
 1. `RESET` initialises the ports and waits.
-2. `$20` holds the power state: `$11` = off (stopped), `$99` = running. PA5 decides between switching on and going back to `STOP`.
+2. `$20` (FM92L: `$21`) holds the power state: `$11` = off (stopped), `$99` = running. The reset code (0x0100–0x013B) treats the key as a **toggle**:
+
+   | PA5 at reset | `$20` | Result |
+   |---|---|---|
+   | high (on/off pressed) | `$11` | **switch on**: `$20 ← $99`, set latch `$2A` bit 5, warm start |
+   | high | `$99` | **switch off** (`power_down_stop`) |
+   | low (supply glitch) | `$11` | stay off (back into `STOP`) |
+   | low | `$99` | carry on running (warm start) |
+   | either | anything else (RAM lost) | cold start |
+
+   Latch `$2A` bit 5 is set only at switch-on, kept through a warm start (`$2A & $20 | $07`, 0x024A) and cleared at power-down (`$2A ← $07`). It is very probably the enable for the radio's switched supply **(inferred)**.
 3. **Cold start** (`cold_start`, 0x015C) happens when the RAM copy no longer matches the EPROM:
    * clear RAM;
    * copy 0x1F2E–0x1F31 to `$2B–$2E`. `$2E` is the current channel, initially the lowest channel (0x1F31);
-   * copy the option bytes 0x1F33–0x1F37 to `$2F–$33`.
+   * copy the option bytes 0x1F33–0x1F37 to `$2F–$33`;
+   * then fall straight into `power_down_stop`. After the RAM has been lost (super-cap flat, first connection to power), the radio **comes up off** and needs one press of on/off.
 4. **Warm start** (`warm_start`, 0x01FE):
    * `eprom_checksum` sums 0x0100–0x1FFF; the result must be `$FF`. Otherwise it resets, so a corrupt EPROM never runs. This is the 0x1F64 byte FM900.EXE computes.
    * Initialise the timer and peripherals, enable interrupts, wait about 10 ms.
@@ -187,7 +200,7 @@ The following all end up there:
 * the on/off switch
 * the 8-hour timer (§7.7)
 * low supply
-* a head power-off command
+* the control head not answering the keep-alive poll (FM92R, §6.3)
 * a failed signature check (§8)
 
 ### 6.2 Main loop (`main_loop`, 0x02A2 and 0x0D58)
@@ -244,7 +257,7 @@ if selcall is set up. The fourth key gets 7 if a selcall code is set.
 |---|---|
 | `$44` / `$45` | head PTT release / press (inferred) |
 | `$46` / `$47` | hook / monitor release / press (inferred) |
-| `$49` | power-off request |
+| `$49` | reply to the radio's `$E4` keep-alive poll (§6.3) |
 | `$4A` | RAM dump |
 
 **Messages to the head (FM92R)** go through `head_send`:
@@ -254,8 +267,22 @@ if selcall is set up. The fourth key gets 7 if a selcall code is set.
 | `$80`/`$81` + character, `$82`/`$83` + character | the two display digits |
 | `$A0` | channel changed |
 | `$AA` | start-up |
+| `$E4` | keep-alive poll; the head must answer `$49` (§6.3) |
 | `$E7` + 3 bytes | head configuration, from 0x1F10–0x1F12 |
-| others | status codes: `$A2–$A7`, `$C0`/`$C1`, `$E4`/`$E5`, `$EC` |
+| others | status codes: `$A2–$A7`, `$C0`/`$C1`, `$E5`, `$EC` |
+
+### 6.3 Head keep-alive (FM92R)
+
+Once running, the FM92R checks that the control head is still there, and switches itself off when it isn't. Soft timers count in steps of 64 ticks (≈27 ms).
+
+1. About 1.7 s after start-up (`$5E = $40`, 0x0244), then about every 0.53 s (`head_poll_timer`, 0x051C: `$5E = $13`), the radio is ready to poll.
+2. `head_poll_send` (0x0526) sends **`$E4`** if no poll is outstanding, starts a ≈1.5 s timer (`head_poll_arm`, 0x0C73: `$5F = $38`) and sets "waiting" (`$1C.5`).
+3. The head answers **`$49`**. `head_cmd_alive` (0x0667) clears "waiting" (`$1C.5`) and "missed" (`$14.3`).
+4. If the timer expires while still waiting, `head_poll_check` (0x0534) sets "missed" and allows one more poll. If the timer expires on that one too, it jumps to `power_down_stop`.
+
+So a radio with no head, a dead head or a broken data wire switches itself back off about **3 s** after switching on. This matches VK3BYY's fault-finding note: *"Switches ON (Green lamp on) but turns OFF after a short period: possible control head failure … check microprocessor chip is seated properly in the control head."* A head (or a head emulator) can also switch the radio off simply by not answering.
+
+Not yet known: whether the real head's off button pulses the on/off wire, stops answering, or both. A capture with the on/off wire probed answers that (`../STM900/capture/CAPTURE.md`).
 
 ## 7. How the firmware uses the channel slot
 
@@ -592,13 +619,15 @@ on the receive frequency.
   * The voltage level (5 V logic at the CPU, possibly buffered on the board) and the head-connector pinout must be checked on the hardware.
 * **What a PC can read.**
   * The display characters (`$80`/`$82` + ASCII), i.e. the channel number.
-  * Status bytes (`$A0`–`$AA`, `$C0`/`$C1`, `$E4`/`$E5`, `$E7`+config).
+  * Status bytes (`$A0`–`$AA`, `$C0`/`$C1`, `$E5`, `$E7`+config) and the `$E4` keep-alive poll.
   * On request (`$4A`), a full RAM dump. That includes live RSSI (`$46`), squelch noise (`$45`), the supply/forward-power reading (`$4A`), the current channel (`$2E`) and all flags, which is useful for a signal meter or logging.
 * **What a PC can do.**
   * Send key codes `'1' '2' '4' '7'` to run the four programmable functions (§6.2), e.g. channel up/down, scan, monitor. With `tens`/`units` assigned (`--keys tens,units,…`), it can jump to any channel in about 3–10 key presses.
-  * Send PTT press/release (`$45`/`$44`, inferred) and power off (`$49`).
+  * Send PTT press/release (`$45`/`$44`, inferred).
+  * It **must** answer every `$E4` poll with `$49` within about 1.5 s, or the radio switches off after about 3 s (§6.3). Stopping the replies is also a way to switch the radio off.
+  * Switching **on** needs the head cable's on/off wire, not a serial byte (§6.1).
   * It **cannot** set an arbitrary frequency: only the programmed channels are reachable, the same as from the head.
-* **To confirm first.** Sniff a real head with a logic analyser or a USB-serial adapter in receive-only mode, to check the baud rate, parity, levels and the meaning of the head command bytes (§6.2). Also check whether the radio needs anything from the head at power-up; the firmware does not appear to wait for any reply.
+* **To confirm first.** Sniff a real head with a logic analyser or a USB-serial adapter in receive-only mode, to check the baud rate, parity, levels and the meaning of the head command bytes (§6.2). Also check the on/off wire's level and pulse width. The radio does not wait for anything from the head at power-up, but it needs `$49` keep-alive replies from then on (§6.3).
 * **Software.**
   * A small Python head emulator (pyserial): decode the display and status bytes, and send keys and PTT.
   * Optionally an ESP32 bridge on the wire serving a web page or Bluetooth link for a tablet.
@@ -642,5 +671,5 @@ Notes from the source:
 My own notes:
 
 * **Earlier version.** A version of this table supplied earlier gave VicPol Rx audio as pin 5 (a duplicate of Tx audio) and microphone Rx audio as pin 6. The WICEN source gives VicPol Rx audio = **6** and no microphone Rx-audio pin.
-* **Data line not listed.** These are the head's audio/PTT accessory connections. The source does not list the head ↔ radio **serial data line** (the ~1200 baud 8E1 link on CPU PB0, §1 and §13.3), the supply, or the power switch. Those are on the head-to-radio cable, not this DIN. Identify them before attempting PC/tablet control.
+* **Data line not listed.** These are the head's audio/PTT accessory connections. The source does not list the head ↔ radio **serial data line** (the ~1200 baud 8E1 link on CPU PB0, §1 and §13.3), the supply, or the power switch. Those are on the head-to-radio DB-15 cable, not this DIN (wire list in `../STM900/HARDWARE.md` §8; pin numbers still unknown). Identify them before attempting PC/tablet control.
 * **PTT:** the firmware senses PTT on CPU PA6 (inferred, §3). Head PTT may also arrive as a serial command (`$44`/`$45`).

@@ -17,20 +17,20 @@ RESET:    ; xref 01fb
   0117  b620     lda    $20                         
   0119  1b04     bclr   5, $04                      
   011b  0a000a   brset  5, $00, L_0128              ; PA5 = on/off switch sense; $20 = power state (0x11 off, 0x99 on)
-  011e  a111     cmp    #$11                        
+  011e  a111     cmp    #$11                        ; PA5 low (supply glitch): stay off if off, carry on if on
   0120  2767     beq    power_down_stop             
   0122  a199     cmp    #$99                        
   0124  2636     bne    cold_start                  
   0126  200e     bra    L_0136                      
 
 L_0128:    ; xref 011b
-  0128  a199     cmp    #$99                        
+  0128  a199     cmp    #$99                        ; PA5 high (on/off pressed): on -> off, off -> on
   012a  275d     beq    power_down_stop             
   012c  a111     cmp    #$11                        
   012e  262c     bne    cold_start                  
   0130  a699     lda    #$99                        
   0132  b720     sta    $20                         
-  0134  1a2a     bset   5, $2a                      
+  0134  1a2a     bset   5, $2a                      ; latch $2A bit 5 set only while on (switched supply enable, inferred)
 
 L_0136:    ; xref 0126
   0136  1a04     bset   5, $04                      
@@ -84,7 +84,7 @@ L_016c:    ; xref 0172
   017f  ae05     ldx    #$05                        
 
 L_0181:    ; xref 0187
-  0181  d61f32   lda    $1f32, x                    ; copy option bytes 1F33..1F37 -> RAM $2F..$33
+  0181  d61f32   lda    $1f32, x                    ; copy option bytes 1F33..1F37 -> RAM $2F..$33; then falls into power_down_stop (cold start ends OFF)
   0184  e72e     sta    $002e, x                    
   0186  5a       decx                               
   0187  26f8     bne    L_0181                      
@@ -93,7 +93,7 @@ power_down_stop:    ; xref 0120 012a 0471 053f 1571
   0189  1d29     bclr   6, $29                      
   018b  cd07ed   jsr    select_channel              
   018e  ad01     bsr    power_down                  
-  0190  8e       stop                               ; STOP: wait for wake-up (IRQ)
+  0190  8e       stop                               ; STOP: oscillator and AS stop, +5VS drops; only RESET (on/off line via IC407) restarts it
 
 power_down:    ; xref 018e 0cb3
   0191  a611     lda    #$11                        
@@ -105,7 +105,7 @@ power_down:    ; xref 018e 0cb3
 L_019c:    ; xref 0195
   019c  ad23     bsr    init_ddr                    
   019e  1c09     bset   6, $09                      
-  01a0  a607     lda    #$07                        
+  01a0  a607     lda    #$07                        ; latch $2A <- $07: bit 5 cleared (switched supply off, inferred)
   01a2  b72a     sta    $2a                         
   01a4  cd03d2   jsr    write_latch_PB2             
   01a7  a621     lda    #$21                        
@@ -289,15 +289,15 @@ L_02c3:    ; xref 02ba 02bd
 
 L_02cc:    ; xref 02c6
   02cc  0f5e03   brclr  7, $5e, L_02d2              
-  02cf  cd051c   jsr    sub_051c                    
+  02cf  cd051c   jsr    head_poll_timer             
 
 L_02d2:    ; xref 02cc
   02d2  071103   brclr  3, $11, L_02d8              
-  02d5  cd0526   jsr    sub_0526                    
+  02d5  cd0526   jsr    head_poll_send              
 
 L_02d8:    ; xref 02d2
   02d8  0b1c03   brclr  5, $1c, L_02de              
-  02db  cd0534   jsr    sub_0534                    
+  02db  cd0534   jsr    head_poll_check             
 
 L_02de:    ; xref 02d8
   02de  0d1c03   brclr  6, $1c, L_02e4              
@@ -702,26 +702,26 @@ L_050e:    ; xref 0517
   0519  1511     bclr   2, $11                      
   051b  81       rts                                
 
-sub_051c:    ; xref 02cf
+head_poll_timer:    ; xref 02cf
   051c  cd1409   jsr    sub_1409                    
-  051f  a613     lda    #$13                        
+  051f  a613     lda    #$13                        ; next keep-alive poll in ~0.53 s ($5E = $13)
   0521  b75e     sta    $5e                         
   0523  1611     bset   3, $11                      
   0525  81       rts                                
 
-sub_0526:    ; xref 02d5
+head_poll_send:    ; xref 02d5
   0526  0a1c0a   brset  5, $1c, L_0533              
-  0529  a6e4     lda    #$e4                        
+  0529  a6e4     lda    #$e4                        ; keep-alive: send $E4 to the head, then wait ~1.5 s for $49 ($5F = $38)
   052b  cd0be5   jsr    head_send                   
-  052e  cd0c73   jsr    sub_0c73                    
+  052e  cd0c73   jsr    head_poll_arm               
   0531  1711     bclr   3, $11                      
 
 L_0533:    ; xref 0526
   0533  81       rts                                
 
-sub_0534:    ; xref 02db
+head_poll_check:    ; xref 02db
   0534  0f5f07   brclr  7, $5f, L_053e              
-  0537  061405   brset  3, $14, L_053f              
+  0537  061405   brset  3, $14, L_053f              ; no $49 after the second poll (~3 s) -> power down
   053a  1614     bset   3, $14                      
   053c  1b1c     bclr   5, $1c                      
 
@@ -809,7 +809,7 @@ sub_05a8:
   05a8  cc05d5   jmp    L_05d5                      
 
 sub_05ab:
-  05ab  cc0667   jmp    L_0667                      
+  05ab  cc0667   jmp    head_cmd_alive              
 
 sub_05ae:
   05ae  cc157e   jmp    head_ram_dump               
@@ -957,8 +957,8 @@ L_0655:    ; xref 0651
   0663  81       rts                                
   0664  db cc 15 74
 
-L_0667:    ; xref 059c 05ab
-  0667  1b1c     bclr   5, $1c                      
+head_cmd_alive:    ; xref 059c 05ab
+  0667  1b1c     bclr   5, $1c                      ; head $49 = reply to the $E4 keep-alive poll: clear waiting/missed flags $1C.5, $14.3
   0669  1714     bclr   3, $14                      
   066b  81       rts                                
 
@@ -2001,7 +2001,7 @@ sub_0c66:    ; xref 0c5e
 L_0c72:    ; xref 0c68
   0c72  81       rts                                
 
-sub_0c73:    ; xref 052e
+head_poll_arm:    ; xref 052e
   0c73  a638     lda    #$38                        
   0c75  b75f     sta    $5f                         
   0c77  1a1c     bset   5, $1c                      

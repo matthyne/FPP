@@ -4,12 +4,15 @@
 Python 3, stdlib only.  Channels are found by the names given to them in
 PulseView (see CAPTURE.md for the probe map):
 
-  PA0..PA7  PB0..PB7  AS  DS  RW  IRQ  RESET  AD0..AD7  A8..A12
+  PA0..PA7  PB0..PB7  AS  DS  RW  IRQ  RESET  ONOFF  AD0..AD7  A8..A12
+
+ONOFF is the on/off wire of the head cable (optional).
 
 Sub-commands:
   info   FILE            sample rate, length, and activity per channel
   ports  FILE [--baud N] latch writes, synthesiser loads, IRQ (ADC) timing,
-                         head-link bytes on PB0 (setup A)
+                         head-link bytes on PB0, RESET / ONOFF / AS power
+                         events and the $E4/$49 keep-alive (setup A)
   bus    FILE [--csv OUT] every external bus cycle (address, data, R/W),
                          NSC810 accesses and AS gaps (setup B)
 """
@@ -177,6 +180,58 @@ def uart(cap, name, baud, parity='even'):
     return out
 
 
+# Link bytes with a known meaning (FIRMWARE.md section 6.2).
+LINK_NAMES = {0xAA: '(radio: start-up)', 0xE7: '(radio: head config follows)',
+              0xE4: '(radio: keep-alive poll)', 0x49: '(head: keep-alive reply)'}
+
+
+def power_events(cap):
+    """RESET edges (with PA5 when RESET rises), ONOFF edges, and AS starting
+    or stopping (gaps over 1 ms: the CPU is in STOP)."""
+    ev = []
+    if cap.has('RESET'):
+        for s, lv in cap.edges('RESET'):
+            pa5 = ''
+            if lv and cap.has('PA5'):
+                pa5 = f', PA5={(cap.word_at(s) >> cap.bit("PA5")) & 1}'
+            ev.append((s, f'RESET {"released" if lv else "asserted (low)"}{pa5}'))
+    if cap.has('ONOFF'):
+        for s, lv in cap.edges('ONOFF'):
+            ev.append((s, f'ONOFF -> {lv}'))
+    if cap.has('AS'):
+        rises = [t for t, lv in cap.edges('AS') if lv]
+        gap = 1e-3 * cap.rate
+        if rises:
+            if rises[0] > gap:
+                ev.append((rises[0], 'AS starts (CPU running)'))
+            for a, b in zip(rises, rises[1:]):
+                if b - a > gap:
+                    ev.append((a, 'AS stops (STOP)'))
+                    ev.append((b, 'AS starts (CPU running)'))
+            if cap.n - rises[-1] > gap:
+                ev.append((rises[-1], 'AS stops (STOP)'))
+    return ev
+
+
+def keepalive_summary(cap, link):
+    """Count radio polls ($E4) and head replies ($49), and the reply delays."""
+    polls = [s for s, b, _ in link if b == 0xE4]
+    replies = [s for s, b, _ in link if b == 0x49]
+    if not polls and not replies:
+        return
+    delays = []
+    for p in polls:
+        k = bisect.bisect_right(replies, p)
+        if k < len(replies):
+            delays.append(cap.us(replies[k] - p) / 1e3)
+    line = f'keep-alive: {len(polls)} polls ($E4), {len(replies)} replies ($49)'
+    if len(polls) > 1:
+        line += f', poll interval {cap.us(polls[-1] - polls[0]) / 1e3 / (len(polls) - 1):.0f} ms average'
+    if delays:
+        line += f', reply delay {min(delays):.1f}-{max(delays):.1f} ms'
+    print(line)
+
+
 def cmd_ports(cap, args):
     ev = []
     pa = lambda s: cap.field(cap.word_at(s - 1), PA)    # port A just before the edge
@@ -199,9 +254,13 @@ def cmd_ports(cap, args):
                 k = bisect.bisect_right(mt, s) - 1
                 note = f' {cap.us(s - mux[k][0]):.1f} us after latch $2A={mux[k][1]:02X}' if k >= 0 else ''
                 ev.append((s, f'IRQ (comparator){note}'))
+    ev += power_events(cap)
     if cap.has('PB0'):
-        for s, byte, ok in uart(cap, 'PB0', args.baud):
-            ev.append((s, f'link PB0  byte {byte:02X}{"" if ok else "  (parity/stop error)"}'))
+        link = uart(cap, 'PB0', args.baud)
+        for s, byte, ok in link:
+            ev.append((s, f'link PB0  byte {byte:02X}{"" if ok else "  (parity/stop error)"}'
+                       + (f'  {LINK_NAMES[byte]}' if byte in LINK_NAMES else '')))
+        keepalive_summary(cap, link)
     if cap.has('PB1'):
         r = sum(1 for _, lv in cap.edges('PB1') if lv)
         print(f'PB1: {r / (cap.n / cap.rate):.1f} Hz average')

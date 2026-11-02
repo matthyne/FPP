@@ -25,12 +25,16 @@
 =0468 low_batt_check
 =0475 key_hold_handler
 =0508 send_head_config
+=051c head_poll_timer
+=0526 head_poll_send
+=0534 head_poll_check
 =0559 tx_timer_expired
 =0542 tx_timer_start
 =0574 head_key_dispatch
 =059c head_cmd_table
 =05d6 fkey_func_table
 =05f1 fn_monitor_toggle
+=0667 head_cmd_alive
 =06bc tx_start
 =06ea tx_stop
 =072d fn_channel_up
@@ -56,6 +60,7 @@
 =0bb1 IRQ_ISR
 =0be5 head_send
 =0c24 display_digits
+=0c73 head_poll_arm
 =0c95 check_power_window
 =0ccb check_window
 =0cdb bin_to_bcd
@@ -86,10 +91,13 @@
 # comments
 0100 reset vector: SEI, reset stack, set up ports
 011b PA5 = on/off switch sense; $20 = power state (0x11 off, 0x99 on)
+011e PA5 low (supply glitch): stay off if off, carry on if on
+0128 PA5 high (on/off pressed): on -> off, off -> on
+0134 latch $2A bit 5 set only while on (switched supply enable, inferred)
 013e compare RAM copy of option bytes with EPROM 1F2E/1F33..1F37 (warm start?)
 016c copy EPROM 1F2E..1F31 -> RAM $2B..$2E ($2E = current channel = lowest channel)
-0181 copy option bytes 1F33..1F37 -> RAM $2F..$33
-0190 STOP: wait for wake-up (IRQ)
+0181 copy option bytes 1F33..1F37 -> RAM $2F..$33; then falls into power_down_stop (cold start ends OFF)
+0190 STOP: oscillator and AS stop, +5VS drops; only RESET (on/off line via IC407) restarts it
 01dc builds "ADD $hhll,X; RTS" in RAM $21 and sums $0100-$1FFF; must equal $FF
 0238 timer: TDR=$FF, TCR=$0F
 025d 1FA9 -> $C8 (selcall timing)
@@ -147,3 +155,8 @@
 1557 8-hour auto power off: 1FB5 x 30 min (enabled by 1F35 bit5)
 157e command $4A from head: dump RAM to head (diagnostic)
 158c init external peripherals $80-$86
+01a0 latch $2A <- $07: bit 5 cleared (switched supply off, inferred)
+051f next keep-alive poll in ~0.53 s ($5E = $13)
+0529 keep-alive: send $E4 to the head, then wait ~1.5 s for $49 ($5F = $38)
+0537 no $49 after the second poll (~3 s) -> power down
+0667 head $49 = reply to the $E4 keep-alive poll: clear waiting/missed flags $1C.5, $14.3

@@ -66,7 +66,7 @@ This confirms the FM92 firmware's use of `$80`–`$86` (NSC810 ports and directi
 | C427 0.047 F | Super-capacitor on +5VP: memory backup through short supply loss (VK3BYY "Super Cap") |
 | Battery pack PCB 3502 349 97190 | Optional battery on +5VP |
 | D403 (9V1 zener), TR401/TR402 | Supply monitor feeding the reset logic |
-| IC407 4011B | On/off key monostable and power-fail reset → RESET; also drives PA5 so the firmware can tell an on/off press from a supply transient |
+| IC407 4011B | On/off key monostable and power-fail reset → RESET; also drives PA5 so the firmware can tell an on/off press from a supply transient. On the FM92R the key is in the remote head, on the DB-15 on/off wire (§8). The firmware treats each press as a toggle (`../firmware/FIRMWARE.md` §6.1) |
 | TR404 → R435/C432 → TR406 → TR405 → IC411 LM340-T5 → **+5VS** | AS pulses drive TR404; the integrated pulses hold TR406/TR405 on and feed IC411. No AS pulses = +5VS off. The EPROM, IC409, the 74LS logic and the option modules are on +5VS |
 | D404 | Diode linking +5VS and +5VP (direction not legible) |
 
@@ -108,7 +108,22 @@ The module pins are TTL-compatible.
 * **SK407 → front panel SK501 (FM93 local control):** 5 on/off, 7 Rx output, 8 PTT, 9/12 power ground, 11/13/15/17 PA3/PA2/PA1/PA0, 14 Rx PA input, 16 indicator latch, 18 mute adjust, 19 units latch, 20 tens latch.
 * **SK405 (FM92):** pins 1 and 3 carry the microphone cradle reed switch (VK2DOT §26).
 * **Handset socket (FM92E):** 1 cradle, 2 power ground, 3 microphone ground, 4 speaker, 5 microphone active, 6 Rx audio out, 7 PTT, 8 not used (VK2DOT §32).
-* **Remote head cable (FM92R), DB-15:** 6 unshielded wires (power, ground, mute, speaker, PTT, on/off), 2 single shielded (Rx audio in, Rx audio out), 2 shielded pairs (microphone; data/clock) (VK3BYY). The remote head has its own microprocessor.
+* **Remote head cable (FM92R), DB-15.** A custom multi-wire shielded cable, standard DB-15 male and female connectors (non-metric screw threads). VK3BYY lists the wires but not the pin numbers:
+
+  | Wire | Type | Notes |
+  |---|---|---|
+  | Power | unshielded | supply to the head |
+  | Ground | unshielded | |
+  | Mute | unshielded | presumably the head's mute (squelch) pot to the radio's ADC |
+  | Speaker | unshielded | audio amplifier output to the head speaker |
+  | PTT | unshielded | |
+  | On/off switch | unshielded | the head's on/off key to IC407: the only way to **switch the radio on** (`../firmware/FIRMWARE.md` §6.1) |
+  | Rx audio in | single shielded | |
+  | Rx audio out | single shielded | |
+  | Microphone | shielded pair | |
+  | Data / clock | shielded pair | the ~1200 baud 8E1 head link on CPU PB0, and very probably the 1.2 kHz clock on PB1 |
+
+  That is 12 conductors plus shields on 15 pins. VK3BYY adds that short lengths (under about 30 cm) of unshielded ribbon cable may work. The remote head has its own microprocessor, which must answer the radio's keep-alive poll or the radio switches off after about 3 s (`../firmware/FIRMWARE.md` §6.3).
 
 ## 9. What this means for the STM32
 
@@ -117,12 +132,13 @@ The module pins are TTL-compatible.
 * **Logic levels.** The 74LS00, the 74LS260 and the NSC810 bus inputs are TTL-level, so 3.3 V outputs drive them. Port A and port B go to **4000-series CMOS** latches (4174B, 4011B) at 5 V, which need about 3.5 V for a high. Those lines need 5 V buffers (74HCT). The inputs (keys, PTT, IRQ, RESET, PA5) need 5 V-tolerant pins.
 * **No clock output needed.** The STM32 replaces the oscillator. The 1 MHz to U405 comes from the NSC810 timer **(inferred)**, so the STM32 must keep the bus timing that clocks it (or generate 1 MHz itself if the NSC810 goes).
 * **Standby.** +5VP is backed by a 0.047 F super-cap (and optionally a battery). The STM32's off-state current has to be comparable with a 146805E2 in STOP (a few µA) to keep the same hold-up time.
+* **Power on/off.** The STM32 must keep the same behaviour: wake on the on/off line, treat each press as a toggle, enable the switched supply (latch `$2A` bit 5, inferred), poll the head with `$E4`, and switch off when `$49` stops coming back (`../firmware/FIRMWARE.md` §6.1, §6.3).
 * **Unused pins.** TIMER (grounded), LI (grounded) and, on the FM93, IRQ.
 
 ## 10. Still to find
 
 1. FM92 port-A latch wiring: which 4174B outputs drive what (the three latches `$29`, `$2A` and `$2C`), and the ADC comparator on IRQ. An FM92 schematic or a board trace is needed; the FM91 schematic in VK2DOT §42 is missing from this copy.
 2. Confirm that U405's 1 MHz comes from NSC810 T0 OUT, and what drives T0 IN.
-3. The FM92R remote-head link: confirm PB0 = data and PB1 = clock on the DB-15, and find the pinout.
+3. The FM92R remote-head link: confirm PB0 = data and PB1 = clock on the DB-15, and find the pinout (§8 has the wire list, without pin numbers). Also the on/off wire's idle level and pulse, and whether the head's off press uses that wire or just stops answering the keep-alive poll.
 4. Measure the standby current on +5VP.
 5. A logic-analyser capture of a working FM92: ports, AS/DS, and synthesiser loads. This is the reference trace for the adapter.

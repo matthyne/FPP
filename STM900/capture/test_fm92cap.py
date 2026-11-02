@@ -87,7 +87,43 @@ class PortsTest(unittest.TestCase):
         self.assertIn('latch $2A  PA=03', out)
         self.assertIn('IRQ (comparator) 101.0 us after latch $2A=03', out)
         self.assertIn('synth load 3 strobes: 1E 07 0C   low nibbles: E7C', out)
-        self.assertIn('link PB0  byte AA\n', out)
+        self.assertIn('link PB0  byte AA  (radio: start-up)\n', out)
+
+    def test_power_and_keepalive(self):
+        names = [f'PA{i}' for i in range(8)] + ['PB0', 'AS', 'RESET', 'ONOFF']
+        s = Sim(names, unitsize=2)
+        bt = round(RATE / 1200)
+
+        def byte(v):
+            par = bin(v).count('1') & 1                            # even parity bit
+            for b in [0] + [(v >> k) & 1 for k in range(8)] + [par, 1]:
+                s.set(PB0=b); s.hold(bt)
+
+        def run_as(us):                                            # CPU running: 1 MHz AS
+            for _ in range(us // 2):
+                s.set(AS=1); s.hold(1); s.set(AS=0); s.hold(1)
+
+        s.set(PB0=1, RESET=1, ONOFF=1)
+        s.hold(3000)                                               # off: no AS
+        s.set(ONOFF=0, RESET=0, PA5=1); s.hold(100)                # on/off press
+        s.set(RESET=1); s.hold(10); s.set(ONOFF=1)
+        run_as(200)
+        byte(0xE4); run_as(2000); byte(0x49); run_as(500)
+        byte(0xE4); run_as(4000); byte(0x49); run_as(500)
+        s.hold(3000)                                               # STOP
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, 'k.sr')
+            s.save(p)
+            out = run(['ports', p])
+        self.assertIn('RESET asserted (low)', out)
+        self.assertIn('RESET released, PA5=1', out)
+        self.assertIn('ONOFF -> 0', out)
+        self.assertIn('AS starts (CPU running)', out)
+        self.assertIn('AS stops (STOP)', out)
+        self.assertIn('byte E4  (radio: keep-alive poll)', out)
+        self.assertIn('byte 49  (head: keep-alive reply)', out)
+        self.assertIn('keep-alive: 2 polls ($E4), 2 replies ($49)', out)
+        self.assertRegex(out, r'reply delay 1[01]\.\d-1[23]\.\d ms')
 
 
 class BusTest(unittest.TestCase):
