@@ -2,6 +2,7 @@
 // Rows are an ordered list of records, not a slot array: duplicate channel numbers and
 // VOTE rings need several records per number, and record order decides ring slot
 // allocation and scan-list order (FUNC 0x52FD / 0x77F7).
+import { EpromPart } from './eprom';
 import { Channel, FM900Error, normFreq } from './fm900';
 
 export interface Row {
@@ -22,6 +23,7 @@ export interface Project {
   comments: string[];
   keys: number[] | null;   // FM92 head keys 1/2/4/7 override, null = as FM900.EXE
   date: string;            // YYYY-MM-DD, '' = today
+  eprom?: EpromPart;       // chip the image is burned to (absent = 2764); the 8 KB image is mirrored into every bank
   rows: Row[];
 }
 

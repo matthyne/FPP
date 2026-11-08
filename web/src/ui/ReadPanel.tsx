@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { formatChannels, powerLetter, scanText } from '../core/channels';
 import { dump, imageKeys, imageModel, readImage } from '../core/decode';
 import { CTCSS_HZ_BY_CODE, F_CR, F_ECON, F_SELCALL, F_VOTE, KEY_FUNCS, MASTER_VERSION, latin1, verifyChecksum } from '../core/fm900';
@@ -6,6 +6,7 @@ import { Project, Row, channelToRow } from '../core/project';
 import { errMsg } from './App';
 import { HexView } from './BuildPanel';
 import { download, pickFiles, readBytes } from './files';
+import { splitBanks } from '../core/eprom';
 
 const hx = (n: number) => n.toString(16).toUpperCase().padStart(2, '0');
 
@@ -18,6 +19,11 @@ export function ReadPanel({ p, img, setImg, load }: {
   const [step, setStep] = useState(0);
   const [keepKeys, setKeepKeys] = useState(false);
   const [view, setView] = useState<'channels' | 'hex' | 'dump'>('channels');
+  const [bankSel, setBankSel] = useState<number | null>(null);   // null = top bank
+  useEffect(() => setBankSel(null), [img]);
+  const split = useMemo(() => (img ? splitBanks(img.data) : null), [img]);
+  const bank = split ? Math.min(bankSel ?? split.banks.length - 1, split.banks.length - 1) : 0;
+  const data = split ? split.banks[split.mirrored ? 0 : bank] : img?.data;
 
   const open = async () => {
     const [f] = await pickFiles('.bin,.BIN', false);
@@ -25,21 +31,22 @@ export function ReadPanel({ p, img, setImg, load }: {
   };
 
   const res = useMemo(() => {
-    if (!img) return null;
+    if (!data) return null;
     try {
       if (!/^\d{8}$/.test(hw)) throw new Error('enter the 8-digit hardware code of the radio');
-      return { ok: readImage(img.data, hw, step || undefined) };
+      return { ok: readImage(data, hw, step || undefined) };
     } catch (e) {
       return { err: errMsg(e) };
     }
-  }, [img, hw, step]);
+  }, [data, hw, step]);
 
   if (!img) {
     return (
       <div class="panel read">
         <section class="card wide empty">
           <h2>Read an EPROM image</h2>
-          <p>Open an 8 KB <code>.BIN</code> read from a radio's 2764, or one made by the Original FPP, to decode it back into a channel list.</p>
+          <p>Open a <code>.BIN</code> read from a radio's 2764, or one made by the Original FPP, to decode it back into a channel list.
+            16, 32 and 64 KB images (27128, 27256, 27512) are read one 8 KB bank at a time.</p>
           <p><button class="primary" onClick={open}>Open .BIN…</button></p>
           <p class="hint">You can also drop the file anywhere on the page.</p>
         </section>
@@ -47,8 +54,8 @@ export function ReadPanel({ p, img, setImg, load }: {
     );
   }
 
-  const d = img.data;
-  const size = d.length === 0x2000;
+  const d = data!;
+  const size = !!split;
   const id = size ? latin1(d.subarray(0x1FEB, 0x1FF0)) : '';
   const mname = Object.entries(MASTER_VERSION).find(([, v]) => v[1] === id && v[0] === d[0x1FE5])?.[0];
   const model = size ? imageModel(d) : '';
@@ -61,8 +68,9 @@ export function ReadPanel({ p, img, setImg, load }: {
         <div class="readhead">
           <div>
             <h2>{img.name}</h2>
-            {!size ? <p class="msg bad">Expected 8192 bytes, got {d.length}.</p> : (
+            {!size ? <p class="msg bad">Expected 8, 16, 32 or 64 KB (an EPROM image), got {d.length} bytes.</p> : (
               <dl>
+                {split.part.part !== '2764' && <><dt>EPROM</dt><dd>{split.part.part}, {split.banks.length} banks{split.mirrored ? ', all identical' : ''}</dd></>}
                 <dt>Master</dt><dd class="mono">{mname ?? `unknown (ID "${id}", version ${d[0x1FE5]})`}</dd>
                 <dt>Built</dt><dd class="mono">{hx(d[0x1FE2])}/{hx(d[0x1FE3])}/{hx(d[0x1FE4])} <small>DD/MM/YY</small>, programmer {hx(d[0x1FE0])} {hx(d[0x1FE1])}</dd>
                 <dt>Checksum</dt><dd class={verifyChecksum(d) ? '' : 'bad'}>{verifyChecksum(d) ? 'OK' : 'BAD'}</dd>
@@ -77,6 +85,14 @@ export function ReadPanel({ p, img, setImg, load }: {
               <input class="mono" value={hw} maxLength={8} onInput={(e) => setHw((e.target as HTMLInputElement).value.replace(/\D/g, ''))} />
             </label>
             {size && hw[1] && hw[1] !== model && <p class="msg warn">The image looks like an FM9{model}, but the code says FM9{hw[1]}.</p>}
+            {split && !split.mirrored && (
+              <label class="field">
+                <span class="lab">Bank <small>(banks differ)</small></span>
+                <select value={bank} onChange={(e) => setBankSel(+(e.target as HTMLSelectElement).value)}>
+                  {split.banks.map((_, i) => <option value={i}>{i} (0x{(i * 0x2000).toString(16).toUpperCase().padStart(4, '0')}){i === split.banks.length - 1 ? ', top: extra address lines high' : ''}</option>)}
+                </select>
+              </label>
+            )}
             <label class="field">
               <span class="lab">Synth step</span>
               <select value={step} onChange={(e) => setStep(+(e.target as HTMLSelectElement).value)}>

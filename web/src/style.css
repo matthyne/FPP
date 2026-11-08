@@ -1,3 +1,5 @@
+/* Colour tokens. No data-theme = Light, or Dark when the OS prefers it. Every named
+   theme is a complete palette; keep the list in sync with THEMES in src/ui/theme.ts. */
 :root {
   --bg: #f4f2ee;
   --surface: #ffffff;
@@ -11,11 +13,15 @@
   --ok: #15803d;
   --bad: #b91c1c;
   --bad-soft: #fde8e8;
-  --warn: #a16207;
+  --bad-ink: #ffffff;
+  --warn: #975a06;
   --warn-soft: #fdf3d7;
   --info-soft: #e3eefc;
   --head: #1f2125;
   --head-ink: #f2efe9;
+  --head-line: #4a4d55;
+  --head-hover: #2d3036;
+  --head-muted: #a8a39a;
   --sel: #fff3e8;
   --chg: #fcd9c4;
   --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
@@ -23,18 +29,55 @@
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root:not([data-theme]) {
     --bg: #15161a; --surface: #1e2025; --surface-2: #24262c; --border: #34373e; --text: #e9e6e0; --muted: #9b968d;
     --accent: #f97316; --accent-ink: #1a0d04; --accent-soft: #3a2214; --ok: #4ade80; --bad: #f87171; --bad-soft: #3a1c1c;
-    --warn: #facc15; --warn-soft: #3a3214; --info-soft: #1b2a40; --head: #0e0f12; --head-ink: #ece8e1; --sel: #2f2418;
-    --chg: #5b2c12; color-scheme: dark;
+    --bad-ink: #1a0505; --warn: #facc15; --warn-soft: #3a3214; --info-soft: #1b2a40; --head: #0e0f12; --head-ink: #ece8e1;
+    --head-line: #3a3d45; --head-hover: #24262c; --head-muted: #9b968d; --sel: #2f2418; --chg: #5b2c12; color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
   --bg: #15161a; --surface: #1e2025; --surface-2: #24262c; --border: #34373e; --text: #e9e6e0; --muted: #9b968d;
   --accent: #f97316; --accent-ink: #1a0d04; --accent-soft: #3a2214; --ok: #4ade80; --bad: #f87171; --bad-soft: #3a1c1c;
-  --warn: #facc15; --warn-soft: #3a3214; --info-soft: #1b2a40; --head: #0e0f12; --head-ink: #ece8e1; --sel: #2f2418;
-  --chg: #5b2c12; color-scheme: dark;
+  --bad-ink: #1a0505; --warn: #facc15; --warn-soft: #3a3214; --info-soft: #1b2a40; --head: #0e0f12; --head-ink: #ece8e1;
+  --head-line: #3a3d45; --head-hover: #24262c; --head-muted: #9b968d; --sel: #2f2418; --chg: #5b2c12; color-scheme: dark;
+}
+/* FPP Blue: the DOS programmer's blue screens */
+:root[data-theme='fppblue'] {
+  --bg: #0b1d5e; --surface: #10287a; --surface-2: #142f8a; --border: #2f4fb4; --text: #eef3ff; --muted: #a9bce8;
+  --accent: #ffd23f; --accent-ink: #1a1400; --accent-soft: #34407a; --ok: #6cf59a; --bad: #ff8a8a; --bad-soft: #4a2160;
+  --bad-ink: #1a0505; --warn: #ffe066; --warn-soft: #3e3f6a; --info-soft: #1b3ea6; --head: #00a8b0; --head-ink: #001418;
+  --head-line: #007a80; --head-hover: #00c4cc; --head-muted: #00262a; --sel: #1f45b0; --chg: #6b5a12; color-scheme: dark;
+}
+/* Amber: amber-phosphor terminal */
+:root[data-theme='amber'] {
+  --bg: #120c02; --surface: #1b1305; --surface-2: #22180a; --border: #44310f; --text: #ffb627; --muted: #b8821e;
+  --accent: #ffd166; --accent-ink: #1a1000; --accent-soft: #3a2908; --ok: #d4e86a; --bad: #ff6f3d; --bad-soft: #3a170a;
+  --bad-ink: #1a0800; --warn: #ffe39a; --warn-soft: #33280c; --info-soft: #2b2110; --head: #0a0601; --head-ink: #ffb627;
+  --head-line: #4a3410; --head-hover: #2a1d08; --head-muted: #b8821e; --sel: #2e2009; --chg: #5c3b06;
+  --sans: var(--mono); color-scheme: dark;
+}
+/* Green screen: green-phosphor terminal */
+:root[data-theme='green'] {
+  --bg: #04100a; --surface: #08180f; --surface-2: #0c2015; --border: #1c4a2e; --text: #4cf58f; --muted: #34a865;
+  --accent: #a6ff70; --accent-ink: #031a08; --accent-soft: #12361e; --ok: #a6ff70; --bad: #ff7070; --bad-soft: #3a1414;
+  --bad-ink: #1a0303; --warn: #eaff66; --warn-soft: #29330f; --info-soft: #0f2c30; --head: #020a05; --head-ink: #4cf58f;
+  --head-line: #1c4a2e; --head-hover: #0c2015; --head-muted: #34a865; --sel: #0f2e1b; --chg: #1f5c2d;
+  --sans: var(--mono); color-scheme: dark;
+}
+/* Slate: blue-grey light theme, teal accent */
+:root[data-theme='slate'] {
+  --bg: #eef2f6; --surface: #ffffff; --surface-2: #f6f8fb; --border: #d3dae3; --text: #17202b; --muted: #5b6878;
+  --accent: #0f766e; --accent-ink: #ffffff; --accent-soft: #d5f0ec; --ok: #15803d; --bad: #b91c1c; --bad-soft: #fde8e8;
+  --bad-ink: #ffffff; --warn: #975a06; --warn-soft: #fdf3d7; --info-soft: #e1ecf8; --head: #1e293b; --head-ink: #f1f5f9;
+  --head-line: #3b4a61; --head-hover: #2b3a52; --head-muted: #94a3b8; --sel: #e6f4f1; --chg: #b8e3dc; color-scheme: light;
+}
+/* High contrast: black on white, strong borders */
+:root[data-theme='contrast'] {
+  --bg: #ffffff; --surface: #ffffff; --surface-2: #f0f0f0; --border: #000000; --text: #000000; --muted: #2b2b2b;
+  --accent: #0038b8; --accent-ink: #ffffff; --accent-soft: #d6e2ff; --ok: #005a00; --bad: #a80000; --bad-soft: #ffdede;
+  --bad-ink: #ffffff; --warn: #6b4000; --warn-soft: #fff0bf; --info-soft: #dde9ff; --head: #000000; --head-ink: #ffffff;
+  --head-line: #ffffff; --head-hover: #333333; --head-muted: #d0d0d0; --sel: #ffff8a; --chg: #ffc400; color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -51,15 +94,15 @@ small { color: var(--muted); font-weight: normal; }
 .topbar { background: var(--head); color: var(--head-ink); display: flex; flex-wrap: wrap; gap: 8px 16px;
   align-items: center; justify-content: space-between; padding: 10px 16px; }
 .brand { display: flex; align-items: center; gap: 10px; }
-.logo { display: block; height: 40px; width: auto; border-radius: 4px; box-shadow: 0 0 0 1px #4a4d55; }
+.logo { display: block; height: 40px; width: auto; border-radius: 4px; box-shadow: 0 0 0 1px var(--head-line); }
 .brand-text { font-weight: 600; font-size: 16px; display: flex; flex-direction: column; line-height: 1.15; }
-.brand-text small { color: #a8a39a; font-size: 11.5px; }
+.brand-text small { color: var(--head-muted); font-size: 11.5px; }
 .file-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.file-actions button { background: transparent; color: var(--head-ink); border-color: #4a4d55; }
-.file-actions button:hover:not(:disabled) { background: #2d3036; }
-.file-actions select.theme { background: transparent; color: var(--head-ink); border-color: #4a4d55; padding: 5px 6px; cursor: pointer; }
+.file-actions button { background: transparent; color: var(--head-ink); border-color: var(--head-line); }
+.file-actions button:hover:not(:disabled) { background: var(--head-hover); }
+.file-actions select.theme { background: transparent; color: var(--head-ink); border-color: var(--head-line); padding: 5px 6px; cursor: pointer; }
 .file-actions select.theme option { background: var(--surface); color: var(--text); }
-.sep { width: 1px; height: 20px; background: #4a4d55; margin: 0 2px; }
+.sep { width: 1px; height: 20px; background: var(--head-line); margin: 0 2px; }
 
 /* tabs */
 .tabs { display: flex; gap: 2px; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--border);
@@ -226,8 +269,8 @@ pre.dump { overflow: auto; max-height: 70vh; font-size: 12px; margin: 0; backgro
 .modal h2 { margin: 0 0 10px; font-size: 16px; }
 .toast { position: fixed; left: 50%; bottom: 52px; transform: translateX(-50%); background: var(--head); color: var(--head-ink);
   padding: 10px 16px; border-radius: 8px; z-index: 30; max-width: calc(100% - 32px); box-shadow: 0 8px 24px rgba(0,0,0,.25); cursor: pointer; }
-.toast.err { background: var(--bad); color: #fff; }
-.dropzone { position: fixed; inset: 10px; border: 3px dashed var(--accent); border-radius: 16px; background: rgba(194,65,12,.08);
+.toast.err { background: var(--bad); color: var(--bad-ink); }
+.dropzone { position: fixed; inset: 10px; border: 3px dashed var(--accent); border-radius: 16px; background: color-mix(in srgb, var(--accent) 8%, transparent);
   display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; z-index: 40; pointer-events: none; }
 
 @media (max-width: 760px) {

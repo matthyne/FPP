@@ -6,6 +6,7 @@ import { master } from '../core/masters';
 import { Project } from '../core/project';
 import type { Update } from './App';
 import { download, safeName } from './files';
+import { EPROMS, EpromPart, eprom, expandImage } from '../core/eprom';
 
 /** Short description of an image address, from FM900_FORMAT.md §4. */
 export function region(addr: number, fm91: boolean): string {
@@ -69,6 +70,7 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
   const base = useMemo(() => (b && a.img ? master(b.masterName()) : undefined), [a.img, b]);
   const changed = useMemo(() => (a.img && base ? a.img.reduce((n, x, i) => n + (x !== base[i] ? 1 : 0), 0) : 0), [a.img, base]);
   const fname = `${safeName(p.name)}.BIN`;
+  const chip = eprom(p.eprom);
 
   return (
     <div class="panel build">
@@ -96,10 +98,24 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
             <span class="lab">Build date</span>
             <input type="date" value={p.date} onInput={(e) => update((q) => ({ ...q, date: (e.target as HTMLInputElement).value }))} />
           </label>
-          <button class="primary big" disabled={!a.img} onClick={() => { download(fname, a.img!); notify(`Saved ${fname}`); }}>
+          <label class="field">
+            <span class="lab">EPROM</span>
+            <select value={chip.part} onChange={(e) => {
+              const v = (e.target as HTMLSelectElement).value as EpromPart;
+              update((q) => ({ ...q, eprom: v === '2764' ? undefined : v }));
+            }}>
+              {EPROMS.map((e) => <option value={e.part}>{e.part} ({e.size / 1024} KB)</option>)}
+            </select>
+          </label>
+          <button class="primary big" disabled={!a.img} onClick={() => { download(fname, expandImage(a.img!, chip.part)); notify(`Saved ${fname} (${chip.part})`); }}>
             Download {fname}
           </button>
-          <p class="hint">8192 bytes for a 2764 / 27C64. For example: <code>minipro -p 2764 -w {fname}</code></p>
+          <p class="hint">
+            {chip.size} bytes for a {chip.part === '2764' ? '2764 / 27C64' : chip.part}.
+            {chip.extra && <> The 8 KB image is repeated in all {chip.size / 0x2000} banks, so the radio runs whatever level the
+              extra address pins ({chip.extra}) sit at.</>}
+            {' '}For example: <code>minipro -p {chip.minipro} -w {fname}</code>
+          </p>
         </div>
       </section>
 

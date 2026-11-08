@@ -1,13 +1,25 @@
-// Light / dark / system theme. style.css keys the palette on <html data-theme>;
-// no attribute means "follow prefers-color-scheme". index.html applies the saved
-// choice before first paint.
-export type Theme = 'system' | 'light' | 'dark';
+// Colour themes. style.css keys each palette on <html data-theme>; no attribute means
+// "follow prefers-color-scheme" (Light or Dark). index.html applies the saved choice
+// before first paint: keep its list in sync with THEMES.
+export const THEMES = [
+  ['system', 'System'],
+  ['light', 'Light'],
+  ['dark', 'Dark'],
+  ['fppblue', 'FPP Blue'],
+  ['amber', 'Amber'],
+  ['green', 'Green screen'],
+  ['slate', 'Slate'],
+  ['contrast', 'High contrast'],
+] as const;
+export type Theme = (typeof THEMES)[number][0];
 const KEY = 'fm900-web:theme';
+
+const isTheme = (t: unknown): t is Theme => THEMES.some(([id]) => id === t);
 
 export function loadTheme(): Theme {
   try {
     const t = localStorage.getItem(KEY);
-    return t === 'light' || t === 'dark' ? t : 'system';
+    return isTheme(t) ? t : 'system';
   } catch {
     return 'system';
   }

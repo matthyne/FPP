@@ -11,7 +11,7 @@ import { RadioPanel } from './RadioPanel';
 import { ReadPanel } from './ReadPanel';
 import { ScanKeysPanel } from './ScanKeysPanel';
 import { download, loadSaved, pickFiles, readBytes, safeName, save } from './files';
-import { Theme, applyTheme, loadTheme } from './theme';
+import { THEMES, Theme, applyTheme, loadTheme } from './theme';
 import radioPhoto from '../assets/fm900.webp';
 
 export type Tab = 'radio' | 'channels' | 'scan' | 'build' | 'read' | 'help';
@@ -184,9 +184,7 @@ export function App() {
           <span class="sep" />
           <select class="theme" value={theme} aria-label="Colour theme" title="Colour theme"
             onChange={(e) => setTheme((e.target as HTMLSelectElement).value as Theme)}>
-            <option value="system">Theme: System</option>
-            <option value="light">Theme: Light</option>
-            <option value="dark">Theme: Dark</option>
+            {THEMES.map(([id, label]) => <option value={id}>Theme: {label}</option>)}
           </select>
         </div>
       </header>

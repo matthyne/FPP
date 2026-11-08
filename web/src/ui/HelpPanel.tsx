@@ -18,7 +18,7 @@ export function HelpPanel() {
             Enter and the arrow keys move between rows. Use <i>Fill range</i> for a run of channels, <i>Channel plans</i> for UHF CB, and
             <i>Import CSV / paste</i> for lists from CHIRP, RepeaterBook, RadioReference or a spreadsheet.</li>
           <li><b>Scan &amp; Keys</b>: set up the scan blocks and, on the FM92, the head's function keys.</li>
-          <li><b>Build</b>: download the <code>.BIN</code> and burn it to a 2764 / 27C64.</li>
+          <li><b>Build</b>: download the <code>.BIN</code> and burn it to a 2764 / 27C64. For a 27128, 27256 or 27512, pick it in the <b>EPROM</b> menu: the 8 KB image is repeated in every bank.</li>
         </ol>
         <p>Your work is saved in this browser automatically. Use <b>Save</b> for a project file you can open anywhere, and
           <b> Export JOB/CHL</b> for files the Original FPP can open.</p>

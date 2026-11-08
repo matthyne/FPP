@@ -524,7 +524,7 @@ cat b0.bin b1.bin > rom_27128.bin                       # 16 KB
 cat b0.bin b1.bin b2.bin b3.bin > rom_27256.bin         # 32 KB
 ```
 
-**Simplest use, with no modifications:** on a converted board, pin 26 is often still tied to +5 V, which makes a 27128 read its *upper* half. If you just want to use a larger or cheaper EPROM, program the same image into every bank (`cat radio.bin radio.bin > rom.bin`). It then works however A13 and A14 are strapped.
+**Simplest use, with no modifications:** on a converted board, pin 26 is often still tied to +5 V, which makes a 27128 read its *upper* half. If you just want to use a larger or cheaper EPROM, program the same image into every bank (`cat radio.bin radio.bin > rom.bin`). It then works however A13 and A14 are strapped. Web FPP's Build tab does this for you: pick the part in its **EPROM** menu. A **27C512** works the same way, with A15 on pin 1 (Vpp on the smaller parts, normally tied to +5 V), giving 8 mirrored banks.
 
 #### Option A: external switch (no firmware change)
 

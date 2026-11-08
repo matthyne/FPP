@@ -54,7 +54,8 @@ The original DOS files are reference material. **Never modify them.**
   * `project.ts`: the UI's project model.
   * `analyze.ts`: per-row problems plus a trial build.
   * `masters.ts`: masters embedded as base64.
-* Theming: `style.css` defines colour tokens on `:root`, with dark values under `prefers-color-scheme` (guarded by `:root:not([data-theme='light'])`) and under `:root[data-theme='dark']`. Use the tokens, not literal colours. `src/ui/theme.ts` sets or clears `<html data-theme>` and stores the choice in `localStorage` (`fm900-web:theme`; absent = system). An inline script in `index.html` applies it before first paint. Keep its key in sync with `theme.ts`.
+  * `eprom.ts`: EPROM parts (`EPROMS`: 2764/27128/27256/27512 with minipro names), `expandImage` (mirror the 8 KB image into every bank) and `splitBanks` (Read tab: split a 16/32/64 KB chip into banks, detect mirroring). Post-processing only: the Builder and `fm900gen.py` always make 8 KB. The choice is the optional `Project.eprom` field (absent = 2764). Tests: `eprom.test.ts`.
+* Theming: `style.css` defines colour tokens on `:root` (= Light), with dark values under `prefers-color-scheme` (guarded by `:root:not([data-theme])`, so only System follows the OS) and a complete palette per named theme under `:root[data-theme='<id>']`: `dark`, `fppblue`, `amber`, `green`, `slate`, `contrast`. Every theme sets every token, including the top-bar ones (`--head`, `--head-ink`, `--head-line`, `--head-hover`, `--head-muted`) and `--bad-ink`. The terminal themes also set `--sans: var(--mono)`. Use the tokens, not literal colours, and keep text/background pairs at a contrast of 4.5:1 or better. `src/ui/theme.ts` has the `THEMES` list (id, label), sets or clears `<html data-theme>` and stores the choice in `localStorage` (`fm900-web:theme`; absent = system). An inline script in `index.html` applies it before first paint. Keep its key and theme list in sync with `theme.ts`.
 * User-facing UI text calls FM900.EXE "the Original FPP". The Help tab (`src/ui/HelpPanel.tsx`) does not mention the Python version. Code comments and the other docs still say FM900.EXE.
 * `src/assets/fm900.webp` is the top-bar logo: a 96 px-tall resize of the MWRS FM900 front-panel photo (`https://www.mwrs.org.au/wp-content/uploads/2016/07/Clubs-FM900.png`). Shown at 40 px tall. `tsconfig.json` includes `vite/client` types for asset imports.
 * `src/core/masters.gen.ts` is generated from `fm900/MASTERS` by `scripts/gen-masters.mjs`, which runs before dev, build and test. It is gitignored. Don't copy the masters into `web/`.
@@ -66,6 +67,7 @@ The original DOS files are reference material. **Never modify them.**
   * `vectors.test.ts`: runs `test/gen_vectors.py`, about 3000 random cases built by `fm900gen.py`. Hash, error/no-error and VCO warnings must match. It is skipped if `python3` is missing. `FM900_VECTORS=n` changes the count.
   * `readback.test.ts`: decodes each reference `.BIN` back to channels and rebuilds it identically.
   * `import.test.ts`: CHIRP, RadioReference (pasted), README, headerless and generic tables, plus tone parsing.
+  * `eprom.test.ts`: each EPROM size is the golden image in every bank, reads back, and non-mirrored banks are detected.
   * `presets.test.ts`: the UHF CB 80 plan equals the `80CHCB.CHL` sample channel for channel, and both plans build. Every full-project example builds with no row errors or warnings.
 * Dev: `cd web && npm install && npm run dev`, then open `http://localhost:5173/FPP/`. Vite `base` is `/FPP/` (override with `FM900_BASE`).
 
