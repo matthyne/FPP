@@ -170,7 +170,7 @@ L_01fb:    ; xref 01f8
   01fb  cc0100   jmp    RESET                       
 
 warm_start:    ; xref 013b
-  01fe  cd13de   jsr    sub_13de                    
+  01fe  cd13de   jsr    selcall_display_end         
   0201  001f03   brset  0, $1f, L_0207              
   0204  0c1100   brset  6, $11, L_0207              
 
@@ -270,17 +270,17 @@ main_loop:    ; xref 029b 0dcc
 L_02a8:    ; xref 02a2
   02a8  cd0475   jsr    key_hold_handler            
   02ab  071c03   brclr  3, $1c, L_02b1              
-  02ae  cd03df   jsr    sub_03df                    
+  02ae  cd03df   jsr    display_timeout_task        
 
 L_02b1:    ; xref 02ab
   02b1  051c06   brclr  2, $1c, L_02ba              
   02b4  0f5503   brclr  7, $55, L_02ba              
-  02b7  cd0726   jsr    sub_0726                    
+  02b7  cd0726   jsr    rx_synth_settled            
 
 L_02ba:    ; xref 02b1 02b4
   02ba  031c06   brclr  1, $1c, L_02c3              
   02bd  0f5503   brclr  7, $55, L_02c3              
-  02c0  cd071a   jsr    sub_071a                    
+  02c0  cd071a   jsr    tx_synth_settled            
 
 L_02c3:    ; xref 02ba 02bd
   02c3  cd0429   jsr    ptt_handler                 
@@ -318,17 +318,17 @@ L_02f1:    ; xref 02e4 02e7
   02fb  cd0be5   jsr    head_send                   
 
 L_02fe:    ; xref 02f1 02f4
-  02fe  0c0008   brset  6, $00, L_0309              ; PA6 = PTT input (inferred)
+  02fe  0c0008   brset  6, $00, L_0309              ; PA6 = mic PTT input, low = pressed (inferred): 061a / 0653
   0301  00150b   brset  0, $15, L_030f              
-  0304  cd061a   jsr    sub_061a                    
+  0304  cd061a   jsr    mic_ptt_press               
   0307  2006     bra    L_030f                      
 
 L_0309:    ; xref 02fe
   0309  011503   brclr  0, $15, L_030f              
-  030c  cd0653   jsr    sub_0653                    
+  030c  cd0653   jsr    mic_ptt_release             
 
 L_030f:    ; xref 0301 0307 0309
-  030f  0f0007   brclr  7, $00, L_0319              ; PA7 = second front input (hook/monitor, inferred)
+  030f  0f0007   brclr  7, $00, L_0319              ; $11.4 = PA7 high AND head $46 held ($14.0): gates CTCSS encode and the CTCSS monitor (PA7 inferred: hook switch)
   0312  011404   brclr  0, $14, L_0319              
   0315  1811     bset   4, $11                      
   0317  2002     bra    L_031b                      
@@ -347,7 +347,7 @@ L_0323:    ; xref 031d
 
 L_0325:    ; xref 0321
   0325  0c1203   brset  6, $12, L_032b              
-  0328  cd0567   jsr    sub_0567                    
+  0328  cd0567   jsr    pa_fault_report             
 
 L_032b:    ; xref 0325
   032b  0d120b   brclr  6, $12, L_0339              
@@ -359,7 +359,7 @@ L_032b:    ; xref 0325
 
 L_0339:    ; xref 032b 0330
   0339  0b1103   brclr  5, $11, L_033f              
-  033c  cd066c   jsr    sub_066c                    
+  033c  cd066c   jsr    synth_relock                
 
 L_033f:    ; xref 0339
   033f  011103   brclr  0, $11, L_0345              
@@ -372,14 +372,14 @@ L_0345:    ; xref 033f
   034d  1314     bclr   1, $14                      
 
 L_034f:    ; xref 0345 0348
-  034f  031506   brclr  1, $15, L_0358              
+  034f  031506   brclr  1, $15, L_0358              ; head PTT not repeated within 1.5 s -> released
   0352  0f5b03   brclr  7, $5b, L_0358              
-  0355  cd064f   jsr    sub_064f                    
+  0355  cd064f   jsr    head_ptt_release            
 
 L_0358:    ; xref 034f 0352
   0358  011406   brclr  0, $14, L_0361              
   035b  0f5a03   brclr  7, $5a, L_0361              
-  035e  cd060d   jsr    sub_060d                    
+  035e  cd060d   jsr    head_hook_release           
 
 L_0361:    ; xref 0358 035b
   0361  072f03   brclr  3, $2f, L_0367              
@@ -412,49 +412,49 @@ TIMER_ISR:
 tick_slot_table:
   038d  cc03bd   jmp    tick_rti                    
 
-sub_0390:
+tick_slot_01:
   0390  cc09d0   jmp    adc_start_2                 
 
-sub_0393:
+tick_slot_02:
   0393  cc03bd   jmp    tick_rti                    
 
-sub_0396:
+tick_slot_03:
   0396  cc09da   jmp    adc_start_1                 
 
-sub_0399:
+tick_slot_04:
   0399  cc03bd   jmp    tick_rti                    
 
-sub_039c:
+tick_slot_05:
   039c  cc09fb   jmp    squelch_task                
 
-sub_039f:
+tick_slot_06:
   039f  cc09ab   jmp    adc_start_3to6              
 
-sub_03a2:
+tick_slot_07:
   03a2  cc03bd   jmp    tick_rti                    
 
-sub_03a5:
+tick_slot_08:
   03a5  cc0ae9   jmp    soft_timers                 
 
-sub_03a8:
+tick_slot_09:
   03a8  cc0b40   jmp    supervision_task            
 
-sub_03ab:
+tick_slot_10:
   03ab  cc0b32   jmp    write_latch_PB4             
 
-sub_03ae:
+tick_slot_11:
   03ae  cc09da   jmp    adc_start_1                 
 
-sub_03b1:
+tick_slot_12:
   03b1  cc03bd   jmp    tick_rti                    
 
-sub_03b4:
+tick_slot_13:
   03b4  cc09fb   jmp    squelch_task                
 
-sub_03b7:
+tick_slot_14:
   03b7  cc03bd   jmp    tick_rti                    
 
-sub_03ba:
+tick_slot_15:
   03ba  cc03bd   jmp    tick_rti                    
 
 tick_rti:    ; xref 038d 0393 0399 03a2 03b1 03b7 03ba
@@ -490,10 +490,10 @@ write_latch_PB2:    ; xref 01a4 0252
   03dc  bf00     stx    $00                         
   03de  81       rts                                
 
-sub_03df:    ; xref 02ae
+display_timeout_task:    ; xref 02ae
   03df  0f6346   brclr  7, $63, L_0428              
   03e2  171c     bclr   3, $1c                      
-  03e4  cd0c09   jsr    sub_0c09                    
+  03e4  cd0c09   jsr    head_display_off            
   03e7  091304   brclr  4, $13, update_display      
   03ea  1913     bclr   4, $13                      
   03ec  2032     bra    L_0420                      
@@ -513,7 +513,7 @@ update_display:    ; xref 03e7 0648 0714 07e7 0e91 0f5f 1039 1396 149f 14b4
 L_0405:    ; xref 03f4
   0405  121d     bset   1, $1d                      
   0407  121e     bset   1, $1e                      
-  0409  cd0c14   jsr    sub_0c14                    
+  0409  cd0c14   jsr    show_channel                
   040c  171c     bclr   3, $1c                      
   040e  81       rts                                
 
@@ -521,11 +521,11 @@ L_040f:    ; xref 03f1
   040f  121d     bset   1, $1d                      
   0411  131e     bclr   1, $1e                      
   0413  0fa005   brclr  7, $a0, L_041b              
-  0416  cd14b7   jsr    sub_14b7                    
+  0416  cd14b7   jsr    show_selcall_digits         
   0419  2003     bra    L_041e                      
 
 L_041b:    ; xref 0413
-  041b  cd0c14   jsr    sub_0c14                    
+  041b  cd0c14   jsr    show_channel                
 
 L_041e:    ; xref 03ee 0419
   041e  1b14     bclr   5, $14                      
@@ -554,7 +554,7 @@ L_043d:    ; xref 043d
   0442  81       rts                                
 
 L_0443:    ; xref 0433
-  0443  cd06a5   jsr    sub_06a5                    
+  0443  cd06a5   jsr    tx_inhibited                
   0446  241f     bcc    L_0467                      
   0448  2013     bra    L_045d                      
 
@@ -565,7 +565,7 @@ L_044a:    ; xref 042d
   044f  cc061f   jmp    L_061f                      
 
 L_0452:    ; xref 044d
-  0452  cd06a5   jsr    sub_06a5                    
+  0452  cd06a5   jsr    tx_inhibited                
   0455  2510     bcs    L_0467                      
   0457  cc06bc   jmp    tx_start                    
 
@@ -665,7 +665,7 @@ L_04d8:    ; xref 0495 04a4 04a6 04bd
   04dd  b759     sta    $59                         
   04df  1a13     bset   5, $13                      
 
-sub_04e1:    ; xref 04ef
+latch29_toggle_b7:    ; xref 04ef
   04e1  b629     lda    $29                         
   04e3  a880     eor    #$80                        
   04e5  b729     sta    $29                         
@@ -675,7 +675,7 @@ L_04e8:    ; xref 04d8
   04e8  0f59ec   brclr  7, $59, L_04d7              
   04eb  a601     lda    #$01                        
   04ed  b759     sta    $59                         
-  04ef  adf0     bsr    sub_04e1                    
+  04ef  adf0     bsr    latch29_toggle_b7           
   04f1  091be3   brclr  4, $1b, L_04d7              
   04f4  b636     lda    $36                         
   04f6  ab10     add    #$10                        
@@ -703,7 +703,7 @@ L_050e:    ; xref 0517
   051b  81       rts                                
 
 head_poll_timer:    ; xref 02cf
-  051c  cd1409   jsr    sub_1409                    
+  051c  cd1409   jsr    selcall_ram_check           
   051f  a613     lda    #$13                        ; next keep-alive poll in ~0.53 s ($5E = $13)
   0521  b75e     sta    $5e                         
   0523  1611     bset   3, $11                      
@@ -749,15 +749,15 @@ tx_timer_expired:    ; xref 02e1
   0559  b667     lda    $67                         
   055b  2609     bne    L_0566                      
   055d  1d1c     bclr   6, $1c                      
-  055f  cd1360   jsr    sub_1360                    
+  055f  cd1360   jsr    selcall_ani_release         
   0562  1416     bset   2, $16                      
   0564  101b     bset   0, $1b                      
 
 L_0566:    ; xref 055b
   0566  81       rts                                
 
-sub_0567:    ; xref 0328
-  0567  b610     lda    $10                         
+pa_fault_report:    ; xref 0328
+  0567  b610     lda    $10                         ; $10 bit7 = PA fault: send $C1 to the head once ($12.6 = sent); main loop sends $C0 when $10 is clear again
   0569  2b01     bmi    L_056c                      
   056b  81       rts                                
 
@@ -768,7 +768,7 @@ L_056c:    ; xref 0569
   0573  81       rts                                
 
 head_key_dispatch:    ; xref 02a5
-  0574  b638     lda    $38                         
+  0574  b638     lda    $38                         ; head byte $44-$4A: index (byte-$44)*3 into head_cmd_table; '0'-'?' = key codes via 0x1F58
   0576  111a     bclr   0, $1a                      
   0578  041a20   brset  2, $1a, L_059b              
   057b  061a1d   brset  3, $1a, L_059b              
@@ -794,24 +794,24 @@ L_059b:    ; xref 0578 057b
   059b  81       rts                                
 
 head_cmd_table:
-  059c  cc0610   jmp    L_0610                      
+  059c  cc0610   jmp    head_ptt_press              ; $44 head PTT press, $45 release, $46 hook/monitor press, $47 release, $48 nothing, $49 keep-alive reply, $4A RAM dump
 
-sub_059f:
-  059f  cc064f   jmp    sub_064f                    
+head_cmd_45:
+  059f  cc064f   jmp    head_ptt_release            
 
-sub_05a2:
-  05a2  cc0606   jmp    L_0606                      
+head_cmd_46:
+  05a2  cc0606   jmp    head_hook_press             
 
-sub_05a5:
-  05a5  cc060d   jmp    sub_060d                    
+head_cmd_47:
+  05a5  cc060d   jmp    head_hook_release           
 
-sub_05a8:
+head_cmd_48:
   05a8  cc05d5   jmp    L_05d5                      
 
-sub_05ab:
+head_cmd_49:
   05ab  cc0667   jmp    head_cmd_alive              
 
-sub_05ae:
+head_cmd_4a:
   05ae  cc157e   jmp    head_ram_dump               
 
 L_05b1:    ; xref 0584
@@ -846,28 +846,28 @@ L_05d5:    ; xref 059c 05a8 05d6
 fkey_func_table:
   05d6  cc05d5   jmp    L_05d5                      
 
-sub_05d9:
+fkey_fn1:
   05d9  cc072d   jmp    fn_channel_up               
 
-sub_05dc:
+fkey_fn2:
   05dc  cc0770   jmp    fn_channel_down             
 
-sub_05df:
+fkey_fn3:
   05df  cc073b   jmp    fn_channel_tens             
 
-sub_05e2:
+fkey_fn4:
   05e2  cc079d   jmp    fn_channel_units            
 
-sub_05e5:
+fkey_fn5:
   05e5  cc100c   jmp    fn_scan                     
 
-sub_05e8:
+fkey_fn6:
   05e8  cc05f1   jmp    fn_monitor_toggle           
 
-sub_05eb:
+fkey_fn7:
   05eb  cc141c   jmp    fn_selcall_send             
 
-sub_05ee:
+fkey_fn8:
   05ee  cc147b   jmp    fn_selcall_toggle           
 
 fn_monitor_toggle:    ; xref 05d6 05e8
@@ -885,27 +885,27 @@ L_0600:    ; xref 05fc
   0602  81       rts                                
 
 L_0603:    ; xref 05f4 05f7
-  0603  cc07ea   jmp    sub_07ea                    
+  0603  cc07ea   jmp    beep_reject                 
 
-L_0606:    ; xref 059c 05a2
-  0606  1014     bset   0, $14                      
+head_hook_press:    ; xref 059c 05a2
+  0606  1014     bset   0, $14                      ; head $46: $14.0 = 1, auto-release timer $5A = $38 (56 x 27 ms = 1.5 s): the head must repeat $46
   0608  a638     lda    #$38                        
   060a  b75a     sta    $5a                         
   060c  81       rts                                
 
-sub_060d:    ; xref 035e 059c 05a5
+head_hook_release:    ; xref 035e 059c 05a5
   060d  1114     bclr   0, $14                      
   060f  81       rts                                
 
-L_0610:    ; xref 059c
-  0610  1215     bset   1, $15                      
+head_ptt_press:    ; xref 059c
+  0610  1215     bset   1, $15                      ; head $44: $15.1 = head PTT, auto-release timer $5B = $38 (1.5 s): the head must repeat $44
   0612  a638     lda    #$38                        
   0614  b75b     sta    $5b                         
   0616  2004     bra    L_061c                      
   0618  db 20 02
 
-sub_061a:    ; xref 0304
-  061a  1015     bset   0, $15                      
+mic_ptt_press:    ; xref 0304
+  061a  1015     bset   0, $15                      ; PA6 low: $15.0 = mic PTT
 
 L_061c:    ; xref 0616
   061c  1517     bclr   2, $17                      
@@ -926,11 +926,11 @@ L_062f:    ; xref 061f 0628
 
 L_0635:    ; xref 062f
   0635  0e1c14   brset  7, $1c, L_064c              
-  0638  ad6b     bsr    sub_06a5                    
+  0638  ad6b     bsr    tx_inhibited                
   063a  2510     bcs    L_064c                      
   063c  cd06bc   jsr    tx_start                    
   063f  250b     bcs    L_064c                      
-  0641  cd1368   jsr    sub_1368                    
+  0641  cd1368   jsr    selcall_ani_press           
   0644  b617     lda    $17                         
   0646  2604     bne    L_064c                      
   0648  cc03ee   jmp    update_display              
@@ -940,15 +940,15 @@ L_064c:    ; xref 0632 0635 063a 063f 0646
   064c  101b     bset   0, $1b                      
   064e  81       rts                                
 
-sub_064f:    ; xref 0355 059c 059f
+head_ptt_release:    ; xref 0355 059c 059f
   064f  1315     bclr   1, $15                      
-  0651  2002     bra    L_0655                      
+  0651  2002     bra    ptt_release_common          
 
-sub_0653:    ; xref 030c
+mic_ptt_release:    ; xref 030c
   0653  1115     bclr   0, $15                      
 
-L_0655:    ; xref 0651
-  0655  cd1360   jsr    sub_1360                    
+ptt_release_common:    ; xref 0651
+  0655  cd1360   jsr    selcall_ani_release         
   0658  1417     bset   2, $17                      
   065a  1d1c     bclr   6, $1c                      
   065c  111b     bclr   0, $1b                      
@@ -962,8 +962,8 @@ head_cmd_alive:    ; xref 059c 05ab
   0669  1714     bclr   3, $14                      
   066b  81       rts                                
 
-sub_066c:    ; xref 033c
-  066c  001114   brset  0, $11, L_0683              
+synth_relock:    ; xref 033c
+  066c  001114   brset  0, $11, L_0683              ; $11.5: synthesiser relock; $2D bits 3-7 count retries (+8), on overflow $10.4 = synth fault (inferred)
   066f  041c32   brset  2, $1c, L_06a4              
   0672  0c2a2f   brset  6, $2a, L_06a4              
   0675  0c112c   brset  6, $11, L_06a4              
@@ -998,8 +998,8 @@ L_069d:    ; xref 0683 0696
 L_06a4:    ; xref 066f 0672 0675 067b 0686 069f
   06a4  81       rts                                
 
-sub_06a5:    ; xref 0443 0452 0638
-  06a5  0c1010   brset  6, $10, L_06b8              
+tx_inhibited:    ; xref 0443 0452 0638
+  06a5  0c1010   brset  6, $10, L_06b8              ; carry set = Tx not allowed: $10.6, $16 bits 4-7, or $16 bits 0-3 with no $15 bits 4-7 (includes $16.3 = C/R busy lockout)
   06a8  b616     lda    $16                         
   06aa  a4f0     and    #$f0                        
   06ac  260a     bne    L_06b8                      
@@ -1018,16 +1018,16 @@ L_06ba:    ; xref 06b2 06b6
   06bb  81       rts                                
 
 tx_start:    ; xref 0457 063c
-  06bc  cd1137   jsr    sub_1137                    
+  06bc  cd1137   jsr    vote_tx_channel             
   06bf  a611     lda    #$11                        
   06c1  b755     sta    $55                         
   06c3  121c     bset   1, $1c                      
   06c5  151c     bclr   2, $1c                      
-  06c7  cd0bde   jsr    sub_0bde                    
+  06c7  cd0bde   jsr    unlock_blank_start          
   06ca  1112     bclr   0, $12                      
   06cc  002f0b   brset  0, $2f, L_06da              
   06cf  1211     bset   1, $11                      
-  06d1  ad10     bsr    sub_06e3                    
+  06d1  ad10     bsr    synth_retry_clear           
   06d3  b62e     lda    $2e                         
   06d5  cd0842   jsr    load_synth                  
   06d8  2506     bcs    L_06e0                      
@@ -1042,7 +1042,7 @@ L_06e0:    ; xref 06d8
   06e0  131c     bclr   1, $1c                      
   06e2  81       rts                                
 
-sub_06e3:    ; xref 06d1 0706 07e4
+synth_retry_clear:    ; xref 06d1 0706 07e4
   06e3  b62d     lda    $2d                         
   06e5  a407     and    #$07                        
   06e7  b72d     sta    $2d                         
@@ -1058,14 +1058,14 @@ L_06f0:    ; xref 06f0
   06f3  3f4a     clr    $4a                         
   06f5  1914     bclr   4, $14                      
   06f7  1417     bset   2, $17                      
-  06f9  cd0e0d   jsr    sub_0e0d                    
+  06f9  cd0e0d   jsr    ctcss_tone_off              
   06fc  04a105   brset  2, $a1, L_0704              
   06ff  a6a0     lda    #$a0                        
   0701  cd0be5   jsr    head_send                   
 
 L_0704:    ; xref 06fc
   0704  1111     bclr   0, $11                      
-  0706  addb     bsr    sub_06e3                    
+  0706  addb     bsr    synth_retry_clear           
   0708  1c29     bset   6, $29                      
   070a  cd07ed   jsr    select_channel              
   070d  1d29     bclr   6, $29                      
@@ -1074,17 +1074,17 @@ L_0704:    ; xref 06fc
   0714  cc03ee   jmp    update_display              
 
 L_0717:    ; xref 070f
-  0717  cc07ea   jmp    sub_07ea                    
+  0717  cc07ea   jmp    beep_reject                 
 
-sub_071a:    ; xref 02c0
-  071a  131c     bclr   1, $1c                      
+tx_synth_settled:    ; xref 02c0
+  071a  131c     bclr   1, $1c                      ; $55 ran out after a Tx synth load: tell the head Tx is on ($A2), then CTCSS encoder on
   071c  111b     bclr   0, $1b                      
   071e  a6a2     lda    #$a2                        
   0720  cd0be5   jsr    head_send                   
-  0723  cc0e2c   jmp    L_0e2c                      
+  0723  cc0e2c   jmp    ctcss_tx_on                 
 
-sub_0726:    ; xref 02b7
-  0726  151c     bclr   2, $1c                      
+rx_synth_settled:    ; xref 02b7
+  0726  151c     bclr   2, $1c                      ; $55 ran out after an Rx synth load: clear $18.0/$18.1
   0728  1318     bclr   1, $18                      
   072a  1118     bclr   0, $18                      
 
@@ -1095,7 +1095,7 @@ fn_channel_up:    ; xref 05d6 05d9 0762
   072d  0ea070   brset  7, $a0, L_07a0              
   0730  00115f   brset  0, $11, L_0792              
   0733  0c115c   brset  6, $11, L_0792              
-  0736  ad2c     bsr    sub_0764                    
+  0736  ad2c     bsr    scan_restore_channel        
   0738  4c       inca                               
   0739  2016     bra    L_0751                      
 
@@ -1103,7 +1103,7 @@ fn_channel_tens:    ; xref 05d6 05df
   073b  0ea035   brset  7, $a0, L_0773              
   073e  001151   brset  0, $11, L_0792              
   0741  0c114e   brset  6, $11, L_0792              
-  0744  ad1e     bsr    sub_0764                    
+  0744  ad1e     bsr    scan_restore_channel        
 
 L_0746:    ; xref 0748
   0746  a00a     sub    #$0a                        
@@ -1120,12 +1120,12 @@ L_0751:    ; xref 0739
 
 L_0759:    ; xref 0754
   0759  b72e     sta    $2e                         
-  075b  ad37     bsr    sub_0794                    
+  075b  ad37     bsr    channel_changed_notify      
   075d  cd07ed   jsr    select_channel              
   0760  246d     bcc    L_07cf                      
   0762  20c9     bra    fn_channel_up               
 
-sub_0764:    ; xref 0736 0744 077c 07a9
+scan_restore_channel:    ; xref 0736 0744 077c 07a9
   0764  b62e     lda    $2e                         
   0766  0d1306   brclr  6, $13, L_076f              
   0769  b650     lda    $50                         
@@ -1144,7 +1144,7 @@ L_0773:    ; xref 073b
 L_0776:    ; xref 0770
   0776  001119   brset  0, $11, L_0792              
   0779  0c1116   brset  6, $11, L_0792              
-  077c  ade6     bsr    sub_0764                    
+  077c  ade6     bsr    scan_restore_channel        
   077e  4a       deca                               
   077f  c11f3f   cmp    $1f3f                       
   0782  2403     bcc    L_0787                      
@@ -1152,15 +1152,15 @@ L_0776:    ; xref 0770
 
 L_0787:    ; xref 0782
   0787  b72e     sta    $2e                         
-  0789  ad09     bsr    sub_0794                    
+  0789  ad09     bsr    channel_changed_notify      
   078b  cd07ed   jsr    select_channel              
   078e  25e0     bcs    fn_channel_down             
   0790  203d     bra    L_07cf                      
 
 L_0792:    ; xref 0730 0733 073e 0741 0776 0779 07a3 07a6
-  0792  2056     bra    sub_07ea                    
+  0792  2056     bra    beep_reject                 
 
-sub_0794:    ; xref 075b 0789
+channel_changed_notify:    ; xref 075b 0789
   0794  cd1242   jsr    selcall_send_start          
   0797  a6a0     lda    #$a0                        
   0799  cd0be5   jsr    head_send                   
@@ -1175,7 +1175,7 @@ L_07a0:    ; xref 072d
 L_07a3:    ; xref 079d
   07a3  0011ec   brset  0, $11, L_0792              
   07a6  0c11e9   brset  6, $11, L_0792              
-  07a9  adb9     bsr    sub_0764                    
+  07a9  adb9     bsr    scan_restore_channel        
 
 L_07ab:    ; xref 07ad
   07ab  a00a     sub    #$0a                        
@@ -1213,11 +1213,11 @@ L_07cf:    ; xref 0760 0790
 
 L_07e2:    ; xref 07d5
   07e2  3f10     clr    $10                         
-  07e4  cd06e3   jsr    sub_06e3                    
+  07e4  cd06e3   jsr    synth_retry_clear           
   07e7  cc03ee   jmp    update_display              
 
-sub_07ea:    ; xref 0603 0717 0792 1062 1462 14a2
-  07ea  161b     bset   3, $1b                      
+beep_reject:    ; xref 0603 0717 0792 1062 1462 14a2
+  07ea  161b     bset   3, $1b                      ; $1B.3 = reject beep
   07ec  81       rts                                
 
 select_channel:    ; xref 018b 067e 070a 075d 078b 07cb 0fae
@@ -1239,7 +1239,7 @@ select_channel_A:    ; xref 104a 1104
   0807  b735     sta    $35                         
 
 L_0809:    ; xref 07fd
-  0809  cd139e   jsr    sub_139e                    
+  0809  cd139e   jsr    selcall_mute_setup          
   080c  ae05     ldx    #$05                        
   080e  bd21     jsr    $21                         ; byte5 bit3 -> latch $82 bit5
   0810  a508     bit    #$08                        
@@ -1268,7 +1268,7 @@ L_082e:    ; xref 0826
   0832  b62c     lda    $2c                         
   0834  a4ef     and    #$ef                        
   0836  bb21     add    $21                         
-  0838  cd0bde   jsr    sub_0bde                    
+  0838  cd0bde   jsr    unlock_blank_start          
   083b  b72c     sta    $2c                         
   083d  cd1530   jsr    econ_setup                  
 
@@ -1797,7 +1797,7 @@ supervision_task:    ; xref 038d 03a8
   0b40  0a2810   brset  5, $28, L_0b53              
   0b43  0c280b   brset  6, $28, L_0b51              
   0b46  ad38     bsr    check_signatures            
-  0b48  cd0c7a   jsr    sub_0c7a                    
+  0b48  cd0c7a   jsr    check_window_48             
   0b4b  2426     bcc    L_0b73                      
   0b4d  1c10     bset   6, $10                      
   0b4f  2022     bra    L_0b73                      
@@ -1819,7 +1819,7 @@ L_0b64:    ; xref 0b5e
   0b66  200b     bra    L_0b73                      
 
 L_0b68:    ; xref 0b56
-  0b68  cd0c86   jsr    sub_0c86                    
+  0b68  cd0c86   jsr    check_window_47             
   0b6b  2606     bne    L_0b73                      
   0b6d  2404     bcc    L_0b73                      
   0b6f  1a10     bset   5, $10                      
@@ -1893,8 +1893,8 @@ L_0bc6:    ; xref 0bbb
 L_0bdd:    ; xref 0bd8
   0bdd  80       rti                                
 
-sub_0bde:    ; xref 06c7 0838
-  0bde  ae04     ldx    #$04                        
+unlock_blank_start:    ; xref 06c7 0838
+  0bde  ae04     ldx    #$04                        ; ignore synth unlock for $5C = 4 x 27 ms after a load ($14.4) (inferred)
   0be0  bf5c     stx    $5c                         
   0be2  1814     bset   4, $14                      
   0be4  81       rts                                
@@ -1921,17 +1921,17 @@ L_0bf2:    ; xref 0beb 0bed
   0bff  81       rts                                
   0c00  db 3f 41 81 11 12 11 1c ad f7
 
-sub_0c09:    ; xref 03e4
-  0c09  a6e5     lda    #$e5                        
+head_display_off:    ; xref 03e4
+  0c09  a6e5     lda    #$e5                        ; $E5 = display off (intermittent display, s0 = 0/2)
   0c0b  171c     bclr   3, $1c                      
   0c0d  20d6     bra    head_send                   
 
-sub_0c0f:    ; xref 0c34 0c3d 0c52 0c5b
+head_send2:    ; xref 0c34 0c3d 0c52 0c5b
   0c0f  add4     bsr    head_send                   
   0c11  9f       txa                                
   0c12  20d1     bra    head_send                   
 
-sub_0c14:    ; xref 0409 041b
+show_channel:    ; xref 0409 041b
   0c14  b62e     lda    $2e                         
   0c16  0d1302   brclr  6, $13, L_0c1b              
   0c19  b650     lda    $50                         
@@ -1951,7 +1951,7 @@ display_digits:    ; xref 03ff 0c20 14c3
   0c2e  97       tax                                
   0c2f  031e09   brclr  1, $1e, L_0c3b              
   0c32  a681     lda    #$81                        
-  0c34  cd0c0f   jsr    sub_0c0f                    
+  0c34  cd0c0f   jsr    head_send2                  
   0c37  2007     bra    L_0c40                      
 
 L_0c39:    ; xref 0c2a
@@ -1959,7 +1959,7 @@ L_0c39:    ; xref 0c2a
 
 L_0c3b:    ; xref 0c2f
   0c3b  a680     lda    #$80                        
-  0c3d  cd0c0f   jsr    sub_0c0f                    
+  0c3d  cd0c0f   jsr    head_send2                  
 
 L_0c40:    ; xref 0c37
   0c40  b641     lda    $41                         
@@ -1973,7 +1973,7 @@ L_0c40:    ; xref 0c37
   0c4c  97       tax                                
   0c4d  031e09   brclr  1, $1e, L_0c59              
   0c50  a683     lda    #$83                        
-  0c52  cd0c0f   jsr    sub_0c0f                    
+  0c52  cd0c0f   jsr    head_send2                  
   0c55  2007     bra    L_0c5e                      
 
 L_0c57:    ; xref 0c48
@@ -1981,18 +1981,18 @@ L_0c57:    ; xref 0c48
 
 L_0c59:    ; xref 0c4d
   0c59  a682     lda    #$82                        
-  0c5b  cd0c0f   jsr    sub_0c0f                    
+  0c5b  cd0c0f   jsr    head_send2                  
 
 L_0c5e:    ; xref 0c55
-  0c5e  ad06     bsr    sub_0c66                    
+  0c5e  ad06     bsr    display_timer_start         
   0c60  071c02   brclr  3, $1c, L_0c65              
   0c63  1813     bset   4, $13                      
 
 L_0c65:    ; xref 0c60
   0c65  81       rts                                
 
-sub_0c66:    ; xref 0c5e
-  0c66  171c     bclr   3, $1c                      
+display_timer_start:    ; xref 0c5e
+  0c66  171c     bclr   3, $1c                      ; 0x1F33 bit1 = intermittent display: blank after 0x1F3B seconds ($63)
   0c68  032f07   brclr  1, $2f, L_0c72              
   0c6b  c61f3b   lda    $1f3b                       
   0c6e  b763     sta    $63                         
@@ -2007,7 +2007,7 @@ head_poll_arm:    ; xref 052e
   0c77  1a1c     bset   5, $1c                      
   0c79  81       rts                                
 
-sub_0c7a:    ; xref 0b48
+check_window_48:    ; xref 0b48
   0c7a  0d2a03   brclr  6, $2a, L_0c80              
   0c7d  051f48   brclr  2, $1f, L_0cc8              
 
@@ -2016,7 +2016,7 @@ L_0c80:    ; xref 0c7a
   0c82  ae00     ldx    #$00                        
   0c84  2045     bra    check_window                
 
-sub_0c86:    ; xref 0b68
+check_window_47:    ; xref 0b68
   0c86  b61c     lda    $1c                         
   0c88  a406     and    #$06                        
   0c8a  263c     bne    L_0cc8                      
@@ -2139,7 +2139,7 @@ init_selcall_ctcss:    ; xref 015c
   0d34  b7c2     sta    $c2                         
 
 set_ctcss_tone:    ; xref 0295 081d
-  0d36  b634     lda    $34                         ; CTCSS code (byte6 bits0-5) -> tone chip value table $0E56 -> $81
+  0d36  b634     lda    $34                         ; CTCSS code (byte6 bits0-5, 1-38) -> 6-bit tone-chip value at $0E56+code -> $81; bit6 = normal phase
   0d38  a43f     and    #$3f                        
   0d3a  2708     beq    L_0d44                      
   0d3c  97       tax                                
@@ -2167,15 +2167,15 @@ L_0d57:    ; xref 0b2f
 
 main_loop_part2:    ; xref 036c
   0d58  001103   brset  0, $11, L_0d5e              
-  0d5b  cd0dcf   jsr    sub_0dcf                    
+  0d5b  cd0dcf   jsr    ctcss_decode_task           
 
 L_0d5e:    ; xref 0d58
   0d5e  0c8103   brset  6, $81, L_0d64              
-  0d61  cd0dfa   jsr    sub_0dfa                    
+  0d61  cd0dfa   jsr    ctcss_burst_end             
 
 L_0d64:    ; xref 0d5e
   0d64  0d1503   brclr  6, $15, L_0d6a              
-  0d67  cd0e10   jsr    sub_0e10                    
+  0d67  cd0e10   jsr    ctcss_burst_start           
 
 L_0d6a:    ; xref 0d64
   0d6a  cd0e7d   jsr    scan_task                   
@@ -2184,7 +2184,7 @@ L_0d6a:    ; xref 0d64
 
 L_0d73:    ; xref 0d6d
   0d73  001103   brset  0, $11, L_0d79              
-  0d76  cd0dcf   jsr    sub_0dcf                    
+  0d76  cd0dcf   jsr    ctcss_decode_task           
 
 L_0d79:    ; xref 0d73
   0d79  001103   brset  0, $11, L_0d7f              
@@ -2196,31 +2196,31 @@ L_0d7f:    ; xref 0d79
 
 L_0d85:    ; xref 0d7f
   0d85  09a303   brclr  4, $a3, L_0d8b              
-  0d88  cd12e3   jsr    sub_12e3                    
+  0d88  cd12e3   jsr    selcall_rx_own              
 
 L_0d8b:    ; xref 0d85
   0d8b  0ba303   brclr  5, $a3, L_0d91              
-  0d8e  cd12d2   jsr    sub_12d2                    
+  0d8e  cd12d2   jsr    selcall_rx_code2            
 
 L_0d91:    ; xref 0d8b
   0d91  0da303   brclr  6, $a3, L_0d97              
-  0d94  cd1316   jsr    sub_1316                    
+  0d94  cd1316   jsr    selcall_rx_code3            
 
 L_0d97:    ; xref 0d91
-  0d97  cd1328   jsr    sub_1328                    
+  0d97  cd1328   jsr    selcall_alert_task          
   0d9a  05a103   brclr  2, $a1, L_0da0              
-  0d9d  cd1341   jsr    sub_1341                    
+  0d9d  cd1341   jsr    selcall_resend_task         
 
 L_0da0:    ; xref 0d9a
   0da0  0f1403   brclr  7, $14, L_0da6              
-  0da3  cd14c6   jsr    sub_14c6                    
+  0da3  cd14c6   jsr    selcall_c8_reload           
 
 L_0da6:    ; xref 0da0
   0da6  05a003   brclr  2, $a0, L_0dac              
-  0da9  cd1357   jsr    sub_1357                    
+  0da9  cd1357   jsr    selcall_resend_timer        
 
 L_0dac:    ; xref 0da6
-  0dac  cd1374   jsr    sub_1374                    
+  0dac  cd1374   jsr    selcall_offhook_task        
   0daf  01a308   brclr  0, $a3, L_0dba              
   0db2  b6a3     lda    $a3                         
   0db4  a5f0     bit    #$f0                        
@@ -2233,7 +2233,7 @@ L_0dba:    ; xref 0daf 0db6
 
 L_0dc0:    ; xref 0dba
   0dc0  028203   brset  1, $82, L_0dc6              
-  0dc3  cd0e45   jsr    sub_0e45                    
+  0dc3  cd0e45   jsr    ctcss_tx_watch              
 
 L_0dc6:    ; xref 0dc0
   0dc6  0b3103   brclr  5, $31, L_0dcc              
@@ -2242,37 +2242,37 @@ L_0dc6:    ; xref 0dc0
 L_0dcc:    ; xref 0dc6
   0dcc  cc02a2   jmp    main_loop                   
 
-sub_0dcf:    ; xref 0d5b 0d76
-  0dcf  013023   brclr  0, $30, L_0df5              
+ctcss_decode_task:    ; xref 0d5b 0d76
+  0dcf  013023   brclr  0, $30, L_0df5              ; CTCSS decode, Rx only: $30 = 0x1F34 bit0 CTCSS fitted, bit2 decode; $34 bits 0-5 = channel tone
   0dd2  053020   brclr  2, $30, L_0df5              
   0dd5  b634     lda    $34                         
   0dd7  a53f     bit    #$3f                        
   0dd9  271a     beq    L_0df5                      
-  0ddb  081907   brset  4, $19, L_0de5              
+  0ddb  081907   brset  4, $19, L_0de5              ; $19.4 = squelch open; $82 bit2 low = tone detected (inferred); $1B.5 = C/R channel
   0dde  1716     bclr   3, $16                      
-  0de0  0a1b0f   brset  5, $1b, L_0df2              
+  0de0  0a1b0f   brset  5, $1b, L_0df2              ; no carrier: mute; on a C/R channel monitor ($11.4) does not open it
   0de3  200a     bra    L_0def                      
 
 L_0de5:    ; xref 0ddb
   0de5  05820d   brclr  2, $82, L_0df5              
   0de8  0b1b04   brclr  5, $1b, L_0def              
-  0deb  1616     bset   3, $16                      
+  0deb  1616     bset   3, $16                      ; carrier, wrong/no tone, C/R channel: $16.3 = busy lockout (blocks Tx via tx_inhibited)
   0ded  2003     bra    L_0df2                      
 
 L_0def:    ; xref 0de3 0de8
   0def  081103   brset  4, $11, L_0df5              
 
 L_0df2:    ; xref 0de0 0ded
-  0df2  1618     bset   3, $18                      
+  0df2  1618     bset   3, $18                      ; $18.3 = CTCSS mute closed
   0df4  81       rts                                
 
 L_0df5:    ; xref 0dcf 0dd2 0dd9 0de5 0def
-  0df5  1718     bclr   3, $18                      
+  0df5  1718     bclr   3, $18                      ; tone detected (or CTCSS off): mute open, lockout cleared
   0df7  1716     bclr   3, $16                      
   0df9  81       rts                                
 
-sub_0dfa:    ; xref 0d61
-  0dfa  0fe912   brclr  7, $e9, L_0e0f              
+ctcss_burst_end:    ; xref 0d61
+  0dfa  0fe912   brclr  7, $e9, L_0e0f              ; end of reverse tone burst after $E9 (5 x 27 ms ~ 135 ms): normal phase back, then tone off unless PTT was pressed again
 
 L_0dfd:    ; xref 0e13
   0dfd  1c81     bset   6, $81                      
@@ -2285,14 +2285,14 @@ L_0dfd:    ; xref 0e13
 L_0e0b:    ; xref 0dff 0e06 0e22
   0e0b  1d15     bclr   6, $15                      
 
-sub_0e0d:    ; xref 06f9 0e4b
-  0e0d  1282     bset   1, $82                      
+ctcss_tone_off:    ; xref 06f9 0e4b
+  0e0d  1282     bset   1, $82                      ; $82 bit1 = 1: tone not sent (inferred: encoder output gate)
 
 L_0e0f:    ; xref 0dfa 0e08
   0e0f  81       rts                                
 
-sub_0e10:    ; xref 0d67
-  0e10  0d8118   brclr  6, $81, L_0e2b              
+ctcss_burst_start:    ; xref 0d67
+  0e10  0d8118   brclr  6, $81, L_0e2b              ; both PTTs released ($15 = $40) with RTB armed: hold Tx, $81 bit6 = 0 (phase reversed, inferred) for $E9 = 5
   0e13  0130e7   brclr  0, $30, L_0dfd              
   0e16  b615     lda    $15                         
   0e18  a140     cmp    #$40                        
@@ -2309,8 +2309,8 @@ L_0e22:    ; xref 0e1a 0e4e
 L_0e2b:    ; xref 0e10 0e1c 0e1f
   0e2b  81       rts                                
 
-L_0e2c:    ; xref 0723
-  0e2c  013015   brclr  0, $30, L_0e44              
+ctcss_tx_on:    ; xref 0723
+  0e2c  013015   brclr  0, $30, L_0e44              ; Tx on: tone only if CTCSS fitted, channel has a tone, and $11.4 or selcall sending ($15.5)
   0e2f  b634     lda    $34                         
   0e31  a53f     bit    #$3f                        
   0e33  270f     beq    L_0e44                      
@@ -2319,22 +2319,22 @@ L_0e2c:    ; xref 0723
 
 L_0e3b:    ; xref 0e35
   0e3b  1c81     bset   6, $81                      
-  0e3d  1382     bclr   1, $82                      
-  0e3f  033002   brclr  1, $30, L_0e44              
+  0e3d  1382     bclr   1, $82                      ; $82 bit1 = 0: tone into the modulator (inferred)
+  0e3f  033002   brclr  1, $30, L_0e44              ; 0x1F34 bit1 = reverse tone burst: arm $15.6
   0e42  1c15     bset   6, $15                      
 
 L_0e44:    ; xref 0e2c 0e33 0e38 0e3f
   0e44  81       rts                                
 
-sub_0e45:    ; xref 0dc3
+ctcss_tx_watch:    ; xref 0dc3
   0e45  0a1509   brset  5, $15, L_0e51              
   0e48  081106   brset  4, $11, L_0e51              
-  0e4b  0d15bf   brclr  6, $15, sub_0e0d            
+  0e4b  0d15bf   brclr  6, $15, ctcss_tone_off      
   0e4e  0c81d1   brset  6, $81, L_0e22              
 
 L_0e51:    ; xref 0e45 0e48
   0e51  81       rts                                
-  0e52  db 12 1b cc 07 ea 38 34 30 2c 28 24 20 1c 39 35 31
+  0e52  db 12 1b cc 07 ea 38 34 30 2c 28 24 20 1c 39 35 31   ; 0E57-0E7C: CTCSS tone-chip values for codes 1..38
   0e62  db 2d 29 25 21 1d 3f 3d 3b 3c 37 33 2f 19 18 15 14
   0e72  db 11 10 0d 0c 09 08 05 04 01 00 2b
 
@@ -2409,7 +2409,7 @@ L_0ee8:    ; xref 0eba
   0eee  00110b   brset  0, $11, L_0efc              
   0ef1  081108   brset  4, $11, L_0efc              
   0ef4  0e1f05   brset  7, $1f, L_0efc              
-  0ef7  cd1065   jsr    sub_1065                    
+  0ef7  cd1065   jsr    scan_list_read0             
   0efa  2603     bne    L_0eff                      
 
 L_0efc:    ; xref 0ee8 0eeb 0eee 0ef1 0ef4
@@ -2433,7 +2433,7 @@ L_0f12:    ; xref 0ec0
   0f15  121f     bset   1, $1f                      
   0f17  b62e     lda    $2e                         
   0f19  b752     sta    $52                         
-  0f1b  cd1065   jsr    sub_1065                    
+  0f1b  cd1065   jsr    scan_list_read0             
   0f1e  2607     bne    L_0f27                      
   0f20  b650     lda    $50                         
   0f22  b72e     sta    $2e                         
@@ -2643,8 +2643,8 @@ scan_stop:    ; xref 0f80 101c
 
 L_1050:    ; xref 1035
   1050  0c130f   brset  6, $13, L_1062              
-  1053  cd1255   jsr    sub_1255                    
-  1056  cd1472   jsr    sub_1472                    
+  1053  cd1255   jsr    selcall_encode_done         
+  1056  cd1472   jsr    rx_channel_notify           
   1059  b62e     lda    $2e                         
   105b  b750     sta    $50                         
   105d  3f1f     clr    $1f                         
@@ -2652,9 +2652,9 @@ L_1050:    ; xref 1035
   1061  81       rts                                
 
 L_1062:    ; xref 1010 1013 1016 1050
-  1062  cc07ea   jmp    sub_07ea                    
+  1062  cc07ea   jmp    beep_reject                 
 
-sub_1065:    ; xref 0ef7 0f1b
+scan_list_read0:    ; xref 0ef7 0f1b
   1065  ae00     ldx    #$00                        
 
 scan_list_read:    ; xref 0f72 0fa1 1032
@@ -2692,7 +2692,7 @@ vote_task:    ; xref 0d70
   109f  ab02     add    #$02                        
   10a1  b72d     sta    $2d                         
   10a3  4f       clra                               
-  10a4  ad7c     bsr    sub_1122                    
+  10a4  ad7c     bsr    vote_measure                
   10a6  0e180a   brset  7, $18, L_10b3              
   10a9  08190c   brset  4, $19, L_10b8              
   10ac  0fe80e   brclr  7, $e8, L_10bd              
@@ -2725,7 +2725,7 @@ L_10ca:    ; xref 10c1
   10ce  cd0f62   jsr    squelch_open_test           
   10d1  2423     bcc    L_10f6                      
   10d3  1a16     bset   5, $16                      
-  10d5  ad52     bsr    sub_1129                    
+  10d5  ad52     bsr    vote_score                  
   10d7  be2e     ldx    $2e                         
   10d9  bf53     stx    $53                         
   10db  3f51     clr    $51                         
@@ -2779,13 +2779,13 @@ L_111f:    ; xref 1113 1116 1119
 L_1121:    ; xref 110b 111c
   1121  81       rts                                
 
-sub_1122:    ; xref 10a4
+vote_measure:    ; xref 10a4
   1122  cd0f62   jsr    squelch_open_test           
-  1125  2502     bcs    sub_1129                    
+  1125  2502     bcs    vote_score                  
   1127  4f       clra                               
   1128  81       rts                                
 
-sub_1129:    ; xref 10d5 1125
+vote_score:    ; xref 10d5 1125
   1129  c11f1b   cmp    $1f1b                       ; 1F1B = voting threshold
   112c  2504     bcs    L_1132                      
   112e  40       nega                               
@@ -2797,7 +2797,7 @@ L_1132:    ; xref 112c
   1134  aa80     ora    #$80                        
   1136  81       rts                                
 
-sub_1137:    ; xref 06bc
+vote_tx_channel:    ; xref 06bc
   1137  033107   brclr  1, $31, L_1141              
   113a  0d1304   brclr  6, $13, L_1141              
   113d  b652     lda    $52                         
@@ -2980,18 +2980,18 @@ selcall_send_start:    ; xref 0794 146f
   1244  b784     sta    $84                         
   1246  a60f     lda    #$0f                        
   1248  ad7d     bsr    tone_chip_write             
-  124a  cd13db   jsr    sub_13db                    
+  124a  cd13db   jsr    selcall_display_end_if      
   124d  b6a1     lda    $a1                         
   124f  a408     and    #$08                        
   1251  b7a1     sta    $a1                         
   1253  13a0     bclr   1, $a0                      
 
-sub_1255:    ; xref 1053
+selcall_encode_done:    ; xref 1053
   1255  1117     bclr   0, $17                      
   1257  c61f7a   lda    $1f7a                       
   125a  b7d4     sta    $d4                         
   125c  01a003   brclr  0, $a0, L_1262              
-  125f  cd13cd   jsr    sub_13cd                    
+  125f  cd13cd   jsr    selcall_store_last          
 
 L_1262:    ; xref 11e1 125c
   1262  1b15     bclr   5, $15                      
@@ -3067,7 +3067,7 @@ tone_chip_write:    ; xref 1224 1248 1283 12b8
   12cf  b780     sta    $80                         
   12d1  81       rts                                
 
-sub_12d2:    ; xref 0d8e
+selcall_rx_code2:    ; xref 0d8e
   12d2  04a340   brset  2, $a3, L_1315              
   12d5  1ba3     bclr   5, $a3                      
   12d7  0f343b   brclr  7, $34, L_1315              
@@ -3076,7 +3076,7 @@ sub_12d2:    ; xref 0d8e
   12df  181b     bset   4, $1b                      
   12e1  2012     bra    L_12f5                      
 
-sub_12e3:    ; xref 0d88
+selcall_rx_own:    ; xref 0d88
   12e3  04a32f   brset  2, $a3, L_1315              
   12e6  19a3     bclr   4, $a3                      
   12e8  03322a   brclr  1, $32, L_1315              
@@ -3100,7 +3100,7 @@ L_1301:    ; xref 12f0
   130a  19a1     bclr   4, $a1                      
   130c  1a15     bset   5, $15                      
 
-sub_130e:    ; xref 136e
+selcall_set_len7:    ; xref 136e
   130e  063204   brset  3, $32, L_1315              
   1311  ae07     ldx    #$07                        
   1313  bfd4     stx    $d4                         
@@ -3108,7 +3108,7 @@ sub_130e:    ; xref 136e
 L_1315:    ; xref 12d2 12d7 12da 12e3 12e8 12eb 12fe 1301 130e
   1315  81       rts                                
 
-sub_1316:    ; xref 0d94
+selcall_rx_code3:    ; xref 0d94
   1316  04a30e   brset  2, $a3, L_1327              
   1319  1da3     bclr   6, $a3                      
   131b  02a309   brset  1, $a3, L_1327              
@@ -3120,18 +3120,18 @@ sub_1316:    ; xref 0d94
 L_1327:    ; xref 1316 131b 131e
   1327  81       rts                                
 
-sub_1328:    ; xref 0d97
+selcall_alert_task:    ; xref 0d97
   1328  0b8013   brclr  5, $80, L_133e              
   132b  0a3205   brset  5, $32, L_1333              
   132e  0feb0d   brclr  7, $eb, L_133e              
-  1331  2009     bra    sub_133c                    
+  1331  2009     bra    selcall_alert_off           
 
 L_1333:    ; xref 132b
   1333  0fa30a   brclr  7, $a3, L_1340              
   1336  04a307   brset  2, $a3, L_1340              
   1339  02a302   brset  1, $a3, L_133e              
 
-sub_133c:    ; xref 1331 1389
+selcall_alert_off:    ; xref 1331 1389
   133c  1b80     bclr   5, $80                      
 
 L_133e:    ; xref 1328 132e 1339
@@ -3140,7 +3140,7 @@ L_133e:    ; xref 1328 132e 1339
 L_1340:    ; xref 1333 1336
   1340  81       rts                                
 
-sub_1341:    ; xref 0d9d
+selcall_resend_task:    ; xref 0d9d
   1341  001109   brset  0, $11, L_134d              
   1344  08190f   brset  4, $19, L_1356              
   1347  0d1103   brclr  6, $11, L_134d              
@@ -3155,7 +3155,7 @@ L_134d:    ; xref 1341 1347
 L_1356:    ; xref 1344 134a
   1356  81       rts                                
 
-sub_1357:    ; xref 0da9
+selcall_resend_timer:    ; xref 0da9
   1357  02a005   brset  1, $a0, L_135f              
   135a  0fec02   brclr  7, $ec, L_135f              
   135d  15a0     bclr   2, $a0                      
@@ -3163,23 +3163,23 @@ sub_1357:    ; xref 0da9
 L_135f:    ; xref 1357 135a 137f 1399
   135f  81       rts                                
 
-sub_1360:    ; xref 055f 0655
+selcall_ani_release:    ; xref 055f 0655
   1360  011110   brclr  0, $11, L_1373              
   1363  00330d   brset  0, $33, L_1373              
   1366  2003     bra    L_136b                      
 
-sub_1368:    ; xref 0641
+selcall_ani_press:    ; xref 0641
   1368  013308   brclr  0, $33, L_1373              
 
 L_136b:    ; xref 1366
   136b  0f3505   brclr  7, $35, L_1373              
-  136e  cd130e   jsr    sub_130e                    
+  136e  cd130e   jsr    selcall_set_len7            
   1371  1a15     bset   5, $15                      
 
 L_1373:    ; xref 1360 1363 1368 136b
   1373  81       rts                                
 
-sub_1374:    ; xref 0dac
+selcall_offhook_task:    ; xref 0dac
   1374  091122   brclr  4, $11, L_1399              
   1377  1518     bclr   2, $18                      
   1379  023203   brset  1, $32, L_137f              
@@ -3190,7 +3190,7 @@ L_137f:    ; xref 1379
   1382  18a0     bset   4, $a0                      
   1384  191b     bclr   4, $1b                      
   1386  0a3202   brset  5, $32, L_138b              
-  1389  adb1     bsr    sub_133c                    
+  1389  adb1     bsr    selcall_alert_off           
 
 L_138b:    ; xref 1386
   138b  19a2     bclr   4, $a2                      
@@ -3206,7 +3206,7 @@ L_1399:    ; xref 1374
   1399  09a0c3   brclr  4, $a0, L_135f              
   139c  19a0     bclr   4, $a0                      
 
-sub_139e:    ; xref 0809
+selcall_mute_setup:    ; xref 0809
   139e  033210   brclr  1, $32, L_13b1              
   13a1  0f340d   brclr  7, $34, L_13b1              
   13a4  0ca00e   brset  6, $a0, L_13b5              
@@ -3229,7 +3229,7 @@ L_13b7:    ; xref 137c
   13b8  db 10 a0 cd 13 0e 07 32 06 be d9 b7 d9 20 04 be db
   13c8  db b7 db bf c7 81
 
-sub_13cd:    ; xref 125f
+selcall_store_last:    ; xref 125f
   13cd  b6c7     lda    $c7                         
   13cf  073204   brclr  3, $32, L_13d6              
   13d2  b7d9     sta    $d9                         
@@ -3242,13 +3242,13 @@ L_13d8:    ; xref 13d4
   13d8  11a0     bclr   0, $a0                      
   13da  81       rts                                
 
-sub_13db:    ; xref 124a
+selcall_display_end_if:    ; xref 124a
   13db  09a11b   brclr  4, $a1, L_13f9              
 
-sub_13de:    ; xref 01fe
+selcall_display_end:    ; xref 01fe
   13de  0fa021   brclr  7, $a0, L_1402              
 
-sub_13e1:    ; xref 1488
+selcall_display_restore:    ; xref 1488
   13e1  1fa0     bclr   7, $a0                      
   13e3  131d     bclr   1, $1d                      
   13e5  131e     bclr   1, $1e                      
@@ -3265,7 +3265,7 @@ sub_13e1:    ; xref 1488
 L_13f9:    ; xref 13db
   13f9  81       rts                                
 
-sub_13fa:    ; xref 1403 1412
+selcall_ram_sum:    ; xref 1403 1412
   13fa  4f       clra                               
   13fb  ae18     ldx    #$18                        
 
@@ -3278,16 +3278,16 @@ L_1402:    ; xref 13de
   1402  81       rts                                
 
 L_1403:    ; xref 0d54 13f7
-  1403  adf5     bsr    sub_13fa                    
+  1403  adf5     bsr    selcall_ram_sum             
   1405  40       nega                               
   1406  b7c9     sta    $c9                         
   1408  81       rts                                
 
-sub_1409:    ; xref 051c
-  1409  0ea00f   brset  7, $a0, L_141b              
+selcall_ram_check:    ; xref 051c
+  1409  0ea00f   brset  7, $a0, L_141b              ; called from head_poll_timer: re-copy the selcall codes from EPROM if the RAM copy's sum ($C9-$E1) is not 0
   140c  02a00c   brset  1, $a0, L_141b              
   140f  0a1509   brset  5, $15, L_141b              
-  1412  ade6     bsr    sub_13fa                    
+  1412  ade6     bsr    selcall_ram_sum             
   1414  bbc9     add    $c9                         
   1416  2703     beq    L_141b                      
   1418  cc0d45   jmp    copy_selcall_codes          
@@ -3334,7 +3334,7 @@ L_1461:    ; xref 1459
   1461  81       rts                                
 
 L_1462:    ; xref 141c 141f 1422 1425 143e 1446
-  1462  cd07ea   jsr    sub_07ea                    
+  1462  cd07ea   jsr    beep_reject                 
 
 L_1465:    ; xref 1443
   1465  19a1     bclr   4, $a1                      
@@ -3346,7 +3346,7 @@ L_1468:    ; xref 1438
   146d  15a0     bclr   2, $a0                      
   146f  cd1242   jsr    selcall_send_start          
 
-sub_1472:    ; xref 1056
+rx_channel_notify:    ; xref 1056
   1472  001105   brset  0, $11, L_147a              
   1475  a6a0     lda    #$a0                        
   1477  cd0be5   jsr    head_send                   
@@ -3360,7 +3360,7 @@ fn_selcall_toggle:    ; xref 05d6 05ee
   1481  121b     bset   1, $1b                      
   1483  0fa007   brclr  7, $a0, L_148d              
   1486  1fa0     bclr   7, $a0                      
-  1488  cd13e1   jsr    sub_13e1                    
+  1488  cd13e1   jsr    selcall_display_restore     
   148b  2012     bra    L_149f                      
 
 L_148d:    ; xref 1483
@@ -3378,7 +3378,7 @@ L_149f:    ; xref 148b
   149f  cc03ee   jmp    update_display              
 
 L_14a2:    ; xref 147b 147e
-  14a2  cc07ea   jmp    sub_07ea                    
+  14a2  cc07ea   jmp    beep_reject                 
 
 L_14a5:    ; xref 0773
   14a5  aece     ldx    #$ce                        
@@ -3398,7 +3398,7 @@ L_14b2:    ; xref 14af
   14b2  121b     bset   1, $1b                      
   14b4  cc03ee   jmp    update_display              
 
-sub_14b7:    ; xref 0416
+show_selcall_digits:    ; xref 0416
   14b7  b6ce     lda    $ce                         
   14b9  48       lsla                               
   14ba  48       lsla                               
@@ -3409,7 +3409,7 @@ sub_14b7:    ; xref 0416
   14c1  121e     bset   1, $1e                      
   14c3  cc0c24   jmp    display_digits              
 
-sub_14c6:    ; xref 0da3
+selcall_c8_reload:    ; xref 0da3
   14c6  0f8107   brclr  7, $81, L_14d0              
   14c9  1f14     bclr   7, $14                      
   14cb  c61fa9   lda    $1fa9                       
@@ -3446,7 +3446,7 @@ L_14f3:    ; xref 14ea
 
 L_14fd:    ; xref 14d1
   14fd  0f60ed   brclr  7, $60, L_14ed              
-  1500  ad13     bsr    sub_1515                    
+  1500  ad13     bsr    econ_wake_delay             
   1502  c61fb2   lda    $1fb2                       
   1505  b760     sta    $60                         
   1507  cd06ea   jsr    tx_stop                     
@@ -3459,7 +3459,7 @@ L_150d:    ; xref 14d7 14da 14dd 14e0 14e5
   1512  b760     sta    $60                         
   1514  81       rts                                
 
-sub_1515:    ; xref 1500 154a
+econ_wake_delay:    ; xref 1500 154a
   1515  192a     bclr   4, $2a                      
   1517  a60c     lda    #$0c                        
   1519  cd0152   jsr    delay_A                     
@@ -3482,7 +3482,7 @@ L_1543:    ; xref 1530 1547
 
 L_1547:    ; xref 1533 1536 1539
   1547  0d2af9   brclr  6, $2a, L_1543              
-  154a  adc9     bsr    sub_1515                    
+  154a  adc9     bsr    econ_wake_delay             
   154c  c61f00   lda    $1f00                       
   154f  4c       inca                               
   1550  b748     sta    $48                         

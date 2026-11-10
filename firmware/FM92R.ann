@@ -88,6 +88,93 @@
 =1574 auto_power_off_reset
 =157e head_ram_dump
 =158c init_peripherals
+=0390 tick_slot_01
+=0393 tick_slot_02
+=0396 tick_slot_03
+=0399 tick_slot_04
+=039c tick_slot_05
+=039f tick_slot_06
+=03a2 tick_slot_07
+=03a5 tick_slot_08
+=03a8 tick_slot_09
+=03ab tick_slot_10
+=03ae tick_slot_11
+=03b1 tick_slot_12
+=03b4 tick_slot_13
+=03b7 tick_slot_14
+=03ba tick_slot_15
+=03df display_timeout_task
+=04e1 latch29_toggle_b7
+=0567 pa_fault_report
+=059f head_cmd_45
+=05a2 head_cmd_46
+=05a5 head_cmd_47
+=05a8 head_cmd_48
+=05ab head_cmd_49
+=05ae head_cmd_4a
+=05d9 fkey_fn1
+=05dc fkey_fn2
+=05df fkey_fn3
+=05e2 fkey_fn4
+=05e5 fkey_fn5
+=05e8 fkey_fn6
+=05eb fkey_fn7
+=05ee fkey_fn8
+=0606 head_hook_press
+=060d head_hook_release
+=0610 head_ptt_press
+=061a mic_ptt_press
+=064f head_ptt_release
+=0653 mic_ptt_release
+=0655 ptt_release_common
+=066c synth_relock
+=06a5 tx_inhibited
+=06e3 synth_retry_clear
+=071a tx_synth_settled
+=0726 rx_synth_settled
+=0764 scan_restore_channel
+=0794 channel_changed_notify
+=07ea beep_reject
+=0bde unlock_blank_start
+=0c09 head_display_off
+=0c0f head_send2
+=0c14 show_channel
+=0c66 display_timer_start
+=0c7a check_window_48
+=0c86 check_window_47
+=0dcf ctcss_decode_task
+=0dfa ctcss_burst_end
+=0e0d ctcss_tone_off
+=0e10 ctcss_burst_start
+=0e2c ctcss_tx_on
+=0e45 ctcss_tx_watch
+=1065 scan_list_read0
+=1122 vote_measure
+=1129 vote_score
+=1137 vote_tx_channel
+=1255 selcall_encode_done
+=12d2 selcall_rx_code2
+=12e3 selcall_rx_own
+=130e selcall_set_len7
+=1316 selcall_rx_code3
+=1328 selcall_alert_task
+=133c selcall_alert_off
+=1341 selcall_resend_task
+=1357 selcall_resend_timer
+=1360 selcall_ani_release
+=1368 selcall_ani_press
+=1374 selcall_offhook_task
+=139e selcall_mute_setup
+=13cd selcall_store_last
+=13db selcall_display_end_if
+=13de selcall_display_end
+=13e1 selcall_display_restore
+=13fa selcall_ram_sum
+=1409 selcall_ram_check
+=1472 rx_channel_notify
+=14b7 show_selcall_digits
+=14c6 selcall_c8_reload
+=1515 econ_wake_delay
 # comments
 0100 reset vector: SEI, reset stack, set up ports
 011b PA5 = on/off switch sense; $20 = power state (0x11 off, 0x99 on)
@@ -102,8 +189,8 @@
 0238 timer: TDR=$FF, TCR=$0F
 025d 1FA9 -> $C8 (selcall timing)
 0274 tell control head we (re)started
-02fe PA6 = PTT input (inferred)
-030f PA7 = second front input (hook/monitor, inferred)
+02fe PA6 = mic PTT input, low = pressed (inferred): 061a / 0653
+030f $11.4 = PA7 high AND head $46 held ($14.0): gates CTCSS encode and the CTCSS monitor (PA7 inferred: hook switch)
 036f timer reload: TDR=$C5, TCR=$09 -> ~2.4 kHz tick (one tick ~415 us)
 0377 PB5 high (synth strobe idle; strobes are low-going pulses)
 037e PB1 toggles every tick (1.2 kHz square wave)
@@ -140,7 +227,7 @@
 0c95 Tx: forward-power ADC ($4A) must lie in window 1F08..1F0F for current power level
 0cac Rx: $4A < $15 -> supply too low: shut down with alarm on PA4
 0ccb window check: 1F00+x <= A <= 1F01+x
-0d36 CTCSS code (byte6 bits0-5) -> tone chip value table $0E56 -> $81
+0d36 CTCSS code (byte6 bits0-5, 1-38) -> 6-bit tone-chip value at $0E56+code -> $81; bit6 = normal phase
 0d45 copy selcall codes 1F67..1F70 -> $CA.., 1F7A..1F83 -> $D4..
 0e7d scanning: lists via $53/$54 pointer (1F40 block 1, 1F4C block 2)
 0f62 compare noise $45 with open threshold 1F14+squelch setting
@@ -160,3 +247,32 @@
 0529 keep-alive: send $E4 to the head, then wait ~1.5 s for $49 ($5F = $38)
 0537 no $49 after the second poll (~3 s) -> power down
 0667 head $49 = reply to the $E4 keep-alive poll: clear waiting/missed flags $1C.5, $14.3
+0567 $10 bit7 = PA fault: send $C1 to the head once ($12.6 = sent); main loop sends $C0 when $10 is clear again
+0574 head byte $44-$4A: index (byte-$44)*3 into head_cmd_table; '0'-'?' = key codes via 0x1F58
+059c $44 head PTT press, $45 release, $46 hook/monitor press, $47 release, $48 nothing, $49 keep-alive reply, $4A RAM dump
+0606 head $46: $14.0 = 1, auto-release timer $5A = $38 (56 x 27 ms = 1.5 s): the head must repeat $46
+0610 head $44: $15.1 = head PTT, auto-release timer $5B = $38 (1.5 s): the head must repeat $44
+061a PA6 low: $15.0 = mic PTT
+034f head PTT not repeated within 1.5 s -> released
+066c $11.5: synthesiser relock; $2D bits 3-7 count retries (+8), on overflow $10.4 = synth fault (inferred)
+06a5 carry set = Tx not allowed: $10.6, $16 bits 4-7, or $16 bits 0-3 with no $15 bits 4-7 (includes $16.3 = C/R busy lockout)
+071a $55 ran out after a Tx synth load: tell the head Tx is on ($A2), then CTCSS encoder on
+0726 $55 ran out after an Rx synth load: clear $18.0/$18.1
+07ea $1B.3 = reject beep
+0bde ignore synth unlock for $5C = 4 x 27 ms after a load ($14.4) (inferred)
+0c09 $E5 = display off (intermittent display, s0 = 0/2)
+0c66 0x1F33 bit1 = intermittent display: blank after 0x1F3B seconds ($63)
+0dcf CTCSS decode, Rx only: $30 = 0x1F34 bit0 CTCSS fitted, bit2 decode; $34 bits 0-5 = channel tone
+0ddb $19.4 = squelch open; $82 bit2 low = tone detected (inferred); $1B.5 = C/R channel
+0de0 no carrier: mute; on a C/R channel monitor ($11.4) does not open it
+0deb carrier, wrong/no tone, C/R channel: $16.3 = busy lockout (blocks Tx via tx_inhibited)
+0df2 $18.3 = CTCSS mute closed
+0df5 tone detected (or CTCSS off): mute open, lockout cleared
+0dfa end of reverse tone burst after $E9 (5 x 27 ms ~ 135 ms): normal phase back, then tone off unless PTT was pressed again
+0e0d $82 bit1 = 1: tone not sent (inferred: encoder output gate)
+0e10 both PTTs released ($15 = $40) with RTB armed: hold Tx, $81 bit6 = 0 (phase reversed, inferred) for $E9 = 5
+0e2c Tx on: tone only if CTCSS fitted, channel has a tone, and $11.4 or selcall sending ($15.5)
+0e3d $82 bit1 = 0: tone into the modulator (inferred)
+0e3f 0x1F34 bit1 = reverse tone burst: arm $15.6
+0e52 0E57-0E7C: CTCSS tone-chip values for codes 1..38
+1409 called from head_poll_timer: re-copy the selcall codes from EPROM if the RAM copy's sum ($C9-$E1) is not 0

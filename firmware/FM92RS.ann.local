@@ -27,3 +27,10 @@
 0aee soft timers: $57-$61,$EA-$EC every 64 ticks (~27 ms)
 0b14 $63-$65,$ED-$EF every 2304 ticks (~1 s)
 1275 RS: the tone-chip reset is now a call (FM92R: inline $84 = $B0, tone 15)
+=0dfd ctcss_burst_end
+=1355 selcall_alert_start
+=135f selcall_alert_task
+=1378 selcall_resend_task
+=1391 selcall_resend_timer
+0dfd end of reverse tone burst after $EA (5 x 27 ms ~ 135 ms) (FM92R: $E9)
+0e13 both PTTs released ($15 = $40) with RTB armed: hold Tx, $81 bit6 = 0 (phase reversed, inferred) for $EA = 5 (FM92R: $E9)
