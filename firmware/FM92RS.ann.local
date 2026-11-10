@@ -1,0 +1,25 @@
+# FM92RS-only names and notes (hand-written; portann.py appends this file to FM92RS.ann)
+=1145 selcall_decode_task
+=11e3 selcall_decode_reset
+=12fc tone_chip_reset
+=1309 selcall_call_received
+=150b selcall_timeout_task
+1145 RS selcall decoder (inferred): loads the expected digit of the own code ($D5,x) into the tone chip, waits for $80 bit7, digit windows from 1F84
+1167 next digit: $BE = digits left (from 1F7A), $C0 = index; same digit as previous -> repeat tone ($0A/$0B)
+118e all digits matched: hold-off from 1F84 into $E7, then $A3 bit0 = call received
+11e3 called from tx_stop: re-arm the decoder (only if selcall decode enabled: $32 bit1, $34 bit7)
+11f5 1F7A = number of digits in the own code
+12f7 RS: low nibble (tone number) inverted before the write to $80
+12fc RS tone chip reset: $84 = $7F, then strobe $80 bit4
+1322 1FB6 -> $EF (1 s soft timer): selcall timeout, read only by FM92RS
+0b07 RS: $EA-$EC every 64 ticks (FM92R: $E9,$EA)
+0b22 RS: $ED-$EF every 2304 ticks (FM92R: $EB,$EC)
+099c RS: extra fast timer $E9 (FM92R: $E7,$E8 only)
+10fe 1FB4 = vote/scan dwell time
+150b RS: when $EF runs out, clears the selcall state and calls sub_13d8 (inferred: auto-reset of a received call)
+15f3 RS: $80 = $50 at start-up (FM92R: $00)
+15ff RS: tone chip set-up $84 = $7F, also kept in $A4 (FM92R: $B0)
+1309 runs when a decode has finished ($A3 bit4 set, bit2 clear) and selcall decode is enabled
+131d tell the head a call was received ($A7) (inferred)
+1358 alert: $80 bit5 on, $ED = $11 (~17 s) (inferred)
+134b $15 bit5 starts selcall_encode_task on the main loop: automatic reply/transpond (inferred)

@@ -1,0 +1,186 @@
+# FM92RS annotations ported from FM92R.ann by tools/portann.py; do not edit by hand.
+# Hand-written FM92RS entries go in FM92RS.ann.local, which is appended below.
+# routine names  (=addr name)
+=0100 RESET
+=013e chk_ram_config
+=0152 delay_A
+=015c cold_start
+=0189 power_down_stop
+=0191 power_down
+=01c1 init_ddr
+=01ca init_ports
+=01d3 latch29_init
+=01d5 write_latch_PB3
+=01dc eprom_checksum
+=01fe warm_start
+=026a wait_startup
+=02a2 main_loop
+=036f TIMER_ISR
+=038d tick_slot_table
+=03bd tick_rti
+=03be uart_tick
+=03c3 clear_ram_10_1f
+=03c7 clear_ram_x_to_a
+=03d2 write_latch_PB2
+=03ee update_display
+=0429 ptt_handler
+=0468 low_batt_check
+=0475 key_hold_handler
+=0508 send_head_config
+=051c head_poll_timer
+=0526 head_poll_send
+=0534 head_poll_check
+=0559 tx_timer_expired
+=0542 tx_timer_start
+=0574 head_key_dispatch
+=059c head_cmd_table
+=05d6 fkey_func_table
+=05f1 fn_monitor_toggle
+=0667 head_cmd_alive
+=06bc tx_start
+=06ea tx_stop
+=0730 fn_channel_up
+=0773 fn_channel_down
+=073e fn_channel_tens
+=07a0 fn_channel_units
+=07f0 select_channel
+=07f2 select_channel_A
+=0845 load_synth
+=08c3 synth_write_nibble
+=08c5 synth_strobe
+=08ca chan_ptr
+=08db uart_bit
+=09b0 adc_start_3to6
+=09d5 adc_start_2
+=09df adc_start_1
+=0a00 squelch_task
+=0ae5 mute_close
+=0aee soft_timers
+=0b3b write_latch_PB4
+=0b49 supervision_task
+=0b89 check_signatures
+=0bba IRQ_ISR
+=0bee head_send
+=0c2d display_digits
+=0c7c head_poll_arm
+=0c9e check_power_window
+=0cd4 check_window
+=0ce4 bin_to_bcd
+=0d35 init_selcall_ctcss
+=0d3f set_ctcss_tone
+=0d4e copy_selcall_codes
+=0d61 main_loop_part2
+=0e80 scan_task
+=0f65 squelch_open_test
+=100f fn_scan
+=103f scan_stop
+=106a scan_list_read
+=1080 scan_list_select
+=1091 vote_task
+=110a chan_flags_rx
+=120d selcall_encode_task
+=12ef tone_chip_write
+=1456 fn_selcall_send
+=14b5 fn_selcall_toggle
+=1530 econ_task
+=158f econ_setup
+=15b6 auto_power_off_task
+=15d3 auto_power_off_reset
+=15dd head_ram_dump
+=15eb init_peripherals
+# comments
+0100 reset vector: SEI, reset stack, set up ports
+011b PA5 = on/off switch sense; $20 = power state (0x11 off, 0x99 on)
+011e PA5 low (supply glitch): stay off if off, carry on if on
+0128 PA5 high (on/off pressed): on -> off, off -> on
+0134 latch $2A bit 5 set only while on (switched supply enable, inferred)
+013e compare RAM copy of option bytes with EPROM 1F2E/1F33..1F37 (warm start?)
+016c copy EPROM 1F2E..1F31 -> RAM $2B..$2E ($2E = current channel = lowest channel)
+0181 copy option bytes 1F33..1F37 -> RAM $2F..$33; then falls into power_down_stop (cold start ends OFF)
+0190 STOP: oscillator and AS stop, +5VS drops; only RESET (on/off line via IC407) restarts it
+01dc builds "ADD $hhll,X; RTS" in RAM $21 and sums $0100-$1FFF; must equal $FF
+0238 timer: TDR=$FF, TCR=$0F
+025d 1FA9 -> $C8 (selcall timing)
+0274 tell control head we (re)started
+02fe PA6 = PTT input (inferred)
+030f PA7 = second front input (hook/monitor, inferred)
+036f timer reload: TDR=$C5, TCR=$09 -> ~2.4 kHz tick (one tick ~415 us)
+0377 PB5 high (synth strobe idle; strobes are low-going pulses)
+037e PB1 toggles every tick (1.2 kHz square wave)
+038a 16-entry slot table, one slot every 2 ticks
+0845 X=2: Rx bytes 0-2, X=5: Tx bytes 3-5 of the channel slot
+085b bit7 of byte2/5 = entry valid, else carry set = empty channel
+0870 Rx: byte2 bit4 (C/R) -> $1B.5 / $19.2
+0878 Rx: byte2 bit5 (VOTE) handled in chan_flags_rx
+087b Rx: byte2 bit3 -> latch $2C bit5 (VCO band switch)
+0885 bit6 (injection side) -> $29.1
+0893 synth: port A = 1F2D, PB6 high (enable), 2 strobes
+089e synth: 4 BCD digits, low nibble then high nibble, one PB5 strobe each
+08ad synth: digit 5 (byte2/5 | 8)
+08b3 synth: then reference bytes 1F2C, 1F2D; PB6 low again
+08ca ptr = $1BE0 + 8*A  (into RAM routine at $21: LDA $hhll,X; RTS)
+0803 bytes 6,7 of slot -> $34 (CTCSS/flags), $35 (link)
+0811 byte5 bit3 -> latch $82 bit5
+0825 byte5 bits4-5 = power; 0 -> operator-selected power from $2C
+08fb software UART on PB0: ~1200 baud 8E1 (start, 8 data LSB first, even parity, stop), single wire idle-high; PB0 is driven only while sending; 4-byte TX FIFO $3D-$40
+09e7 ADC: select mux via $2A latch, note start time; IRQ (comparator) stores result
+0a00 squelch: pot ($49) -> setting 0-7 via table $0A4C (with hysteresis)
+0a79 noise ($45) vs close threshold 1F1C+setting
+0a93 noise ($45) vs open threshold 1F14+setting
+0a8a squelch tail from table 1F24
+0aee soft timers: $57-$61,$E9,$EA every 64 ticks (~27 ms)
+0b14 $63-$65,$EB,$EC every 2304 ticks (~1 s)
+0b29 $67 every 24064 ticks (~10 s): Tx timer / auto power-off units
+0b3b latch $2C (inverted) -> port A, PB4 strobe: power level, VCO band etc.
+0b89 signature over firmware + 1F65, and 1F33..1F37 + 1F66: must be 0 else halt
+0bb7 on failure jump to $0189 (power down / stop)
+0bba IRQ = ADC comparator: result = start_time - timer - $1E
+0bee queue byte for control head (wait while FIFO full)
+0c2d send 2 display digits: $80/$81 + char, $82/$83 + char
+0c9e Tx: forward-power ADC ($4A) must lie in window 1F08..1F0F for current power level
+0cb5 Rx: $4A < $15 -> supply too low: shut down with alarm on PA4
+0cd4 window check: 1F00+x <= A <= 1F01+x
+0d3f CTCSS code (byte6 bits0-5) -> tone chip value table $0E56 -> $81
+0d4e copy selcall codes 1F67..1F70 -> $CA.., 1F7A..1F83 -> $D4..
+0e80 scanning: lists via $53/$54 pointer (1F40 block 1, 1F4C block 2)
+0f65 compare noise $45 with open threshold 1F14+squelch setting
+106a RAM routine LDA list,X  (X=0 priority channel, X=11 count)
+107a scan list base table: 1F40, 1F4C
+1091 voting: hop round the linked ring (byte7 & $7F)+1, compare RSSI ($46)
+112c 1F1B = voting threshold
+120d selcall encoder: sends digits with timing from 1F70/1F71
+1530 economiser: power-save cycling with times 1FB1/1FB2/1FB3
+15b6 8-hour auto power off: 1FB5 x 30 min (enabled by 1F35 bit5)
+15dd command $4A from head: dump RAM to head (diagnostic)
+15eb init external peripherals $80-$86
+01a0 latch $2A <- $07: bit 5 cleared (switched supply off, inferred)
+051f next keep-alive poll in ~0.53 s ($5E = $13)
+0529 keep-alive: send $E4 to the head, then wait ~1.5 s for $49 ($5F = $38)
+0537 no $49 after the second poll (~3 s) -> power down
+0667 head $49 = reply to the $E4 keep-alive poll: clear waiting/missed flags $1C.5, $14.3
+# ---- FM92RS.ann.local ----
+# FM92RS-only names and notes (hand-written; portann.py appends this file to FM92RS.ann)
+=1145 selcall_decode_task
+=11e3 selcall_decode_reset
+=12fc tone_chip_reset
+=1309 selcall_call_received
+=150b selcall_timeout_task
+1145 RS selcall decoder (inferred): loads the expected digit of the own code ($D5,x) into the tone chip, waits for $80 bit7, digit windows from 1F84
+1167 next digit: $BE = digits left (from 1F7A), $C0 = index; same digit as previous -> repeat tone ($0A/$0B)
+118e all digits matched: hold-off from 1F84 into $E7, then $A3 bit0 = call received
+11e3 called from tx_stop: re-arm the decoder (only if selcall decode enabled: $32 bit1, $34 bit7)
+11f5 1F7A = number of digits in the own code
+12f7 RS: low nibble (tone number) inverted before the write to $80
+12fc RS tone chip reset: $84 = $7F, then strobe $80 bit4
+1322 1FB6 -> $EF (1 s soft timer): selcall timeout, read only by FM92RS
+0b07 RS: $EA-$EC every 64 ticks (FM92R: $E9,$EA)
+0b22 RS: $ED-$EF every 2304 ticks (FM92R: $EB,$EC)
+099c RS: extra fast timer $E9 (FM92R: $E7,$E8 only)
+10fe 1FB4 = vote/scan dwell time
+150b RS: when $EF runs out, clears the selcall state and calls sub_13d8 (inferred: auto-reset of a received call)
+15f3 RS: $80 = $50 at start-up (FM92R: $00)
+15ff RS: tone chip set-up $84 = $7F, also kept in $A4 (FM92R: $B0)
+1309 runs when a decode has finished ($A3 bit4 set, bit2 clear) and selcall decode is enabled
+131d tell the head a call was received ($A7) (inferred)
+1358 alert: $80 bit5 on, $ED = $11 (~17 s) (inferred)
+134b $15 bit5 starts selcall_encode_task on the main loop: automatic reply/transpond (inferred)

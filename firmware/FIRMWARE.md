@@ -1,7 +1,7 @@
-# FM92 radio firmware (FM92R / FM92L masters)
+# FM92 radio firmware (FM92R / FM92L / FM92RS masters)
 
 This document describes the 68HC05-family firmware in the master EPROM images
-`fm900/MASTERS/FM92R.BIN` and `FM92L.BIN`, and how that firmware uses the channel and
+`fm900/MASTERS/FM92R.BIN` and `FM92L.BIN` (plus the selcall variant `FM92RS.BIN`, §15), and how that firmware uses the channel and
 configuration data that FM900.EXE (and `fm900gen.py`) writes into the top of the EPROM.
 
 It was recovered by disassembly. There is no schematic, so where this document names a
@@ -11,6 +11,7 @@ Annotated listings:
 
 * `FM92R.lst` (2381 instructions)
 * `FM92L.lst` (2265 instructions)
+* `FM92RS.lst` (2423 instructions): names and comments ported from FM92R by `tools/portann.py`, plus the RS-only notes in `FM92RS.ann.local` (§15)
 
 To regenerate them, run `tools/mklist.py` (needs Python 3 and `capstone`).
 
@@ -425,12 +426,16 @@ Factory values in both FM92 masters (0x1F00–0x1F2F):
 pip install capstone
 python3 tools/mklist.py FM92R     # reads ../fm900/MASTERS/FM92R.BIN, FM92R.ann
 python3 tools/mklist.py FM92L
+python3 tools/portann.py FM92R FM92RS   # writes FM92RS.ann (+ FM92RS.ann.local) and a report
+python3 tools/mklist.py FM92RS
 ```
 
 * `tools/d6805.py` is a recursive-descent 6805 disassembler that also follows `JMP table,X` jump tables.
 * **Capstone bug.** Capstone 5.0.x prints 6805 `BSET`/`BCLR` the wrong way round: it shows opcode `$10+2n` as `bclr` when the manual defines it as `BSET n`. `d6805.py` corrects this. Listings made before this fix (commits before the PC-control notes) had every `bset`/`bclr` inverted.
 * The `.ann` files hold routine names (`=addr name`) and per-address comments.
 * The FM92L names were transferred from FM92R by aligning the two instruction streams.
+* `tools/portann.py SRC DST` does that alignment reproducibly. It aligns normalised instructions (code addresses masked, so moved code still matches), maps RAM/I/O and the `0x1B00+` data area 1:1, and keeps a ported name or comment only if the first 3 instructions at both ends match. It prints what it mapped, what it dropped, and the DST code with no SRC counterpart. Hand-written DST entries go in `DST.ann.local`; never edit the generated `DST.ann`.
+* `FM92RS.ann` is generated this way (156 entries ported, 4 dropped as no longer true in RS).
 
 ## 11. Modification: start-up message on the remote head (FM92R)
 
@@ -638,7 +643,7 @@ on the receive frequency.
 | Item | Notes |
 |---|---|
 | **FM93, FM97WP, "92 with 91 PCBs" builds** in `fm900gen.py` | FM900.EXE routines are identified (FM900_FORMAT.md §5). Needs sample jobs to verify against. |
-| **Selcall tone programming** in `fm900gen.py` | FM900.EXE selcall editor around 0x113F9. Firmware use of 0x1F67–0x1FA7 is in §7.8. |
+| **Selcall tone programming** in `fm900gen.py` | FM900.EXE selcall editor around 0x113F9. Firmware use of 0x1F67–0x1FA7 is in §7.8 (FM92R) and §15.3 (FM92RS). Without it, a built FM92RS image has no selcall code (§15.4). |
 | **Head character set** | Find out which characters the remote head can display, by testing `patch_startup_msg.py` with letters. That would allow messages per channel or per bank. |
 | **Spare outputs on the external latches `$80`–`$86`** | Needs a schematic or board inspection; could provide A14 for 4-bank switching. |
 
@@ -673,3 +678,68 @@ My own notes:
 * **Earlier version.** A version of this table supplied earlier gave VicPol Rx audio as pin 5 (a duplicate of Tx audio) and microphone Rx audio as pin 6. The WICEN source gives VicPol Rx audio = **6** and no microphone Rx-audio pin.
 * **Data line not listed.** These are the head's audio/PTT accessory connections. The source does not list the head ↔ radio **serial data line** (the ~1200 baud 8E1 link on CPU PB0, §1 and §13.3), the supply, or the power switch. Those are on the head-to-radio DB-15 cable, not this DIN (wire list in `../STM900/HARDWARE.md` §8; pin numbers still unknown). Identify them before attempting PC/tablet control.
 * **PTT:** the firmware senses PTT on CPU PA6 (inferred, §3). Head PTT may also arrive as a serial command (`$44`/`$45`).
+
+## 15. FM92RS: the selcall master
+
+FM900.EXE builds a remote-head FM92 from `FM92RS.BIN` instead of `FM92R.BIN` when hardware-code digit h5 is 3, 4 or 5 (selcall fitted; FM900_FORMAT.md §4.1). So a selcall-equipped FM92R runs this firmware. That comes from FM900.EXE's selection logic. It has not been checked against a dump of a real selcall radio, and none of the sample jobs uses selcall (all have h5 = 0 or 1).
+
+FM92RS is FM92R with the selcall decoder replaced and a little extra code. About 93% of the code bytes line up. Everything in §1–§14 applies unless listed here. Addresses are FM92RS, with the FM92R address where it differs.
+
+### 15.1 Outside the code
+
+| Address | FM92R | FM92RS | Notes |
+|---|---|---|---|
+| 0x0000–0x00FF | | same | |
+| 0x1600–0x160D | `00` | code | end of `init_peripherals` (the code grew by about 95 bytes) |
+| 0x1BE8–0x1FFF | | same except below | channel table and configuration defaults unchanged |
+| 0x1F65 | `1E` | `7E` | firmware signature; FM900.EXE recomputes it anyway (FM900_FORMAT.md §4.3) |
+| 0x1FE5–0x1FE6 | `05 0A` | `0C 05` | version byte 12 |
+| 0x1FEA–0x1FEF | `80` `0029:` | `00` `01055` | ID string |
+| 0x1FFA IRQ vector | 0x0BB1 | 0x0BBA | same ADC routine, moved |
+
+### 15.2 Code changes
+
+| FM92RS | FM92R | Change |
+|---|---|---|
+| `selcall_decode_task` 0x1145 | 0x1142 | **Rewritten** (§15.3). |
+| `selcall_decode_reset` 0x11E3 | none | New. Called from the end of `tx_stop` (0x06FC) to re-arm the decoder after transmitting, if selcall decode is enabled (`$32` bit1 and `$34` bit7). |
+| `selcall_call_received` 0x1309 | 0x12D2 / 0x1316 | FM92R has one handler per matched code (`$A3` bits 5 and 6, called from the main loop). FM92RS has one handler, on `$A3` bit4 (§15.3). |
+| `tone_chip_write` 0x12EF | 0x12C7 | The low nibble (tone number) is now inverted (`EOR #$0F`) before the write to `$80`. |
+| `tone_chip_reset` 0x12FC | inline in `selcall_encode_task` | New: `$80` bit6 on, `$84` = `$7F`, then a strobe on `$80` bit4. FM92R writes `$B0` to `$84` and strobes `$80` bits 6/7. |
+| `selcall_encode_task` 0x124D–0x12E2 | 0x121E–0x12BA | Same structure, adapted to the new tone-chip strobes; the tone byte is OR'd with `$80` instead of `$50`, except for tone 15. |
+| `selcall_timeout_task` 0x150B | none | New, called from the main loop when `$30` bit6 is set. When the 1 s timer `$EF` (loaded from 0x1FB6) runs out, it clears the call state and calls `sub_13D8` (inferred: auto-reset of a received call). |
+| `init_peripherals` 0x15EB | 0x158C | `$80` starts at `$50` (FM92R `$00`); `$84` = `$7F` (FM92R `$B0`), also kept in `$A4`. |
+| `soft_timers`, `uart_bit` | | Three more soft timers, so the shared timers moved up (below). Every user of `$E8`–`$EC` (`vote_task`, `main_loop_part2`, `tone_chip_write`) was renumbered to match. |
+| `squelch_task`, `set_ctcss_tone`, `scan_list_select` | | Only table addresses that moved. No change in behaviour. |
+
+Soft timers:
+
+| Rate | FM92R | FM92RS |
+|---|---|---|
+| every odd tick (~0.83 ms), in `uart_bit` | `$55`, `$56`, `$E7`, `$E8` | `$55`, `$56`, `$E7`, `$E8`, `$E9` |
+| every 64 ticks (~27 ms) | `$57`–`$61`, `$E9`, `$EA` | `$57`–`$61`, `$EA`, `$EB`, `$EC` |
+| every 2,304 ticks (~1 s) | `$63`–`$65`, `$EB`, `$EC` | `$63`–`$65`, `$ED`, `$EE`, `$EF` |
+
+### 15.3 The selcall decoder
+
+**FM92R:** the tone chip at `$80` decodes the tones itself. The firmware reads each received digit from `$80` when bit6 says one is ready, and compares the sequence with four codes at once: the own code (`$D5`), and the codes at 0x1F8D, 0x1F96 and 0x1F9F (individual, group and alarm, inferred). Each mismatch clears one of `$A3` bits 4–7.
+
+**FM92RS (inferred):** the chip is used as a single-tone detector, retuned for each digit:
+
+1. For each digit of the own code (`$D5`,x), load that tone into the chip (`tone_chip_write`). If it is the same as the previous digit, load the repeat tone (`$0A`/`$0B`) instead.
+2. Wait for `$80` bit7 (tone present), inside time windows taken from 0x1F84 onwards (timers `$E7`, `$E8`, `$EC`).
+3. `$BE` counts the digits left, starting from 0x1F7A. `$C0` is the digit index.
+4. When all digits have matched, wait the 0x1F84 hold-off, then flag the call. `selcall_call_received` then:
+   * sends `$A7` to the head (inferred: call indicator);
+   * loads the `$EF` timeout from 0x1FB6 (master value `$08`; 0x1FB6 is read only by FM92RS);
+   * starts an alert (`$80` bit5, timer `$ED` = `$11`), if `$33` bit3 is set;
+   * unless `$32` bit7 is clear, sets `$15` bit5, which starts `selcall_encode_task`: an automatic reply (inferred).
+
+So FM92RS recognises **one** code, its own. It no longer reads 0x1F96, 0x1F9F or 0x1F83, and reads 0x1F8D once instead of twice. Its use of 0x1F84 grew from 1 read to 9 (per-digit timing).
+
+### 15.4 What this means for building an FM92RS image
+
+* `fm900gen.py` and Web FPP already select `FM92RS.BIN` for h5 = 3–5, and the generic option bytes (0x1F36, 0x1F37) are set as for FM92R.
+* Like FM900.EXE, they then clear the selcall tone memory (0x1F67 = `00`, 0x1F68–70 = `0F`, 0x1F71–79 = `00`, 0x1F7A = `00`, 0x1F84–8C = `00`; FM900_FORMAT.md §4.1). In FM900.EXE the selcall tone editor fills it in afterwards; that editor is not implemented here (§13.4). So an image built today has **no own code and no digit timing**. 0x1F7A = 0 means a zero-length code, so the decoder will not work as intended.
+* Until the editor is implemented, the selcall bytes have to come from the radio's current EPROM (read it with the Web FPP Read tab, or a programmer). The tools cannot merge them yet. If you copy 0x1F67–0x1FB6 across by hand, you **must** then recompute the 0x1F64 checksum (FM900_FORMAT.md §4.3). Otherwise `eprom_checksum` fails and the radio sits in a reset loop (§8).
+

@@ -1,5 +1,5 @@
 """Annotated 68HC05 listing generator for the FM900 master EPROMs.
-Usage: python3 tools/mklist.py FM92R|FM92L   (writes firmware/<name>.lst)"""
+Usage: python3 tools/mklist.py FM92R|FM92L|FM92RS   (writes firmware/<name>.lst from <name>.ann)"""
 import sys,collections,re,json,os; sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 HERE=os.path.dirname(os.path.abspath(__file__))
 FWDIR=os.path.dirname(HERE)
