@@ -171,6 +171,8 @@ The ADC is a single-slope type built from a multiplexer, the timer and a compara
 
 ### 6.1 Reset and power control
 
+Fault-finding a radio that won't switch on (relay never pulls in): see `POWER_ON_DEBUG.md`.
+
 While "off", the radio is not unpowered. The CPU sits in `STOP` with its RAM held up by +5VP and the super-cap. `STOP` halts the oscillator, so AS stops and **+5VS** (EPROM, logic) drops (`../STM900/HARDWARE.md` §4). Nothing on the serial link can wake it. Only a hardware `RESET` restarts it. The on/off key (FM92L), or the head cable's **on/off wire** (FM92R), drives IC407, which pulses `RESET` and holds **PA5** high so the firmware can tell a key press from a supply glitch.
 
 1. `RESET` initialises the ports and waits.
