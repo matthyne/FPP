@@ -1162,7 +1162,7 @@ L_0795:    ; xref 0733 0736 0741 0744 0779 077c 07a6 07a9
   0795  2056     bra    sub_07ed                    
 
 sub_0797:    ; xref 075e 078c
-  0797  cd1275   jsr    sub_1275                    
+  0797  cd1275   jsr    selcall_send_start          
   079a  a6a0     lda    #$a0                        
   079c  cd0bee   jsr    head_send                   
   079f  81       rts                                
@@ -1736,7 +1736,7 @@ mute_close:    ; xref 0866 0a64 0ade
   0aed  81       rts                                
 
 soft_timers:    ; xref 038d 03a5
-  0aee  0a281d   brset  5, $28, L_0b0e              ; soft timers: $57-$61,$E9,$EA every 64 ticks (~27 ms)
+  0aee  0a281d   brset  5, $28, L_0b0e              ; soft timers: $57-$61,$EA-$EC every 64 ticks (~27 ms)
   0af1  3a57     dec    $57                         
   0af3  3a58     dec    $58                         
   0af5  3a59     dec    $59                         
@@ -1758,7 +1758,7 @@ L_0b0d:    ; xref 0b16
 L_0b0e:    ; xref 0aee
   0b0e  0c2823   brset  6, $28, L_0b34              
   0b11  0e2815   brset  7, $28, L_0b29              
-  0b14  3a62     dec    $62                         ; $63-$65,$EB,$EC every 2304 ticks (~1 s)
+  0b14  3a62     dec    $62                         ; $63-$65,$ED-$EF every 2304 ticks (~1 s)
   0b16  26f5     bne    L_0b0d                      
   0b18  a609     lda    #$09                        
   0b1a  b762     sta    $62                         
@@ -3002,8 +3002,8 @@ L_126e:    ; xref 1216
   1271  3ac1     dec    $c1                         
   1273  264e     bne    L_12c3                      
 
-sub_1275:    ; xref 0797 14a9
-  1275  cd12fc   jsr    tone_chip_reset             
+selcall_send_start:    ; xref 0797 14a9
+  1275  cd12fc   jsr    tone_chip_reset             ; RS: the tone-chip reset is now a call (FM92R: inline $84 = $B0, tone 15)
   1278  cd1415   jsr    sub_1415                    
   127b  b6a1     lda    $a1                         
   127d  a408     and    #$08                        
@@ -3377,7 +3377,7 @@ L_14a2:    ; xref 1472
   14a2  03330f   brclr  1, $33, L_14b4              
   14a5  121b     bset   1, $1b                      
   14a7  15a0     bclr   2, $a0                      
-  14a9  cd1275   jsr    sub_1275                    
+  14a9  cd1275   jsr    selcall_send_start          
 
 sub_14ac:    ; xref 1059
   14ac  001105   brset  0, $11, L_14b4              

@@ -423,7 +423,7 @@ Factory values in both FM92 masters (0x1F00–0x1F2F):
 ## 10. Reproducing the listings
 
 ```sh
-pip install capstone
+pip install 'capstone==5.0.*'   # 5.0.9 (reports 5.0.7) reproduces the committed listings exactly
 python3 tools/mklist.py FM92R     # reads ../fm900/MASTERS/FM92R.BIN, FM92R.ann
 python3 tools/mklist.py FM92L
 python3 tools/portann.py FM92R FM92RS   # writes FM92RS.ann (+ FM92RS.ann.local) and a report
@@ -435,7 +435,7 @@ python3 tools/mklist.py FM92RS
 * The `.ann` files hold routine names (`=addr name`) and per-address comments.
 * The FM92L names were transferred from FM92R by aligning the two instruction streams.
 * `tools/portann.py SRC DST` does that alignment reproducibly. It aligns normalised instructions (code addresses masked, so moved code still matches), maps RAM/I/O and the `0x1B00+` data area 1:1, and keeps a ported name or comment only if the first 3 instructions at both ends match. It prints what it mapped, what it dropped, and the DST code with no SRC counterpart. Hand-written DST entries go in `DST.ann.local`; never edit the generated `DST.ann`.
-* `FM92RS.ann` is generated this way (156 entries ported, 4 dropped as no longer true in RS).
+* `FM92RS.ann` is generated this way: 156 entries ported, 4 not. Three of those are no longer true in RS. The fourth, `selcall_send_start`, still exists but its first instructions changed, so it is re-added by hand in `FM92RS.ann.local`. The head check compares instructions only, not comment text: comments that name RAM addresses which moved in RS (e.g. the soft-timer comments) are corrected in `.ann.local`, whose entries override ported ones at the same address.
 
 ## 11. Modification: start-up message on the remote head (FM92R)
 
@@ -703,13 +703,13 @@ FM92RS is FM92R with the selcall decoder replaced and a little extra code. About
 |---|---|---|
 | `selcall_decode_task` 0x1145 | 0x1142 | **Rewritten** (§15.3). |
 | `selcall_decode_reset` 0x11E3 | none | New. Called from the end of `tx_stop` (0x06FC) to re-arm the decoder after transmitting, if selcall decode is enabled (`$32` bit1 and `$34` bit7). |
-| `selcall_call_received` 0x1309 | 0x12D2 / 0x1316 | FM92R has one handler per matched code (`$A3` bits 5 and 6, called from the main loop). FM92RS has one handler, on `$A3` bit4 (§15.3). |
+| `selcall_call_received` 0x1309 | 0x12E3 | Main loop: FM92R calls a handler for each of `$A3` bits 4, 5 and 6 (0x12E3, 0x12D2, 0x1316). FM92RS keeps only the bit-4 call (§15.3). |
 | `tone_chip_write` 0x12EF | 0x12C7 | The low nibble (tone number) is now inverted (`EOR #$0F`) before the write to `$80`. |
 | `tone_chip_reset` 0x12FC | inline in `selcall_encode_task` | New: `$80` bit6 on, `$84` = `$7F`, then a strobe on `$80` bit4. FM92R writes `$B0` to `$84` and strobes `$80` bits 6/7. |
-| `selcall_encode_task` 0x124D–0x12E2 | 0x121E–0x12BA | Same structure, adapted to the new tone-chip strobes; the tone byte is OR'd with `$80` instead of `$50`, except for tone 15. |
+| `selcall_encode_task` 0x120D, `selcall_send_start` 0x1275 | 0x11DE, 0x1242 | Same structure, adapted to the new tone chip: the repeat tone is `$0A` instead of `$0E` (as in the decoder), the tone byte is OR'd with `$80` instead of `$50` except for tone 15, the strobes use `$80` bits 4 and 7 instead of 4 and 6, and the inline `$84` = `$B0` set-up became a call to `tone_chip_reset`. |
 | `selcall_timeout_task` 0x150B | none | New, called from the main loop when `$30` bit6 is set. When the 1 s timer `$EF` (loaded from 0x1FB6) runs out, it clears the call state and calls `sub_13D8` (inferred: auto-reset of a received call). |
 | `init_peripherals` 0x15EB | 0x158C | `$80` starts at `$50` (FM92R `$00`); `$84` = `$7F` (FM92R `$B0`), also kept in `$A4`. |
-| `soft_timers`, `uart_bit` | | Three more soft timers, so the shared timers moved up (below). Every user of `$E8`–`$EC` (`vote_task`, `main_loop_part2`, `tone_chip_write`) was renumbered to match. |
+| `soft_timers`, `uart_bit` | | Three more soft timers (below). Each existing user kept a timer of the same rate but most were renumbered: `vote_task` `$E8` → `$E9`, `main_loop_part2` `$E9` → `$EA`, the alert/handler code `$EB`, `$EC` → `$ED`, `$EE`. `$E7` (selcall encoder) is unchanged. The new decoder uses `$E7`, `$E8` and `$EC`, and the 0x1FB6 timeout uses `$EF`. `$EB` is decremented but never read. |
 | `squelch_task`, `set_ctcss_tone`, `scan_list_select` | | Only table addresses that moved. No change in behaviour. |
 
 Soft timers:

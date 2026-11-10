@@ -184,3 +184,7 @@
 131d tell the head a call was received ($A7) (inferred)
 1358 alert: $80 bit5 on, $ED = $11 (~17 s) (inferred)
 134b $15 bit5 starts selcall_encode_task on the main loop: automatic reply/transpond (inferred)
+=1275 selcall_send_start
+0aee soft timers: $57-$61,$EA-$EC every 64 ticks (~27 ms)
+0b14 $63-$65,$ED-$EF every 2304 ticks (~1 s)
+1275 RS: the tone-chip reset is now a call (FM92R: inline $84 = $B0, tone 15)
