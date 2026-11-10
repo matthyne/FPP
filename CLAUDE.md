@@ -24,6 +24,7 @@ The original DOS files are reference material. **Never modify them.**
 | `firmware/FIRMWARE.md` | Radio firmware (FM92R/FM92L, plus FM92RS = the selcall FM92R master, §15) documentation. |
 | `firmware/POWER_ON_DEBUG.md` | Fault-finding guide for an FM92R/FM92RS that won't switch on (relay never pulls in): the 0x0100–0x025A power-on path, checks, IC408 probe points, and how to read an `a1-poweron.sr` capture with `fm92cap.py ports`. Keep it in sync with FIRMWARE.md §6.1/§6.3/§8. |
 | `firmware/*.lst` | Annotated 68HC05 listings. These are generated: edit `firmware/*.ann` (`=addr name` or `addr comment`) and re-run `python3 firmware/tools/mklist.py FM92R` (needs `pip install 'capstone==5.0.*'`; the committed listings reproduce byte-identically with 5.0.9, which reports itself as 5.0.7). |
+| `firmware/FM92R.ram.txt` | **Generated** RAM/I-O cross-reference (`python3 firmware/tools/ramxref.py FM92R > firmware/FM92R.ram.txt`): for each `$00`–`$FF` address, the routines that read/write/RMW it and the bits they test/set. Regenerate after renaming routines in `FM92R.ann`. The meanings are hand-written in FIRMWARE.md §16. |
 | `firmware/FM92L.ann` | FM92L routine names, ported from FM92R by aligning the two instruction streams. |
 | `firmware/FM92RS.ann` | **Generated** by `python3 firmware/tools/portann.py FM92R FM92RS` (ports FM92R names/comments by normalised-instruction alignment, keeps one only if the first 3 instructions match, prints a mapped/dropped/new-code report). Never edit it: RS-only names and notes go in `firmware/FM92RS.ann.local`, which portann appends. After changing `FM92R.ann` or the `.local`, re-run portann then `mklist.py FM92RS`. The 3-instruction check does not catch ported comment *text* that names RAM addresses moved in RS: override those in `.local` (same address wins). |
 | `web/` | Web FPP (FM900 CPS): Vite + TypeScript + Preact static site. See "Web FPP" below. |
@@ -78,6 +79,12 @@ The original DOS files are reference material. **Never modify them.**
 * `.CHL` flag word: 0x10 = VOTE, 0x20 = ECON, 0x40 = SELCALL, 0x4000 = C/R. The FM900.EXE entry-screen order is CTCSS, C/R, VOTE, ECON, SELCALL. The firmware agrees: VOTE drives the linked-slot voting ring, and slot byte6 bit7 (SELCALL) gates the selcall code.
 * Power: "off" = CPU in `STOP` with RAM kept. Only RESET (on/off key or the FM92R head cable's on/off wire, via IC407 + PA5) switches it on, and each press toggles. The FM92R also needs the head to answer each `$E4` poll with `$49`, or it powers down after about 3 s (FIRMWARE.md §6.1, §6.3). `$49` is **not** a power-off command.
 * FM92L and FM92R differ only in the operator interface. L = local front-panel keys, display and LEDs. R = 1200 baud single-wire serial link to a remote control head. The data layout is identical.
+
+## Firmware facts (from the disassembly only)
+
+* Head commands (FM92R): `$44` = PTT **press**, `$45` = release; `$46` = hook/monitor press, `$47` = release. `$44`/`$46` auto-release after 1.5 s unless repeated (FIRMWARE.md §6.2).
+* CTCSS needs both codes: software digit s8 = 1–7 (0x1F34 bit0) **and** hardware h5 = 1/2 (decode = h5 2/5/8, 0x1F34 bit2). On FM92R the tone is only sent while `$11.4` = PA7 high AND head `$46` held (FIRMWARE.md §7.2; PA7 role inferred).
+* Every FM92R routine is named in `FM92R.ann` (no `sub_` labels left). Keep it that way: name new finds there, mark guesses "(inferred)" in the comment, then regenerate `FM92R.lst`, `FM92RS.ann`/`.lst` (portann) and `FM92R.ram.txt`.
 
 ## Re-doing the FM900.EXE disassembly
 

@@ -9,7 +9,8 @@ hardware function from how the code uses a pin, it says **(inferred)**.
 
 Annotated listings:
 
-* `FM92R.lst` (2381 instructions)
+* `FM92R.lst` (2381 instructions): every called routine and jump-table entry is named
+* `FM92R.ram.txt`: generated RAM/I-O cross-reference, who reads and writes each address (§16)
 * `FM92L.lst` (2265 instructions)
 * `FM92RS.lst` (2423 instructions): names and comments ported from FM92R by `tools/portann.py`, plus the RS-only notes in `FM92RS.ann.local` (§15)
 
@@ -258,21 +259,33 @@ if selcall is set up. The fourth key gets 7 if a selcall code is set.
 
 | Bytes | Meaning |
 |---|---|
-| `$44` / `$45` | head PTT release / press (inferred) |
-| `$46` / `$47` | hook / monitor release / press (inferred) |
+| `$44` / `$45` | head PTT **press** / release (`head_ptt_press` 0x0610 sets `$15.1`; `head_ptt_release` 0x064F clears it) |
+| `$46` / `$47` | hook / monitor **press** / release (`head_hook_press` 0x0606 sets `$14.0`; 0x060D clears it). Gates CTCSS encode and monitor (§7.2) |
+| `$48` | ignored |
 | `$49` | reply to the radio's `$E4` keep-alive poll (§6.3) |
 | `$4A` | RAM dump |
+| other | sets the error flag `$10.0` |
+
+The dispatcher (`head_key_dispatch`, 0x0574) jumps through `head_cmd_table` (0x059C) at index (byte − `$44`) × 3. **`$44` and `$46` must be repeated.** Each press starts a 1.5 s timer (`$5B`/`$5A` = `$38`, 56 × 27 ms). If no repeat arrives in time, the main loop releases it as if `$45`/`$47` had been sent. (An earlier version of this table had press and release the wrong way round.)
+
+Bytes `'0'`–`'?'` are key codes (`'1' '2' '4' '7'`, above). The mic PTT is separate: PA6 low sets `$15.0` (`mic_ptt_press`, 0x061A), high clears it (`mic_ptt_release`, 0x0653).
 
 **Messages to the head (FM92R)** go through `head_send`:
 
 | Bytes | Meaning |
 |---|---|
 | `$80`/`$81` + character, `$82`/`$83` + character | the two display digits |
-| `$A0` | channel changed |
+| `$A0` | channel changed / back on receive |
+| `$A2` | transmitter on (Tx synthesiser settled) |
+| `$A4` / `$A6` | squelch closed / open (busy indicator, from `$12.2` / `$12.1`) (inferred) |
+| `$A7` | selcall call received |
+| `$C0` / `$C1` | fault cleared / fault (`$10` ≠ 0; `$C1` is sent once, `$12.6` = sent) |
+| `$E5` | display off (intermittent display, after 0x1F3B seconds) |
 | `$AA` | start-up |
 | `$E4` | keep-alive poll; the head must answer `$49` (§6.3) |
 | `$E7` + 3 bytes | head configuration, from 0x1F10–0x1F12 |
-| others | status codes: `$A2–$A7`, `$C0`/`$C1`, `$E5`, `$EC` |
+| `$A3` | selcall (sent from `fn_selcall_send`) |
+| `$EC` | RAM-dump prefix (`head_ram_dump`, command `$4A`) |
 
 ### 6.3 Head keep-alive (FM92R)
 
@@ -317,10 +330,66 @@ FM900_FORMAT.md §4.2 gives the byte layout. On a channel change, `select_channe
 
 ### 7.2 CTCSS
 
-* The encoder tone is set per channel from byte 6.
-* Decode is enabled by option byte 0x1F34 bit 2 (hardware digit h5 ∈ {2, 5, 8}).
-* With decode, the receiver mute stays closed until the tone is detected.
-* Reverse tone burst (0x1F34 bit 1) cuts the tone briefly at the end of transmission.
+**Settings.** Option byte 0x1F34 is copied to RAM `$30` at start-up:
+
+| `$30` bit | Meaning | Set by |
+|---|---|---|
+| 0 | CTCSS in use | software digit s8 = 1–7 |
+| 1 | reverse tone burst (RTB) | s8 = 3, 4 or 7 |
+| 2 | CTCSS decode | hardware digit h5 = 2, 5 or 8 |
+
+(FM900_FORMAT.md §4.3.) So a CTCSS radio needs **both** codes set: h5 = 1 (encode only) or 2 (encode and decode) for the hardware, and s8 ≥ 1 for the mode. With s8 = 0 the firmware never sends or decodes a tone, whatever the channels say.
+
+The channel's tone code is slot byte 6 bits 0–5 (1–38, 0 = none), copied to `$34` when the channel is selected. Slot byte 2 bit 4 (C/R, community repeater) is copied to `$1B.5`.
+
+**Tone chip.** `set_ctcss_tone` (0x0D36) looks up the code in a 38-entry table at 0x0E57–0x0E7C and writes the 6-bit value with bit 6 set to `$81`, the CTCSS tone chip (§2). The values are the chip's own tone-select codes, so they are not in code order:
+
+| Code | Tone | `$81` | Code | Tone | `$81` | Code | Tone | `$81` |
+|---|---|---|---|---|---|---|---|---|
+| 17 Q | 67.0 | `3F` | 13 M | 118.8 | `29` | 28 2 | 180.2 | `11` |
+| 18 R | 71.9 | `3D` | 5 E | 123.0 | `28` | 29 3 | 186.2 | `10` |
+| 19 S | 74.4 | `3B` | 14 N | 127.3 | `25` | 30 4 | 192.8 | `0D` |
+| 20 T | 77.0 | `3C` | 6 F | 131.8 | `24` | 31 5 | 203.5 | `0C` |
+| 21 U | 79.7 | `37` | 15 O | 136.5 | `21` | 32 6 | 210.7 | `09` |
+| 9 I | 82.5 | `39` | 7 G | 141.3 | `20` | 33 7 | 218.1 | `08` |
+| 22 V | 85.4 | `33` | 16 P | 146.2 | `1D` | 34 8 | 225.7 | `05` |
+| 1 A | 88.5 | `38` | 8 H | 151.4 | `1C` | 35 9 | 233.6 | `04` |
+| 23 W | 91.5 | `2F` | 24 X | 156.7 | `19` | 36 * | 241.8 | `01` |
+| 10 J | 94.8 | `35` | 25 Y | 162.2 | `18` | 37 # | 250.3 | `00` |
+| 38 = | 97.4 | `2B` | 26 0 | 167.9 | `15` | | | |
+| 2 B | 100.0 | `34` | 27 1 | 173.8 | `14` | | | |
+| 11 K | 103.5 | `31` | | | | | | |
+| 3 C | 107.2 | `30` | | | | | | |
+| 4 D | 114.8 | `2C` | | | | | | |
+| 12 L | 110.9 | `2D` | | | | | | |
+
+(Letter codes and tones are FM900.EXE's, FM900_FORMAT.md §2.2; the `$81` column is read from the master.)
+
+**Encode (transmit).** When the Tx synthesiser has settled (`tx_synth_settled`, 0x071A, which also sends `$A2` to the head), `ctcss_tx_on` (0x0E2C) turns the tone on if all of these hold:
+
+* CTCSS is fitted (`$30.0`) and the channel has a tone (`$34` bits 0–5 ≠ 0);
+* `$11.4` is set, or selcall is sending (`$15.5`).
+
+"On" means `$81` bit 6 = 1 and `$82` bit 1 = 0 (inferred: `$82.1` gates the encoder output; `tx_stop` sets it again via `ctcss_tone_off`, 0x0E0D). `ctcss_tx_watch` (0x0E45) turns the tone off during the transmission if `$11.4` drops (with a reverse burst first, if RTB is armed).
+
+`$11.4` is computed every main-loop pass as **PA7 high AND head command `$46` held** (`$14.0`, §6.2). So on an FM92R the tone is only sent while the head keeps reporting `$46`. PA7 is not traced on a schematic; it is probably the hook switch (inferred). Check this on the radio before relying on it.
+
+**Reverse tone burst.** If RTB is enabled, `ctcss_tx_on` also arms `$15.6`. When both PTTs are released (`$15` = `$40`), `ctcss_burst_start` (0x0E10) keeps the transmitter keyed, clears `$81` bit 6 (inferred: 180° phase reversal) and starts timer `$E9` = 5 (5 × 27 ms ≈ 135 ms). When it runs out, `ctcss_burst_end` (0x0DFA) restores bit 6 and turns the tone off, unless PTT was pressed again. Then the transmitter drops.
+
+**Decode (receive).** `ctcss_decode_task` (0x0DCF) runs twice per main-loop pass while receiving, if CTCSS and decode are both enabled (`$30.0`, `$30.2`) and the channel has a tone:
+
+| Squelch (`$19.4`) | Tone detected (`$82` bit 2 = 0, inferred) | Channel | CTCSS mute `$18.3` | Busy lockout `$16.3` |
+|---|---|---|---|---|
+| open | yes | any | open | cleared |
+| open | no | normal | closed, unless `$11.4` | cleared |
+| open | no | C/R | closed | **set** |
+| closed | – | normal | closed, unless `$11.4` | cleared |
+| closed | – | C/R | closed | unchanged |
+
+* With CTCSS off, or on a channel with no tone, the CTCSS mute and the lockout are both cleared.
+* **Monitor.** `$11.4` opens the CTCSS mute on normal channels (inferred: picking up the handset lets you hear the channel). On C/R channels it does not.
+* **C/R busy lockout.** On a community-repeater channel, a carrier without your tone sets `$16.3`. `tx_inhibited` (0x06A5) then refuses PTT (`$1B.0` set, no transmission) until your tone is heard or the carrier goes. `$16.3` is also set at start-up on a C/R channel and cleared whenever a channel is loaded.
+* **Audio mute.** `squelch_task` keeps the audio muted (latch `$29` bits 2 and 5) while **any** bit of `$18` is set. That includes the CTCSS mute `$18.3`, the selcall mute `$18.2` and the synthesiser-settling bits `$18.0`/`$18.1`. Only with `$18` = 0 can an open squelch (`$19` bits 4–7) unmute.
 
 ### 7.3 Scanning (`scan_task`, `fn_scan`)
 
@@ -430,6 +499,7 @@ python3 tools/mklist.py FM92R     # reads ../fm900/MASTERS/FM92R.BIN, FM92R.ann
 python3 tools/mklist.py FM92L
 python3 tools/portann.py FM92R FM92RS   # writes FM92RS.ann (+ FM92RS.ann.local) and a report
 python3 tools/mklist.py FM92RS
+python3 tools/ramxref.py FM92R > FM92R.ram.txt   # RAM cross-reference (§16); --md for a Markdown table
 ```
 
 * `tools/d6805.py` is a recursive-descent 6805 disassembler that also follows `JMP table,X` jump tables.
@@ -630,7 +700,7 @@ on the receive frequency.
   * On request (`$4A`), a full RAM dump. That includes live RSSI (`$46`), squelch noise (`$45`), the supply/forward-power reading (`$4A`), the current channel (`$2E`) and all flags, which is useful for a signal meter or logging.
 * **What a PC can do.**
   * Send key codes `'1' '2' '4' '7'` to run the four programmable functions (§6.2), e.g. channel up/down, scan, monitor. With `tens`/`units` assigned (`--keys tens,units,…`), it can jump to any channel in about 3–10 key presses.
-  * Send PTT press/release (`$45`/`$44`, inferred).
+  * Send PTT press/release: `$44` = press, repeated at least every 1.5 s while transmitting, `$45` = release (§6.2). The same for `$46`/`$47` (hook/monitor), which also gates the CTCSS tone (§7.2).
   * It **must** answer every `$E4` poll with `$49` within about 1.5 s, or the radio switches off after about 3 s (§6.3). Stopping the replies is also a way to switch the radio off.
   * Switching **on** needs the head cable's on/off wire, not a serial byte (§6.1).
   * It **cannot** set an arbitrary frequency: only the programmed channels are reachable, the same as from the head.
@@ -679,7 +749,7 @@ My own notes:
 
 * **Earlier version.** A version of this table supplied earlier gave VicPol Rx audio as pin 5 (a duplicate of Tx audio) and microphone Rx audio as pin 6. The WICEN source gives VicPol Rx audio = **6** and no microphone Rx-audio pin.
 * **Data line not listed.** These are the head's audio/PTT accessory connections. The source does not list the head ↔ radio **serial data line** (the ~1200 baud 8E1 link on CPU PB0, §1 and §13.3), the supply, or the power switch. Those are on the head-to-radio DB-15 cable, not this DIN (wire list in `../STM900/HARDWARE.md` §8; pin numbers still unknown). Identify them before attempting PC/tablet control.
-* **PTT:** the firmware senses PTT on CPU PA6 (inferred, §3). Head PTT may also arrive as a serial command (`$44`/`$45`).
+* **PTT:** the firmware senses PTT on CPU PA6 (inferred, §3). Head PTT arrives as a serial command (`$44` press, `$45` release; §6.2).
 
 ## 15. FM92RS: the selcall master
 
@@ -744,4 +814,120 @@ So FM92RS recognises **one** code, its own. It no longer reads 0x1F96, 0x1F9F or
 * `fm900gen.py` and Web FPP already select `FM92RS.BIN` for h5 = 3–5, and the generic option bytes (0x1F36, 0x1F37) are set as for FM92R.
 * Like FM900.EXE, they then clear the selcall tone memory (0x1F67 = `00`, 0x1F68–70 = `0F`, 0x1F71–79 = `00`, 0x1F7A = `00`, 0x1F84–8C = `00`; FM900_FORMAT.md §4.1). In FM900.EXE the selcall tone editor fills it in afterwards; that editor is not implemented here (§13.4). So an image built today has **no own code and no digit timing**. 0x1F7A = 0 means a zero-length code, so the decoder will not work as intended.
 * Until the editor is implemented, the selcall bytes have to come from the radio's current EPROM (read it with the Web FPP Read tab, or a programmer). The tools cannot merge them yet. If you copy 0x1F67–0x1FB6 across by hand, you **must** then recompute the 0x1F64 checksum (FM900_FORMAT.md §4.3). Otherwise `eprom_checksum` fails and the radio sits in a reset loop (§8).
+
+## 16. FM92R RAM map
+
+What each direct-page address is used for. **Bold** = confirmed from several uses. Everything else is inferred from the routines that touch it (names in §6–§7 and the listing), and a `–` means the bit is not used or its role is unknown. Every access, by routine, is in `FM92R.ram.txt`, generated by `tools/ramxref.py FM92R`. Bits are written `$xx.n`.
+
+### 16.1 I/O and fixed areas
+
+| Addr | Use |
+|---|---|
+| `$00`, `$01`, `$04`, `$05`, `$08`, `$09` | ports A/B, their DDRs, timer (§2, §3) |
+| `$02` | read once by `wait_startup` (port C or another input, inferred) |
+| `$20` | **power state**: `$11` off, `$99` on (§6.1) |
+| `$21`–`$24` | **RAM stub** `LDA/ADD $hhll,X ; RTS` built at run time to index EPROM tables (§2); also scratch |
+| `$25`, `$26` | scratch (`bin_to_bcd`, `load_synth`, `head_send`) |
+| `$27`, `$28` | **tick counter** (`$28`, §4); `$27` TIMER_ISR scratch |
+| `$2F`–`$33` | **option bytes 0x1F33–0x1F37** copied at start-up. `$30` = 0x1F34 (CTCSS bits, §7.2), `$31` = 0x1F35, `$32` = 0x1F36, `$33` = 0x1F37 |
+| `$34`, `$35` | **current channel slot bytes 6 and 7** (CTCSS code / selcall bit; vote link) |
+| `$36` | key-hold auto-repeat count (`key_hold_handler`) |
+| `$37`–`$3D` | **software UART**: bit counter, received byte `$38`, shift registers, 4-byte transmit FIFO `$3D` with pointers `$3B`/`$3C` |
+| `$41` | display scratch (`display_digits`) |
+| `$42`–`$44` | ADC: start time and channel for the IRQ (§5) |
+| `$45`–`$4A` | **ADC results** (§5): `$45` noise, `$46` RSSI, `$47`, `$48`, `$49` squelch pot, `$4A` supply / forward power |
+| `$4B`–`$4D` | squelch filter state and hysteresis (`squelch_task`) |
+| `$4E` | 8-hour timer, 30-min units (0x1FB5) |
+| `$4F` | scan/display mode byte (written by `fn_scan`, `scan_list_select`, `init_peripherals`) (inferred) |
+| `$2E` | **current channel** number |
+| `$50` | **home channel** while scanning or voting (restored by `scan_restore_channel`) |
+| `$51`–`$54` | scan/vote: slot index `$51`, vote channel `$52`, scan-list pointer `$53`/`$54` |
+| `$2D` | bits 0–2 = **squelch setting** 0–7; bits 3–7 = synthesiser relock retry count (`synth_relock`) |
+| `$29`, `$2A`, `$2C` | **output latch shadows** (§3): `$29.2`/`$29.5` audio mute, `$29.3` follows `$17` ≠ 0, `$29.7` toggled by `latch29_toggle_b7` (beeper, inferred); `$2A.4`/`.6` economiser; `$2C` latch PB4 |
+| `$2B` | RAM-config check byte (`chk_ram_config`) |
+| `$68` | RAM-config copy, compared with 0x1F32 by `supervision_task` (mismatch: `$10.3`) |
+
+### 16.2 Soft timers
+
+All count down to below zero (bit 7 = expired). Rates in §4.1.
+
+| Timer | Rate | Use |
+|---|---|---|
+| `$55` | odd tick (~0.83 ms) | synthesiser settle after a load: `$11` (~14 ms), then `tx_synth_settled` / `rx_synth_settled` |
+| `$56` | odd tick | squelch / scan dwell (`squelch_open_test`, `scan_task`) |
+| `$57`, `$58` | 27 ms | not used outside `soft_timers` (spare) |
+| `$59` | 27 ms | key hold / alert-tone toggle |
+| `$5A` | 27 ms | head `$46` auto-release, 1.5 s (§6.2) |
+| `$5B` | 27 ms | head PTT `$44` auto-release, 1.5 s (§6.2) |
+| `$5C` | 27 ms | synth-unlock blanking, 4 × 27 ms (`unlock_blank_start`) |
+| `$5D` | 27 ms | key auto-repeat |
+| `$5E` | 27 ms | head poll interval (§6.3) |
+| `$5F` | 27 ms | head poll reply timeout, 1.5 s (§6.3) |
+| `$60` | 27 ms | economiser / scan |
+| `$61` | 27 ms | start-up hold-off (`$16.7`), scan, squelch |
+| `$62` | 27 ms | prescaler for the 1 s timers |
+| `$63` | 1 s | display timeout (0x1F3B) |
+| `$64` | 1 s | not used outside `soft_timers` (spare) |
+| `$65` | 1 s | squelch / scan (`squelch_open_test`) |
+| `$66` | – | prescaler for `$67` |
+| `$67` | 10 s | Tx timer and 8-hour timer |
+| `$E7`, `$E8` | odd tick | selcall encoder `$E7`; vote dwell `$E8` |
+| `$E9`, `$EA` | 27 ms | reverse tone burst `$E9`; selcall decoder `$EA` |
+| `$EB`, `$EC` | 1 s | selcall alert `$EB`; selcall resend `$EC` |
+
+### 16.3 Flag bytes
+
+| Bit | `$10` faults (any ≠ 0: `$C1` to head) | `$11` | `$12` head messages pending |
+|---|---|---|---|
+| 0 | bad byte from the head | **transmitting** | – |
+| 1 | – | Tx synth loaded (cleared by `select_channel`) | `$A6` squelch open |
+| 2 | ADC IRQ timing | send head config | `$A4` squelch closed |
+| 3 | RAM config (`$68` ≠ 0x1F32) | head poll due | – |
+| 4 | synthesiser fault (relock retries used up) | **PA7 and head `$46`** (§7.2) | – |
+| 5 | window `$47` | synth relock request (set at 0x09A6) | – |
+| 6 | window `$48` (blocks Tx) | scanning | `$C1` sent |
+| 7 | **PA fault** (Tx power window) | scan state | – |
+
+| Bit | `$13` | `$14` | `$15` Tx requests |
+|---|---|---|---|
+| 0 | selcall decode digit flag | **head `$46` held** | **mic PTT** (PA6) |
+| 1 | `tx_stop` handshake | unlock / window-`$47` fault seen | **head PTT** (`$44`) |
+| 2 | – | scan | – |
+| 3 | – | **head poll missed** | – |
+| 4 | display refresh | unlock blanking (`$5C`) | – |
+| 5 | key held | display | selcall sending |
+| 6 | **on a vote/scan channel** (home in `$50`) | – | reverse tone burst armed |
+| 7 | – | selcall | – |
+
+| Bit | `$16` Tx inhibits | `$17` | `$18` audio mute reasons (any = muted) |
+|---|---|---|---|
+| 0 | scan | selcall encode | synth settling (Tx load) |
+| 1 | – | – | synth settling (Rx load) |
+| 2 | Tx timer expired (until PTT is released) | no PTT pressed | **selcall mute** |
+| 3 | **C/R busy lockout** (§7.2) | – | **CTCSS mute** (§7.2) |
+| 4 | – | – | scan |
+| 5 | vote | – | squelch |
+| 6 | – | – | economiser |
+| 7 | start-up hold-off | – | start-up / channel change / vote |
+
+`tx_inhibited` blocks Tx if `$10.6` is set, if any of `$16` bits 4–7 is set, or if any of `$16` bits 0–3 is set and `$15` bits 4–7 are all clear.
+
+| Bit | `$19` | `$1A` UART | `$1B` | `$1C` |
+|---|---|---|---|---|
+| 0 | – | **byte received** (runs `head_key_dispatch`) | PTT refused / Tx stopped | – (cleared by scan) |
+| 1 | – | sending | **key beep** | Tx synth settle wait (`$55`) |
+| 2 | **monitor** (`fn_monitor_toggle`; also set by `squelch_task`) | UART state | – | Rx synth settle wait (`$55`) |
+| 3 | – | UART state | **reject beep** | display timer running (`$63`) |
+| 4 | **squelch open** | UART state | selcall | – |
+| 5 | squelch state (`squelch_task`) | UART state | **C/R channel** | **head poll waiting** |
+| 6 | – | UART state | key hold | **Tx timer expired** |
+| 7 | – | UART state | key hold | tested before Tx; never set by a bit instruction |
+
+`$1D`, `$1E` bit 1 = display digit enables. `$1F` = scan state (`scan_task`).
+
+### 16.4 External RAM `$A0`–`$EC` (selcall)
+
+`$A0`–`$A4` selcall state flags (`$A3` bits 4–7 = code matches, §15.3); `$BE`–`$C3` encoder/decoder counters and current digit; `$C7`–`$E1` the selcall code buffers (`$CA`/`$D4` = copies of 0x1F67/0x1F7A, checked by `selcall_ram_check`, sum at `$C9`) and display copies (`$CE`/`$CF`, `$DE`–`$E1`). `$E7`–`$EC` are soft timers (§16.2).
+
+Peripherals: `$80` selcall tone chip, `$81` CTCSS tone chip (§7.2), `$82` output latch (bit 1 CTCSS gate, bit 2 tone-detect input, bit 5 set per channel), `$84`–`$86` tone-chip set-up (§2).
 

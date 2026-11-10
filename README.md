@@ -14,7 +14,7 @@ It also holds a Linux replacement for the image-building part:
 * **`docs/`**: reference manuals and notes (FM93 service manual, FM92 guides). See `docs/README.md`.
 * **`STM900/`**: plans for replacing the radio's 146805E2 CPU and EPROM with an STM32 running new open-source firmware. Planning only so far; see `STM900/README.md`.
 * **`FM900_FORMAT.md`**: full documentation of FPP.EXE, FM900.EXE, the job file formats, the hardware/software codes, and the EPROM layout.
-* **`firmware/`**: disassembly of the radio's own 68HC05 firmware (FM92R and FM92L masters, and FM92RS, the master a selcall-equipped FM92R runs). See `firmware/FIRMWARE.md` §15 for what FM92RS changes and why a built FM92RS image has no selcall code yet. `firmware/POWER_ON_DEBUG.md` is a step-by-step guide for an FM92R that won't switch on (power relay never pulls in).
+* **`firmware/`**: disassembly of the radio's own 68HC05 firmware (FM92R and FM92L masters, and FM92RS, the master a selcall-equipped FM92R runs). Every FM92R routine is named; §7.2 covers CTCSS (tone table, encode, reverse burst, decode and the C/R busy lockout) and §16 is a RAM map. See `firmware/FIRMWARE.md` §15 for what FM92RS changes and why a built FM92RS image has no selcall code yet. `firmware/POWER_ON_DEBUG.md` is a step-by-step guide for an FM92R that won't switch on (power relay never pulls in).
   * `FIRMWARE.md` explains what L vs R means, the hardware interface, the scheduler, and how the radio uses every channel and config byte.
   * The folder also holds annotated listings and the disassembler tools.
   * `patch_startup_msg.py` builds a patched FM92R master that shows a start-up message (e.g. `AA`) on the remote head.
