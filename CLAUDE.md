@@ -83,7 +83,7 @@ The original DOS files are reference material. **Never modify them.**
 ## Firmware facts (from the disassembly only)
 
 * Head commands (FM92R): `$44` = PTT **press**, `$45` = release; `$46` = hook/monitor press, `$47` = release. `$44`/`$46` auto-release after 1.5 s unless repeated (FIRMWARE.md §6.2).
-* CTCSS needs both codes: software digit s8 = 1–7 (0x1F34 bit0) **and** hardware h5 = 1/2 (decode = h5 2/5/8, 0x1F34 bit2). On FM92R the tone is only sent while `$11.4` = PA7 high AND head `$46` held (FIRMWARE.md §7.2; PA7 role inferred).
+* CTCSS: software digit s8 = 1–7 (0x1F34 bit0) is needed for any tone; decode also needs h5 = 2/5/8 (0x1F34 bit2). fm900gen does not cross-check h5 against s8. On FM92R the tone is only sent while `$11.4` = PA7 high AND head `$46` held (FIRMWARE.md §7.2; FM92L uses PA7 alone, so `$46` is the head's hook report; PA7 = hook switch, inferred).
 * Every FM92R routine is named in `FM92R.ann` (no `sub_` labels left). Keep it that way: name new finds there, mark guesses "(inferred)" in the comment, then regenerate `FM92R.lst`, `FM92RS.ann`/`.lst` (portann) and `FM92R.ram.txt`.
 
 ## Re-doing the FM900.EXE disassembly

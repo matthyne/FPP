@@ -279,7 +279,7 @@ Bytes `'0'`–`'?'` are key codes (`'1' '2' '4' '7'`, above). The mic PTT is sep
 | `$A2` | transmitter on (Tx synthesiser settled) |
 | `$A4` / `$A6` | squelch closed / open (busy indicator, from `$12.2` / `$12.1`) (inferred) |
 | `$A7` | selcall call received |
-| `$C0` / `$C1` | fault cleared / fault (`$10` ≠ 0; `$C1` is sent once, `$12.6` = sent) |
+| `$C0` / `$C1` | `$C1` = PA fault (`$10.7`), sent once (`$12.6` = sent); `$C0` = all faults cleared (`$10` = 0 again) |
 | `$E5` | display off (intermittent display, after 0x1F3B seconds) |
 | `$AA` | start-up |
 | `$E4` | keep-alive poll; the head must answer `$49` (§6.3) |
@@ -338,7 +338,7 @@ FM900_FORMAT.md §4.2 gives the byte layout. On a channel change, `select_channe
 | 1 | reverse tone burst (RTB) | s8 = 3, 4 or 7 |
 | 2 | CTCSS decode | hardware digit h5 = 2, 5 or 8 |
 
-(FM900_FORMAT.md §4.3.) So a CTCSS radio needs **both** codes set: h5 = 1 (encode only) or 2 (encode and decode) for the hardware, and s8 ≥ 1 for the mode. With s8 = 0 the firmware never sends or decodes a tone, whatever the channels say.
+(FM900_FORMAT.md §4.3.) So **s8 = 1–7 is needed for any tone**: with s8 = 0 the firmware never sends or decodes a tone, whatever the channels say. Decode additionally needs h5 = 2, 5 or 8. Set h5 = 1 (encode only) or 2 (encode and decode) to describe the fitted hardware; `fm900gen.py` does not cross-check h5 against s8.
 
 The channel's tone code is slot byte 6 bits 0–5 (1–38, 0 = none), copied to `$34` when the channel is selected. Slot byte 2 bit 4 (C/R, community repeater) is copied to `$1B.5`.
 
@@ -360,8 +360,8 @@ The channel's tone code is slot byte 6 bits 0–5 (1–38, 0 = none), copied to 
 | 2 B | 100.0 | `34` | 27 1 | 173.8 | `14` | | | |
 | 11 K | 103.5 | `31` | | | | | | |
 | 3 C | 107.2 | `30` | | | | | | |
-| 4 D | 114.8 | `2C` | | | | | | |
 | 12 L | 110.9 | `2D` | | | | | | |
+| 4 D | 114.8 | `2C` | | | | | | |
 
 (Letter codes and tones are FM900.EXE's, FM900_FORMAT.md §2.2; the `$81` column is read from the master.)
 
@@ -372,9 +372,9 @@ The channel's tone code is slot byte 6 bits 0–5 (1–38, 0 = none), copied to 
 
 "On" means `$81` bit 6 = 1 and `$82` bit 1 = 0 (inferred: `$82.1` gates the encoder output; `tx_stop` sets it again via `ctcss_tone_off`, 0x0E0D). `ctcss_tx_watch` (0x0E45) turns the tone off during the transmission if `$11.4` drops (with a reverse burst first, if RTB is armed).
 
-`$11.4` is computed every main-loop pass as **PA7 high AND head command `$46` held** (`$14.0`, §6.2). So on an FM92R the tone is only sent while the head keeps reporting `$46`. PA7 is not traced on a schematic; it is probably the hook switch (inferred). Check this on the radio before relying on it.
+`$11.4` is computed every main-loop pass as **PA7 high AND head command `$46` held** (`$14.0`, §6.2). FM92L uses PA7 alone at the same point, so the extra term is the FM92R head reporting its hook switch. So on an FM92R the tone is only sent while PA7 is high and the head keeps reporting `$46` (inferred: handset off-hook). PA7 is not traced on a schematic. **Check on the radio:** does a transmission with the handset on-hook carry the tone?
 
-**Reverse tone burst.** If RTB is enabled, `ctcss_tx_on` also arms `$15.6`. When both PTTs are released (`$15` = `$40`), `ctcss_burst_start` (0x0E10) keeps the transmitter keyed, clears `$81` bit 6 (inferred: 180° phase reversal) and starts timer `$E9` = 5 (5 × 27 ms ≈ 135 ms). When it runs out, `ctcss_burst_end` (0x0DFA) restores bit 6 and turns the tone off, unless PTT was pressed again. Then the transmitter drops.
+**Reverse tone burst.** If RTB is enabled, `ctcss_tx_on` also arms `$15.6`. When both PTTs are released (`$15` = `$40`), `ctcss_burst_start` (0x0E10) runs. The transmitter stays keyed because `ptt_handler` only stops transmitting when all of `$15` is 0. It clears `$81` bit 6 (inferred: 180° phase reversal) and starts timer `$E9` = 5 (5 × 27 ms ≈ 135 ms). When it runs out, `ctcss_burst_end` (0x0DFA) restores bit 6 and turns the tone off, unless PTT was pressed again. Then the transmitter drops.
 
 **Decode (receive).** `ctcss_decode_task` (0x0DCF) runs twice per main-loop pass while receiving, if CTCSS and decode are both enabled (`$30.0`, `$30.2`) and the channel has a tone:
 
@@ -384,12 +384,17 @@ The channel's tone code is slot byte 6 bits 0–5 (1–38, 0 = none), copied to 
 | open | no | normal | closed, unless `$11.4` | cleared |
 | open | no | C/R | closed | **set** |
 | closed | – | normal | closed, unless `$11.4` | cleared |
-| closed | – | C/R | closed | unchanged |
+| closed | – | C/R | closed | cleared |
 
 * With CTCSS off, or on a channel with no tone, the CTCSS mute and the lockout are both cleared.
-* **Monitor.** `$11.4` opens the CTCSS mute on normal channels (inferred: picking up the handset lets you hear the channel). On C/R channels it does not.
+* **Hook monitor.** `$11.4` clears the CTCSS mute on normal channels (inferred: picking up the handset lets you hear the channel). On C/R channels it does not. This is separate from the monitor key (`$19.2`), which overrides all mutes (below).
 * **C/R busy lockout.** On a community-repeater channel, a carrier without your tone sets `$16.3`. `tx_inhibited` (0x06A5) then refuses PTT (`$1B.0` set, no transmission) until your tone is heard or the carrier goes. `$16.3` is also set at start-up on a C/R channel and cleared whenever a channel is loaded.
-* **Audio mute.** `squelch_task` keeps the audio muted (latch `$29` bits 2 and 5) while **any** bit of `$18` is set. That includes the CTCSS mute `$18.3`, the selcall mute `$18.2` and the synthesiser-settling bits `$18.0`/`$18.1`. Only with `$18` = 0 can an open squelch (`$19` bits 4–7) unmute.
+* **Audio mute** (`squelch_task`, 0x0ABA). In order:
+  1. If any of `$19` bits 0–3 is set (e.g. `$19.2`, the **monitor key**, `fn_monitor_toggle`), the audio is unmuted, overriding everything below.
+  2. Otherwise, while **any** bit of `$18` is set, the audio stays muted (latch `$29` bits 2 and 5). That includes the CTCSS mute `$18.3`, the selcall mute `$18.2` and the synthesiser-settling bits `$18.0`/`$18.1`.
+  3. Otherwise an open squelch (`$19` bits 4–7) unmutes.
+
+  So the monitor key opens the audio on any channel, including C/R channels. The `$11.4` monitor above only clears the CTCSS mute bit on normal channels.
 
 ### 7.3 Scanning (`scan_task`, `fn_scan`)
 
@@ -829,6 +834,10 @@ What each direct-page address is used for. **Bold** = confirmed from several use
 | `$21`–`$24` | **RAM stub** `LDA/ADD $hhll,X ; RTS` built at run time to index EPROM tables (§2); also scratch |
 | `$25`, `$26` | scratch (`bin_to_bcd`, `load_synth`, `head_send`) |
 | `$27`, `$28` | **tick counter** (`$28`, §4); `$27` TIMER_ISR scratch |
+| `$29`, `$2A`, `$2C` | **output latch shadows** (§3): `$29.2`/`$29.5` audio mute, `$29.3` follows `$17` ≠ 0, `$29.7` toggled by `latch29_toggle_b7` (beeper, inferred); `$2A.4`/`.6` economiser; `$2C` latch PB4 |
+| `$2B` | RAM-config check byte (`chk_ram_config`) |
+| `$2D` | bits 0–2 = **squelch setting** 0–7; bits 3–7 = synthesiser relock retry count (`synth_relock`) |
+| `$2E` | **current channel** number |
 | `$2F`–`$33` | **option bytes 0x1F33–0x1F37** copied at start-up. `$30` = 0x1F34 (CTCSS bits, §7.2), `$31` = 0x1F35, `$32` = 0x1F36, `$33` = 0x1F37 |
 | `$34`, `$35` | **current channel slot bytes 6 and 7** (CTCSS code / selcall bit; vote link) |
 | `$36` | key-hold auto-repeat count (`key_hold_handler`) |
@@ -839,12 +848,8 @@ What each direct-page address is used for. **Bold** = confirmed from several use
 | `$4B`–`$4D` | squelch filter state and hysteresis (`squelch_task`) |
 | `$4E` | 8-hour timer, 30-min units (0x1FB5) |
 | `$4F` | scan/display mode byte (written by `fn_scan`, `scan_list_select`, `init_peripherals`) (inferred) |
-| `$2E` | **current channel** number |
 | `$50` | **home channel** while scanning or voting (restored by `scan_restore_channel`) |
 | `$51`–`$54` | scan/vote: slot index `$51`, vote channel `$52`, scan-list pointer `$53`/`$54` |
-| `$2D` | bits 0–2 = **squelch setting** 0–7; bits 3–7 = synthesiser relock retry count (`synth_relock`) |
-| `$29`, `$2A`, `$2C` | **output latch shadows** (§3): `$29.2`/`$29.5` audio mute, `$29.3` follows `$17` ≠ 0, `$29.7` toggled by `latch29_toggle_b7` (beeper, inferred); `$2A.4`/`.6` economiser; `$2C` latch PB4 |
-| `$2B` | RAM-config check byte (`chk_ram_config`) |
 | `$68` | RAM-config copy, compared with 0x1F32 by `supervision_task` (mismatch: `$10.3`) |
 
 ### 16.2 Soft timers
@@ -877,7 +882,7 @@ All count down to below zero (bit 7 = expired). Rates in §4.1.
 
 ### 16.3 Flag bytes
 
-| Bit | `$10` faults (any ≠ 0: `$C1` to head) | `$11` | `$12` head messages pending |
+| Bit | `$10` faults (bit 7 → `$C1` to head; all clear → `$C0`) | `$11` | `$12` head messages pending |
 |---|---|---|---|
 | 0 | bad byte from the head | **transmitting** | – |
 | 1 | – | Tx synth loaded (cleared by `select_channel`) | `$A6` squelch open |
