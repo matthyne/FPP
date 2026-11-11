@@ -8,4 +8,6 @@ Third-party service manuals and notes used for the firmware analysis and the STM
 | `FM92E-Modification.pdf` | *Philips FM92E Conversion to 6 Meters*, Rod McCosker VK2DOT, v3.9, 2007 (ManualsLib copy) | FM92 board photos (page 25: synthesiser/control board with cans off), connectors, hardware codes, VK4KCS service notes. The FM91 schematic page (§42) is blank in this copy |
 | `Philips FM92 .pdf` | *Philips FM92 (FM900) tech notes*, Mark Harrison VK3BYY, 2006 | Head cable wiring, super-cap backup, socketed CPU/EPROM, fault finding, CTCSS letter codes |
 
+`A-BAND-TO-2M.md` is a step-by-step guide to converting an A-band FM92L/FM92R to 2 m (identify, program, VCO, front end, PA, deviation), compiled from these documents, this repository and a few web pages.
+
 The scanned pages have no text layer. To read a schematic, render the page at 300 dpi (for example with PyMuPDF) and crop it.

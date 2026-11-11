@@ -11,7 +11,7 @@ It also holds a Linux replacement for the image-building part:
 
 * **`fm900gen.py`**: builds the 8 KB 2764 EPROM image for FM91 and FM92 radios from a list of frequencies. It is Python 3 with no dependencies.
 * **`web/`**: the same builder as **Web FPP (FM900 CPS)**, a web CPS that runs in the browser: a channel grid, HW/SW code menus, scan and key setup, `.BIN` download, `.JOB`/`.CHL`/CSV import and export, and read-back of an existing `.BIN`. See [Web FPP](#web-fpp-fm900-cps).
-* **`docs/`**: reference manuals and notes (FM93 service manual, FM92 guides). See `docs/README.md`.
+* **`docs/`**: reference manuals and notes (FM93 service manual, FM92 guides). See `docs/README.md`. **Converting an A-band FM92 to 2 m:** see `docs/A-BAND-TO-2M.md`.
 * **`STM900/`**: plans for replacing the radio's 146805E2 CPU and EPROM with an STM32 running new open-source firmware. Planning only so far; see `STM900/README.md`.
 * **`FM900_FORMAT.md`**: full documentation of FPP.EXE, FM900.EXE, the job file formats, the hardware/software codes, and the EPROM layout.
 * **`firmware/`**: disassembly of the radio's own 68HC05 firmware (FM92R and FM92L masters, and FM92RS, the master a selcall-equipped FM92R runs). Every FM92R routine is named; §7.2 covers CTCSS (tone table, encode, reverse burst, decode and the C/R busy lockout) and §16 is a RAM map. See `firmware/FIRMWARE.md` §15 for what FM92RS changes and why a built FM92RS image has no selcall code yet. `firmware/POWER_ON_DEBUG.md` is a step-by-step guide for an FM92R that won't switch on (power relay never pulls in).
