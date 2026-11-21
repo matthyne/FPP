@@ -41,12 +41,15 @@ callsign, `00` stays for 1 s and there is no sound.
   `$1978`) holds 1 = dit, 3 = dah, `$80` = end of letter, `$81` = word space,
   0 = end. It allows letters, digits and `/ ? . , =`, about 8 to 10
   characters.
-* **Where the "88" comes from.** The stock firmware never sends `88`. A head
-  showing `88` at switch-on is either the head's own display test, shown
-  until the radio sends its first digits, or an EPROM built with
-  `patch_startup_msg.py --text 88`. This feature sends `00` as soon as the
-  radio has started. If it is the head's own test, the head can still show
-  `88` briefly before that.
+* **Where the "88" comes from.** The factory firmware never sends `88`. At
+  switch-on it sends `$AA`, then `$A0` and the channel number about 10 ms
+  later, then the head configuration (FIRMWARE.md §6.1). So `88` is the head's
+  own display, shown until the radio's first digits arrive. It stays up if
+  **the radio's current channel isn't programmed**: then no digits are sent at
+  all, and you get a reject beep. That happens after fitting an EPROM with
+  fewer channels while the radio's RAM kept the old channel number; channel
+  up/down fixes it. With this feature the head gets `00` right after `$AA`,
+  and then the channel (or, on an unprogrammed channel, it keeps the `00`).
 * **Hook.** It uses the same start-up hook as before, now 7 bytes:
   `clr $10 ; lda #$aa ; jsr head_send` becomes `jsr fork_init` + 4 NOPs.
 

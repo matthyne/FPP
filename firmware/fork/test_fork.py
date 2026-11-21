@@ -228,6 +228,69 @@ class Intro(unittest.TestCase):
             mkradio.morse_bytes('VK2FN ' * 3)
 
 
+class Startup(unittest.TestCase):
+    """Warm start (switch-on) to the main loop: what each image sends to the head."""
+
+    def boot(self, img, ch):
+        sym = build.assemble(build.VARIANTS['FM92R-fork'])[1].syms   # original routines are at the same address in all
+        c = sim6805.CPU(img)
+        c.mem[0x2E] = ch
+        c.mem[0x20] = 0x99
+        sent, n = [], [0]
+
+        def on_step(cpu):                    # stand-in for the timer interrupt
+            n[0] += 1
+            if n[0] % 10 == 0:
+                cpu.mem[0x28] = (cpu.mem[0x28] + 1) & 0xFF     # tick counter (wait_startup)
+                cpu.mem[0x13] &= ~0x02                         # uart_bit acks tx_stop's handshake
+                if n[0] % 250 == 0:
+                    for a in (0x57, 0x58, 0x5E, 0x61):
+                        cpu.mem[a] = (cpu.mem[a] - 1) & 0xFF
+        c.on_step = on_step
+        c.stub(sym['head_send'], lambda cpu: sent.append(cpu.a))
+
+        class Done(Exception):
+            pass
+
+        def at_main(cpu):
+            raise Done
+        c.stub(sym['main_loop'], at_main)
+        c.pc = sym['warm_start']
+        with self.assertRaises(Done):
+            for _ in range(3 * 10 ** 6):
+                c.step()
+        self.assertTrue(c.mem[0x11] & 0x04)                    # head config due on the first main-loop pass
+        return sent
+
+    def images(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, 'ch.csv')
+            with open(p, 'w') as f:
+                f.write(CSV_2M)
+            build.build(d, quiet=True)
+            out = {}
+            args = ['--hw', '92440150', '--sw', '110100201000000', '--date', '2026-11-21']
+            fm900gen.main(['build', p] + args + ['-o', os.path.join(d, 'factory.bin')])
+            for v, m in (('intro', 'FM92R-intro.BIN'), ('enhanced', 'FM92R-fork.BIN')):
+                mkradio.main(['build', p] + args + ['--master', os.path.join(d, m), '--callsign', 'E',
+                                                    '-o', os.path.join(d, v + '.bin')])
+            for k in ('factory', 'intro', 'enhanced'):
+                with open(os.path.join(d, k + '.bin'), 'rb') as f:
+                    out[k] = f.read()
+            return out
+
+    def test_switch_on_messages(self):
+        im = self.images()
+        ch3 = [0xA0, 0x80, ord('3'), 0x82, ord(' ')]
+        self.assertEqual(self.boot(im['factory'], 3), [0xAA] + ch3)
+        self.assertEqual(self.boot(im['factory'], 12), [0xAA, 0xA0, 0x80, ord('2'), 0x82, ord('1')])
+        # the current channel isn't programmed: no digits at all, the head keeps what it showed
+        self.assertEqual(self.boot(im['factory'], 5), [0xAA, 0xA0])
+        for k in ('intro', 'enhanced'):
+            self.assertEqual(self.boot(im[k], 3), [0xAA, 0x80, ord('0'), 0x82, ord('0')] + ch3, k)
+            self.assertEqual(self.boot(im[k], 5), [0xAA, 0x80, ord('0'), 0x82, ord('0'), 0xA0], k)
+
+
 class FreqFirmware(unittest.TestCase):
     """Run the fork's display code in the 6805 simulator."""
 

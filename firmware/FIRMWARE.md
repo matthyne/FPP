@@ -197,6 +197,13 @@ While "off", the radio is not unpowered. The CPU sits in `STOP` with its RAM hel
    * `eprom_checksum` sums 0x0100–0x1FFF; the result must be `$FF`. Otherwise it resets, so a corrupt EPROM never runs. This is the 0x1F64 byte FM900.EXE computes.
    * Initialise the timer and peripherals, enable interrupts, wait about 10 ms.
    * Announce start-up to the head (FM92R), select the channel, and enter the main loop.
+   * **What the head is sent at switch-on** (factory FM92R, traced in the code and run in the 6805 simulator, `fork/test_fork.py` `Startup`):
+     1. `$AA` (start-up), about 10 ms after the warm start (`wait_startup` waits 25 ticks);
+     2. `$A0`, then the channel number, from `tx_stop` → `select_channel` → `update_display` → `show_channel`: `$80` + units, `$82` + tens (a space below 10). For channel 3 that is `$80 '3'`, `$82 ' '`;
+     3. `$E7 02 60 06` (head configuration from 0x1F10–0x1F12) on the first main-loop pass, then the keep-alive polls (§6.3).
+
+     The firmware never sends `88` or any other start-up pattern. Before the radio's first digits arrive, the head shows whatever it shows by itself (on a 7-segment head, often `88` as a display test **(inferred)**).
+   * **If the current channel isn't programmed, no digits are sent at all.** `$2E` survives switch-off in RAM. If it names a slot with no Rx divider (byte 2 bit 7 clear), `load_synth` returns with carry set, so `tx_stop` jumps to `beep_reject` instead of `update_display`. The head is left showing whatever it showed (e.g. `88`), with a reject beep and no receiver set up. Channel up/down skip empty slots and fix it. This can happen after fitting an EPROM with fewer channels, if the RAM (super-cap) kept the old channel number and the hardware/software codes match, so no cold start resets `$2E` to the lowest channel (0x1F31).
 5. `power_down_stop` (0x0189) shuts off the outputs and executes `STOP`.
 
 The following all end up there:
