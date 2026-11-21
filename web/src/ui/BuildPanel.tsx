@@ -70,13 +70,8 @@ export function HexView({ img, orig: refImg, fm91, from, to }: { img: Uint8Array
 /** Shown wherever a non-factory (fork) firmware image is built or read. */
 export function ExperimentalBanner({ what }: { what: string }) {
   return (
-    <div class="banner-exp" role="alert">
-      <span class="ico" aria-hidden="true">⚠</span>
-      <div>
-        <p>Experimental firmware: {what} may not work.</p>
-        <p>This is modified FM92R firmware, not the factory program, and it has not been tested on a radio. Keep the original
-          EPROM so you can go back, and choose Factory if the radio misbehaves.</p>
-      </div>
+    <div class="banner-exp" role="note">
+      <p><b>Experimental firmware:</b> {what} is modified and untested on a radio, so it may not work. Keep the original EPROM.</p>
     </div>
   );
 }
