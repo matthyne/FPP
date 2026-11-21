@@ -269,8 +269,13 @@ wait_startup:                    .at $026a
         lda     $28
         cmp     #$19
         bcs     wait_startup
+        .if FORK
+        jsr     fq_init
+        nop
+        .else
         clr     $10
         lda     #$aa
+        .endif
         jsr     head_send                       ; tell control head we (re)started
         jsr     tx_stop
         brclr   5,$1b,L_027f
@@ -1967,8 +1972,13 @@ L_0bf2:                          .at $0bf2
         .at     $0c09
 
 head_display_off:                .at $0c09
+        .if FORK
+        jsr     fq_dispoff
+        nop
+        .else
         lda     #$e5                            ; $E5 = display off (intermittent display, s0 = 0/2)
         bclr    3,$1c
+        .endif
         bra     head_send
 
 head_send2:                      .at $0c0f
@@ -1977,8 +1987,13 @@ head_send2:                      .at $0c0f
         bra     head_send
 
 show_channel:                    .at $0c14
+        .if FORK
+        jsr     fq_showch
+        bra     L_0c1b
+        .else
         lda     $2e
         brclr   6,$13,L_0c1b
+        .endif
         lda     $50
 
 L_0c1b:                          .at $0c1b
@@ -1988,8 +2003,13 @@ L_0c1b:                          .at $0c1b
         ora     #$f0
 
 display_digits:                  .at $0c24
+        .if FORK
+        jsr     fq_disp
+        nop
+        .else
         sta     $41                             ; send 2 display digits: $80/$81 + char, $82/$83 + char
         and     #$0f
+        .endif
         cmp     #$0f
         beq     L_0c39
         add     #$30
@@ -2287,7 +2307,11 @@ L_0dc6:                          .at $0dc6
         jsr     auto_power_off_task
 
 L_0dcc:                          .at $0dcc
+        .if FORK
+        jmp     fq_main                 ; frequency display task, then main_loop
+        .else
         jmp     main_loop                       ; signature sample byte $0DCC; 
+        .endif
 
 ctcss_decode_task:               .at $0dcf
         brclr   0,$30,L_0df5                    ; CTCSS decode, Rx only: $30 = 0x1F34 bit0 CTCSS fitted, bit2 decode; $34 bits 0-5 = channel tone

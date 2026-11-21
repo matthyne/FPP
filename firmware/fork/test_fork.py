@@ -5,7 +5,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 sys.path.insert(0, ROOT)
-import asm6805, build, fm900gen  # noqa: E402
+import asm6805, build, fm900gen, mkradio, sim6805  # noqa: E402
 from op6805 import DEC, SIZE  # noqa: E402
 
 JOBS = os.path.join(ROOT, 'fm900', 'JOBS')
@@ -90,6 +90,174 @@ class Fork(unittest.TestCase):
                                     date.isoformat(), '--master-file', stock, '-o', out])
                 self.assertEqual(rc, 0)
                 self.assertEqual(open(out, 'rb').read(), ref, j)
+
+
+
+# ---------------------------------------------------------------- Rx frequency display
+CSV_2M = """ch,rx,tx,power
+1,147.000,147.600,H
+3,147.450,147.450,H
+12,146.000,146.600,H
+"""
+
+
+def fork_radio(d, csv=CSV_2M, hw='92440150', sw='110100201000000'):
+    master = build.build(d, quiet=True)
+    p = os.path.join(d, 'ch.csv')
+    open(p, 'w').write(csv)
+    out = os.path.join(d, 'radio.bin')
+    rc = mkradio.main(['build', p, '--hw', hw, '--sw', sw, '--master', master, '--date', '2026-11-21',
+                       '-o', out])
+    assert rc == 0
+    return open(out, 'rb').read()
+
+
+class FreqEncoding(unittest.TestCase):
+    def w(self, mhz):
+        return mkradio.windows(mkradio.freq_nibbles(int(round(mhz * 10000))))
+
+    def test_users_example(self):
+        self.assertEqual(self.w(147.450), ['14', '47', '7 ', ' 4', '45', '50'])
+
+    def test_four_decimals_and_short(self):
+        self.assertEqual(self.w(477.0125), ['47', '77', '7 ', ' 0', '01', '12', '25'])
+        self.assertEqual(self.w(77.5), ['77', '7 ', ' 5', '50', '00'])
+        self.assertEqual(self.w(146.0), ['14', '46', '6 ', ' 0', '00', '00'])
+
+
+class FreqTable(unittest.TestCase):
+    def test_reference_jobs(self):
+        """Every table entry is the job's Rx frequency; nothing else differs from fm900gen."""
+        with tempfile.TemporaryDirectory() as d:
+            master = build.build(d, quiet=True)
+            for j in ('2MHAM', 'SH', 'SHC'):
+                job = os.path.join(JOBS, j, j + '.JOB')
+                a, b = os.path.join(d, 'a.bin'), os.path.join(d, 'b.bin')
+                self.assertEqual(mkradio.main(['fromjob', job, '--master', master, '--date', '2026-11-21', '-o', a]), 0)
+                self.assertEqual(fm900gen.main(['fromjob', job, '--master-file', master, '--date', '2026-11-21', '-o', b]), 0)
+                ia, ib = open(a, 'rb').read(), open(b, 'rb').read()
+                self.assertTrue(fm900gen.verify_checksum(ia))
+                tab = range(mkradio.FQ0, mkradio.FQ0 + 400)
+                diff = [i for i in range(0x2000) if ia[i] != ib[i] and i not in tab and i not in (0x1F64, 0x1F65)]
+                self.assertEqual(diff, [], j)
+                for c in fm900gen.read_chl(os.path.splitext(job)[0] + '.CHL'):
+                    if c.flags & fm900gen.F_VOTE:
+                        continue
+                    want = mkradio.freq_nibbles(fm900gen.freq_units(c.rx))
+                    got = mkradio.entry_nibbles(mkradio.table_entry(ia, c.num))
+                    self.assertEqual(got, want, '%s ch %d' % (j, c.num))
+
+    def test_refuses_other_masters(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(AssertionError):
+                fork_radio(d, hw='92430150')       # digit 4 = 3: FM92L
+
+
+class FreqFirmware(unittest.TestCase):
+    """Run the fork's display code in the 6805 simulator."""
+
+    @classmethod
+    def setUpClass(cls):
+        with tempfile.TemporaryDirectory() as d:
+            cls.img = fork_radio(d)
+        cls.sym = build.assemble(True)[1].syms
+
+    def cpu(self, ch):
+        c = sim6805.CPU(self.img)
+        self.sent = []
+        c.stub(self.sym['head_send'], lambda cpu: self.sent.append(cpu.a))
+        c.mem[0x2E] = ch
+        return c
+
+    def shown(self):
+        """Decode the head messages sent since the last call: '$82 left, $80 right' pairs."""
+        s, self.sent = self.sent, []
+        if not s:
+            return None
+        self.assertEqual(len(s), 4)
+        d = dict(zip(s[0::2], s[1::2]))
+        return chr(d[0x82]) + chr(d[0x80])
+
+    def task(self, c, expire=True):
+        if expire:
+            c.mem[0x57] = 0xFF
+        c.call(self.sym['fq_task'])
+        return self.shown()
+
+    def test_cycle(self):
+        c = self.cpu(3)
+        c.call(self.sym['show_channel'])
+        self.assertEqual(self.shown(), ' 3')
+        self.assertEqual(c.mem[0x57], 74)                   # 2 s
+        self.assertIsNone(self.task(c, expire=False))      # not yet
+        seq = [self.task(c) for _ in range(7)]
+        self.assertEqual(seq, ['14', '47', '7 ', ' 4', '45', '50', ' 3'])
+        self.assertEqual(c.mem[0x57], 74)                   # channel again for 2 s
+        self.assertEqual(self.task(c), '14')                # and round again
+        self.assertEqual(c.mem[0x57], 18)                   # 0.5 s
+
+    def test_two_digit_channel(self):
+        c = self.cpu(12)
+        c.call(self.sym['show_channel'])
+        self.assertEqual(self.shown(), '12')
+        self.assertEqual([self.task(c) for _ in range(7)], ['14', '46', '6 ', ' 0', '00', '00', '12'])
+
+    def test_waits_for_keepalive_and_uart(self):
+        c = self.cpu(3)
+        c.call(self.sym['show_channel']); self.shown()
+        c.mem[0x1C] |= 0x20                                 # $E4 sent, waiting for $49
+        self.assertIsNone(self.task(c))
+        c.mem[0x1C] &= ~0x20
+        c.mem[0x1A] |= 0x02                                 # UART FIFO not empty
+        self.assertIsNone(self.task(c, expire=False))
+        c.mem[0x1A] &= ~0x02
+        self.assertEqual(self.task(c, expire=False), '14')  # timer still expired: goes now
+
+    def test_transmit_shows_channel(self):
+        c = self.cpu(3)
+        c.call(self.sym['show_channel']); self.shown()
+        self.task(c); self.task(c)                          # showing "47"
+        c.mem[0x11] |= 0x01                                 # transmitting
+        self.assertEqual(self.task(c), ' 3')
+        self.assertIsNone(self.task(c))                     # held
+        self.assertEqual(c.mem[0x57], 74)
+        c.mem[0x11] &= ~0x01
+        self.assertIsNone(self.task(c, expire=False))
+        self.assertEqual(self.task(c), '14')
+
+    def test_other_display_stops_it(self):
+        c = self.cpu(3)
+        c.call(self.sym['show_channel']); self.shown()
+        c.a = 0x55
+        c.call(self.sym['display_digits']); self.shown()    # e.g. selcall digits
+        self.assertIsNone(self.task(c))
+        c.call(self.sym['show_channel']); self.shown()
+        c.call(self.sym['head_display_off']); self.sent = []
+        self.assertIsNone(self.task(c))
+
+    def test_scan_display_mode_and_empty_channel(self):
+        c = self.cpu(3)
+        c.mem[0x1E] |= 0x02                                 # $81/$83 (scan) display mode
+        c.call(self.sym['show_channel']); self.sent = []
+        self.assertIsNone(self.task(c))
+        c = self.cpu(5)                                     # no such channel
+        c.call(self.sym['show_channel']); self.shown()
+        self.assertIsNone(self.task(c))
+
+    def test_hooks_keep_stock_output(self):
+        """show_channel / display_digits send the same bytes as the factory firmware."""
+        stock = open(build.MASTER, 'rb').read()
+        for ch in (1, 3, 12, 99):
+            for flags in (0, 0x02):
+                out = []
+                for img in (stock, self.img):
+                    c = sim6805.CPU(img)
+                    got = []
+                    c.stub(self.sym['head_send'], lambda cpu, g=got: g.append(cpu.a))
+                    c.mem[0x2E] = ch; c.mem[0x1E] = flags
+                    c.call(self.sym['show_channel'])
+                    out.append(got)
+                self.assertEqual(out[0], out[1], (ch, flags))
 
 
 if __name__ == '__main__':

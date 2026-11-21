@@ -21,6 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 sys.path.insert(0, ROOT)
 import asm6805  # noqa: E402
+import stackdepth  # noqa: E402
 import fm900gen  # noqa: E402
 
 MASTER = os.path.join(ROOT, 'fm900', 'MASTERS', 'FM92R.BIN')
@@ -71,6 +72,13 @@ def build(out_dir=os.path.join(HERE, 'build'), quiet=False):
     f0, f1 = a.free
     used = sum(a.written[f0:f1 + 1])
     say('free area $%04X-$%04X: %d of %d bytes used' % (f0, f1, used, f1 - f0 + 1))
+    st, sm, si = stackdepth.analyse(master)
+    ft, fm, fi = stackdepth.analyse(bytes(img))
+    say('stack (static worst case): main %d + 5 + interrupt %d = %d bytes; factory master %d' % (
+        fm[0], fi[0], ft, st))
+    if fm[0] > sm[0] or fi[0] > si[0]:
+        raise SystemExit('the fork uses more stack than the factory master (main %d > %d or '
+                         'interrupt %d > %d): see stackdepth.py' % (fm[0], sm[0], fi[0], si[0]))
     d = [i for i in range(0x2000) if img[i] != master[i] and i not in (0x1F64, 0x1F65)]
     if d:
         say('differs from the factory master at: %s' % ', '.join(

@@ -4,10 +4,57 @@ An editable, re-assemblable source of the FM92R master firmware
 (`fm900/MASTERS/FM92R.BIN`). New functionality is added here. The output is
 a master image that `fm900gen.py --master-file` turns into a radio EPROM.
 
-**Always pass `--master-file`.** Web FPP only has the factory masters built in,
-and so does fm900gen without that option. Building in either of those, or
-reading a fork EPROM back in the Read tab and rebuilding it, silently gives
-stock firmware.
+**Build radio images with `mkradio.py`.** Web FPP only has the factory
+masters built in, and so does fm900gen without `--master-file`: building in
+either of those, or reading a fork EPROM back in the Read tab and rebuilding
+it, silently gives stock firmware. `fm900gen.py --master-file
+build/FM92R-fork.BIN` gives the fork firmware but an empty frequency table,
+so the head only shows channel numbers.
+
+## Feature: Rx frequency on the control head
+
+After the channel number has been shown for 2 s, the head shows the channel's
+Rx frequency two characters at a time, sliding one character every 0.5 s. Then
+it shows the channel number for 2 s again, and repeats. 147.450 MHz shows:
+
+    14   47   "7 "   " 4"   45   50   (channel, 2 s)   14 ...
+
+* **Format.** The decimal point is shown as a space; the stock firmware only
+  ever sends digits and space, so other characters may not exist on the head.
+  3 decimals, or 4 when the 100 Hz digit isn't 0 (477.0125). Below 100 MHz the
+  string is just shorter (77.500 → `77 "7 " " 5" 50 00`).
+* **When it stops.** It stops as soon as anything else is put on the display,
+  and starts again (with the channel number) whenever the channel is shown
+  again. That covers a channel change, scanning (the scan display is left
+  alone), selcall digits, and the intermittent display blanking (0x1F33 bit 1).
+  The frequency sends don't restart the intermittent-display timeout.
+* **Transmit.** While transmitting, the channel number is shown. The end of a
+  transmission redisplays the channel and restarts the 2 s wait.
+* **Vote / scan channels.** It shows the home channel's frequency (`$50`),
+  the same channel `show_channel` displays.
+* **Head link.** A step is only sent when the UART FIFO is empty and no
+  keep-alive reply is due (`$1C.5`), so it never talks over the head's `$49`
+  reply (two missed replies switch the radio off, FIRMWARE.md §6.3). The head
+  can still send at any time (keys, PTT repeats) while the radio is sending;
+  that is the same with stock firmware, but there is now more traffic: 4 bytes
+  every 0.5 s.
+* **Where the frequency comes from.** The firmware has no way to work out the
+  frequency (the step and IF depend on the hardware code), so `mkradio.py`
+  decodes each slot's Rx divider (f = N × step − IF, what the radio really
+  tunes) and writes a table: 4 arrays of 100 bytes at `$19B0`, after a
+  `FQT1` marker at `$19AC`. The format is described at the top of `fork.asm`.
+* **RAM and timer.** It uses external RAM `$B8`–`$BD` (in the unused gap
+  `$A5`–`$BD`; inferred to be real RAM, because the selcall code uses both
+  sides of it) and the spare 27 ms soft timer `$57`.
+* **Hooks.** These are listed at the top of `fork.asm`: warm start, `head_display_off`,
+  `show_channel`, `display_digits`, and the end of the main loop.
+
+**Bench-test checklist:**
+1. The radio stays on with the head connected for several minutes. A
+   collision on the head link would show up as the radio switching itself off.
+2. Keys, PTT and head monitor still work during the cycle.
+3. If the display option is intermittent, the display still blanks.
+
 
 **Untested on hardware** until a change has been burned and tried. Keep the
 factory EPROM.
@@ -19,8 +66,11 @@ factory EPROM.
 | `asm6805.py` | Two-pass MC146805E2 assembler. Stdlib Python 3, always writes an 8 KB image. The syntax is in its docstring. |
 | `op6805.py` | Opcode table shared by the assembler and the generator. |
 | `build.py` | Builds and checks everything (below). |
+| `mkradio.py` | Builds a **radio image** from the fork (same inputs as `fm900gen.py build` / `fromjob`), and fills the frequency table. |
+| `sim6805.py` | Small 6805 instruction-set simulator (no interrupts or peripherals). The tests use it to run the fork's routines. |
+| `stackdepth.py` | Static worst-case stack depth. `build.py` fails if the fork goes deeper than the factory master. |
 | `mkasm.py` | The generator. Only needed to re-create `FM92R.asm` from scratch. It refuses to overwrite an existing file unless given `--force`. |
-| `test_fork.py` | Tests: every opcode round-trips, stock source == master, the FM92R reference jobs rebuild byte-identical through the stock build. |
+| `test_fork.py` | Tests: every opcode round-trips, stock source == master, the FM92R reference jobs rebuild byte-identical through the stock build, the frequency table and display sequence (the display code is run in `sim6805.py`). |
 | `build/` | Output (gitignored). |
 
 ## Build
@@ -29,8 +79,13 @@ factory EPROM.
 cd firmware/fork
 python3 build.py              # -> build/FM92R-fork.BIN, .lst (address + bytes), .sym
 python3 -m unittest test_fork
-../../fm900gen.py build ch.csv --hw 9248.... --sw ... --master-file build/FM92R-fork.BIN -o radio.bin
+python3 mkradio.py build ch.csv --hw 9244.... --sw ... -o radio.bin -v    # the radio EPROM image
+python3 mkradio.py fromjob ../../fm900/JOBS/2MHAM/2MHAM.JOB -o radio.bin
 ```
+
+`mkradio.py` takes the same channel list / `.JOB` input and `--keys` /
+`--date` options as `fm900gen.py`. It refuses hardware codes that don't select
+FM92R (FM92L, or FM92RS with selcall). `-v` lists what each channel will show.
 
 `build.py` assembles the source twice:
 

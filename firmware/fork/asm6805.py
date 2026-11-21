@@ -14,6 +14,7 @@ Syntax (case-insensitive mnemonics, one statement per line, ';' comments):
             .at   expr           ; assert PC == expr  (pins original code in place)
             db    expr, "text", ...
             dw    expr, ...      ; big-endian
+            ds    n              ; n bytes of $00 (reserved: nothing else may overlap them)
             .avoid expr[, expr]  ; error if any later byte is emitted at these addresses
             .free expr, expr     ; declare [start, end] as the free area (report only)
             .if expr / .else / .endif   ; conditional assembly (nestable)
@@ -293,7 +294,7 @@ class Assembler:
         parts = rest.split(None, 1)
         mn = parts[0].lower()
         arg = parts[1].strip() if len(parts) > 1 else ''
-        if mn.startswith('.') or mn in ('db', 'dw', 'fcb', 'fdb', 'fcc'):
+        if mn.startswith('.') or mn in ('db', 'dw', 'ds', 'fcb', 'fdb', 'fcc'):
             return self.directive(mn, arg)
         self.insn(mn, arg)
 
@@ -325,6 +326,11 @@ class Assembler:
                 v = self.ev(a) or 0
                 out += [(v >> 8) & 0xFF, v & 0xFF]
             self.emit(out)
+        elif d == 'ds':
+            n = self.ev(arg)
+            if n is None or n < 0:
+                raise AsmError('ds needs a known, non-negative size')
+            self.emit([0] * n)
         elif d == '.avoid':
             for a in split_args(arg):
                 self.avoid.add(self.ev(a))

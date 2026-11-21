@@ -274,7 +274,7 @@ Bytes `'0'`–`'?'` are key codes (`'1' '2' '4' '7'`, above). The mic PTT is sep
 
 | Bytes | Meaning |
 |---|---|
-| `$80`/`$81` + character, `$82`/`$83` + character | the two display digits |
+| `$80`/`$81` + character, `$82`/`$83` + character | the two display digits: `$80` right, `$82` left (from `show_channel`/`display_digits`); `$81`/`$83` while scanning (`$1E.1`) |
 | `$A0` | channel changed / back on receive |
 | `$A2` | transmitter on (Tx synthesiser settled) |
 | `$A4` / `$A6` | squelch closed / open (busy indicator, from `$12.2` / `$12.1`) (inferred) |
@@ -530,7 +530,7 @@ The patch changes 36 bytes:
 * **0x0272:** the start-up `LDA #$AA ; JSR head_send` becomes `JSR $1700 ; NOP ; NOP`.
 * **0x1700** (previously empty EPROM):
   1. Re-sends `$AA`.
-  2. Sends `$80` + the left character and `$82` + the right character, the same messages `display_digits` uses.
+  2. Sends `$80` + the right character and `$82` + the left character, the same messages `display_digits` uses. (`display_digits` sends the low nibble with `$80`, and `show_channel` puts the tens digit, blanked when 0, in the high nibble, so `$82` is the left digit. Before this was worked out, the patch sent the two characters the wrong way round; that made no difference for `AA`.)
   3. Busy-waits on tick counter bit 7 (256 ticks ≈ 106 ms per loop).
   4. Returns.
 
@@ -653,6 +653,10 @@ These are designed but **not implemented**. Each would be a patch tool in the st
 * use the patched master with `fm900gen.py --master-file`.
 
 All would be untested on hardware until burned.
+
+### 13.0 Implemented in the fork: Rx frequency on the head (FM92R)
+
+`fork/` adds this. After 2 s on the channel number, the head shows the channel's Rx frequency two characters at a time (147.450 → `14 47 7␣ ␣4 45 50`, 0.5 s each), then the channel again, in a loop. The radio image must be built with `fork/mkradio.py`, which writes the per-channel frequency table. See `fork/README.md`.
 
 ### 13.1 Duplex / talk-around on/off key (FM92R and FM92L)
 

@@ -12,7 +12,7 @@ How it works (see FIRMWARE.md):
   * 0x0272  `LDA #$AA ; JSR head_send` (the start-up message to the head) is
     replaced by `JSR $1700 ; NOP ; NOP`.
   * 0x1700 (unused EPROM) re-sends $AA, then sends the two display characters
-    with the same messages display_digits uses ($80 + left char, $82 + right
+    with the same messages display_digits uses ($82 + left char, $80 + right
     char, via the routine at 0x0C0F), then waits N x 256 timer ticks (~106 ms
     each, timed off tick counter $28 bit 7) and returns.  The normal start-up
     path then displays the channel number, replacing the message.
@@ -34,8 +34,8 @@ PATCH_AT = 0x1700
 def build_routine(c1, c2, loops):
     code = bytearray()
     code += bytes.fromhex('a6aa cd0be5')            # lda #$aa ; jsr head_send
-    code += bytes([0xa6, 0x80, 0xae, c1]) + bytes.fromhex('cd0c0f')   # left char
-    code += bytes([0xa6, 0x82, 0xae, c2]) + bytes.fromhex('cd0c0f')   # right char
+    code += bytes([0xa6, 0x80, 0xae, c2]) + bytes.fromhex('cd0c0f')   # right char
+    code += bytes([0xa6, 0x82, 0xae, c1]) + bytes.fromhex('cd0c0f')   # left char
     code += bytes([0xae, loops])                    # ldx #loops
     w1 = len(code)
     code += bytes.fromhex('0e28fd')                 # w1: brset 7,$28,w1
