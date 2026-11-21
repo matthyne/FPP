@@ -642,6 +642,8 @@ You'd have to confirm on the board that the CPU's PB7 pin is accessible and not 
 
 ## 13. Future Upgrade Options
 
+> Larger changes are easier in the FM92R fork (`fork/`, see `fork/README.md`). It is a re-assemblable source of the master, with new code in the free area, and `build.py` checks that the stock build still equals the master. The patch-tool recipe below still works for small one-off patches.
+
 These are designed but **not implemented**. Each would be a patch tool in the style of
 `patch_startup_msg.py`:
 

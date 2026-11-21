@@ -18,6 +18,7 @@ It also holds a Linux replacement for the image-building part:
   * `FIRMWARE.md` explains what L vs R means, the hardware interface, the scheduler, and how the radio uses every channel and config byte.
   * The folder also holds annotated listings and the disassembler tools.
   * `patch_startup_msg.py` builds a patched FM92R master that shows a start-up message (e.g. `AA`) on the remote head.
+  * `fork/` is an editable fork of the FM92R firmware for adding new functions. `FM92R.asm` re-assembles byte-identical to the master, new code goes in `fork.asm`, and `python3 build.py` makes `build/FM92R-fork.BIN` to use with `fm900gen.py --master-file`. See `firmware/fork/README.md`.
   * `FIRMWARE.md` §6.1 and §6.3 cover power on/off. The radio is switched on only by the on/off wire (a hardware reset), and each press toggles it. An FM92R then polls its control head (`$E4`) and switches itself off about 3 s after the head stops answering (`$49`).
   * `FIRMWARE.md` §12 covers EPROM types: why it must be a 2764, 2716→2764 socket conversion, and using a 27128/27256 for 2–4 switchable banks of 99 channels.
   * `FIRMWARE.md` §14: control-head DIN (CFA and VicPol) and microphone connector pinouts.
