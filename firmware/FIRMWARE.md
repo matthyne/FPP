@@ -288,11 +288,13 @@ Bytes `'0'`–`'?'` are key codes (`'1' '2' '4' '7'`, above). The mic PTT is sep
 | `$A7` | selcall call received |
 | `$C0` / `$C1` | `$C1` = PA fault (`$10.7`), sent once (`$12.6` = sent); `$C0` = all faults cleared (`$10` = 0 again) |
 | `$E5` | display off (intermittent display, after 0x1F3B seconds) |
-| `$AA` | start-up |
+| `$AA` | start-up: sent once, from the warm start only (0x0270), before the channel is selected. A single status byte, **not** a display write. What the head does with it is unknown (head firmware not available); it may reset the head's state. |
 | `$E4` | keep-alive poll; the head must answer `$49` (§6.3) |
-| `$E7` + 3 bytes | head configuration, from 0x1F10–0x1F12 |
+| `$E7` + 3 bytes | head configuration, from 0x1F10–0x1F12 (FM92R factory `02 60 06`), on the first main-loop pass after start-up. Meaning unknown; the only start-up message whose effect on the display can't be ruled out from the radio code. |
 | `$A3` | selcall (sent from `fn_selcall_send`) |
 | `$EC` | RAM-dump prefix (`head_ram_dump`, command `$4A`) |
+
+Only `$80`–`$83` (each followed by a character) write to the display. The other messages fall into groups by their top bits: `$Ax` status events, `$Cx` faults, `$Ex` link control. The groups are inferred from use, not documented. §6.1 lists exactly what is sent at switch-on.
 
 ### 6.3 Head keep-alive (FM92R)
 
@@ -873,7 +875,7 @@ All count down to below zero (bit 7 = expired). Rates in §4.1.
 |---|---|---|
 | `$55` | odd tick (~0.83 ms) | synthesiser settle after a load: `$11` (~14 ms), then `tx_synth_settled` / `rx_synth_settled` |
 | `$56` | odd tick | squelch / scan dwell (`squelch_open_test`, `scan_task`) |
-| `$57`, `$58` | 27 ms | not used outside `soft_timers` (spare) |
+| `$57`, `$58` | 27 ms | not used outside `soft_timers` (spare). The fork (`fork/`) uses `$57` (frequency display) and `$58` (start-up Morse) |
 | `$59` | 27 ms | key hold / alert-tone toggle |
 | `$5A` | 27 ms | head `$46` auto-release, 1.5 s (§6.2) |
 | `$5B` | 27 ms | head PTT `$44` auto-release, 1.5 s (§6.2) |
