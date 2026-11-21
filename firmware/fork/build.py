@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Build the FM92R fork master.
+"""Build the FM92R fork masters.
 
-    python3 build.py            # -> build/FM92R-fork.BIN (+ .lst, .sym)
+    python3 build.py            # -> build/FM92R-intro.BIN, build/FM92R-fork.BIN (+ .lst, .sym)
 
-1. Assembles FM92R.asm with -D FORK=0 and checks it is byte-identical to
-   fm900/MASTERS/FM92R.BIN (so everything outside `.if FORK` blocks is still
-   the original firmware). Stops if not.
-2. Assembles it with -D FORK=1, fixes the EPROM checksum (0x1F64) and firmware
-   signature (0x1F65) with fm900gen's checksum(), so the master is
-   self-consistent like the factory ones, and writes build/FM92R-fork.BIN.
-3. Lists which bytes differ from the factory master.
+1. Assembles FM92R.asm with FORK=0 FREQ=0 INTRO=0 and checks it is
+   byte-identical to fm900/MASTERS/FM92R.BIN (so everything outside the `.if`
+   blocks is still the original firmware). Stops if not.
+2. Assembles each variant (VARIANTS), fixes the EPROM checksum (0x1F64) and
+   firmware signature (0x1F65) with fm900gen's checksum(), so each master is
+   self-consistent like the factory ones, checks its stack depth against the
+   factory master, and writes build/<name>.BIN.
 
-Use the result like any master:
-    ../../fm900gen.py build ch.csv --hw 9248.... --sw ... --master-file build/FM92R-fork.BIN -o radio.bin
+Radio images: mkradio.py (or Web FPP), which also fill the callsign and
+frequency tables.
 """
 import argparse, os, sys
 
@@ -28,8 +28,21 @@ MASTER = os.path.join(ROOT, 'fm900', 'MASTERS', 'FM92R.BIN')
 SRC = os.path.join(HERE, 'FM92R.asm')
 
 
-def assemble(fork, src=SRC):
-    a = asm6805.Assembler({'FORK': 1 if fork else 0})
+STOCK = {'FORK': 0, 'FREQ': 0, 'INTRO': 0}
+# name -> feature flags. FM92R-fork is the "enhanced" firmware.
+VARIANTS = {
+    'FM92R-intro': {'FORK': 1, 'FREQ': 0, 'INTRO': 1},
+    'FM92R-fork': {'FORK': 1, 'FREQ': 1, 'INTRO': 1},
+}
+
+
+def assemble(flags, src=SRC):
+    """flags: a dict of -D values, or a bool (False = stock, True = the full fork)."""
+    if flags is False:
+        flags = STOCK
+    elif flags is True:
+        flags = VARIANTS['FM92R-fork']
+    a = asm6805.Assembler(flags)
     img = a.assemble(src)
     return bytearray(img), a
 
@@ -57,36 +70,33 @@ def build(out_dir=os.path.join(HERE, 'build'), quiet=False):
         raise SystemExit('stock build (FORK=0) differs from FM92R.BIN at %s: a change to original '
                          'code is not inside `.if FORK ... .else ... .endif`' %
                          ', '.join('$%04X-$%04X' % r for r in ranges(d)[:8]))
-    say('stock build (FORK=0) == fm900/MASTERS/FM92R.BIN')
-    img, a = assemble(True)
-    fm900gen.checksum(img)
-    os.makedirs(out_dir, exist_ok=True)
-    out = os.path.join(out_dir, 'FM92R-fork.BIN')
-    open(out, 'wb').write(img)
-    with open(os.path.join(out_dir, 'FM92R-fork.lst'), 'w') as f:
-        for addr, bs in a.listing:
-            f.write('%04X  %s\n' % (addr, bs.hex(' ')))
-    with open(os.path.join(out_dir, 'FM92R-fork.sym'), 'w') as f:
-        for k, v in sorted(a.syms.items(), key=lambda kv: (kv[1], kv[0])):
-            f.write('%04X %s\n' % (v, k))
-    f0, f1 = a.free
-    used = sum(a.written[f0:f1 + 1])
-    say('free area $%04X-$%04X: %d of %d bytes used' % (f0, f1, used, f1 - f0 + 1))
+    say('stock build == fm900/MASTERS/FM92R.BIN')
     st, sm, si = stackdepth.analyse(master)
-    ft, fm, fi = stackdepth.analyse(bytes(img))
-    say('stack (static worst case): main %d + 5 + interrupt %d = %d bytes; factory master %d' % (
-        fm[0], fi[0], ft, st))
-    if fm[0] > sm[0] or fi[0] > si[0]:
-        raise SystemExit('the fork uses more stack than the factory master (main %d > %d or '
-                         'interrupt %d > %d): see stackdepth.py' % (fm[0], sm[0], fi[0], si[0]))
-    d = [i for i in range(0x2000) if img[i] != master[i] and i not in (0x1F64, 0x1F65)]
-    if d:
-        say('differs from the factory master at: %s' % ', '.join(
-            ('$%04X' % s) if s == e else ('$%04X-$%04X' % (s, e)) for s, e in ranges(d)))
-    else:
-        say('no changes from the factory master yet')
-    say('wrote %s' % out)
-    return out
+    os.makedirs(out_dir, exist_ok=True)
+    outs = {}
+    for name, flags in VARIANTS.items():
+        img, a = assemble(flags)
+        fm900gen.checksum(img)
+        out = os.path.join(out_dir, name + '.BIN')
+        open(out, 'wb').write(img)
+        with open(os.path.join(out_dir, name + '.lst'), 'w') as f:
+            for addr, bs in a.listing:
+                f.write('%04X  %s\n' % (addr, bs.hex(' ')))
+        with open(os.path.join(out_dir, name + '.sym'), 'w') as f:
+            for k, v in sorted(a.syms.items(), key=lambda kv: (kv[1], kv[0])):
+                f.write('%04X %s\n' % (v, k))
+        f0, f1 = a.free
+        ft, fm, fi = stackdepth.analyse(bytes(img))
+        if fm[0] > sm[0] or fi[0] > si[0]:
+            raise SystemExit('%s uses more stack than the factory master (main %d > %d or '
+                             'interrupt %d > %d): see stackdepth.py' % (name, fm[0], sm[0], fi[0], si[0]))
+        d = [i for i in range(0x2000) if img[i] != master[i] and i not in (0x1F64, 0x1F65)]
+        say('%s (%s): free area %d of %d bytes used, stack %d (factory %d), changed %s' % (
+            name, ' '.join('%s=%d' % kv for kv in flags.items() if kv[0] != 'FORK'),
+            sum(a.written[f0:f1 + 1]), f1 - f0 + 1, ft, st,
+            ', '.join(('$%04X' % s) if s == e else ('$%04X-$%04X' % (s, e)) for s, e in ranges(d))))
+        outs[name] = out
+    return outs['FM92R-fork']
 
 
 def main():

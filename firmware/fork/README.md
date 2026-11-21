@@ -5,7 +5,8 @@ An editable, re-assemblable source of the FM92R master firmware
 a master image that `fm900gen.py --master-file` turns into a radio EPROM.
 
 **Build radio images with `mkradio.py` or Web FPP.** In Web FPP, choose
-**Firmware: Enhanced** on the Build tab. Its `src/core/fork.ts` is a port of
+the firmware on the Build tab (Start-up ident, or Ident + Rx freq.) and enter
+the callsign. Its `src/core/fork.ts` is a port of
 `mkradio.py`, and its tests check that the two give byte-identical images.
 Web FPP assembles this fork when it is built (`web/scripts/gen-masters.mjs`
 runs `build.py`), so a change here reaches it on the next `npm run dev` /
@@ -16,7 +17,40 @@ Plain fm900gen gives stock firmware, and `fm900gen.py --master-file
 build/FM92R-fork.BIN` gives the fork firmware with an empty frequency table
 (the head then shows only channel numbers).
 
-## Feature: Rx frequency on the control head
+## Feature: start-up "00" and Morse ident (INTRO)
+
+At switch-on, right after the start-up message to the head (`$AA`) and
+before the channel is selected, the head shows `00`. Meanwhile the radio
+sends the callsign (`--callsign`, Web FPP's "Start-up Morse callsign") in
+Morse on its beep tone, then starts normally and shows the channel. With no
+callsign, `00` stays for 1 s and there is no sound.
+
+* **Tone.** The beep is the key-beep tone. `$29.7` enables it, and the timer
+  interrupt (`uart_bit`) toggles latch bit `$29.4` at about 600 Hz while it
+  is set. The key beep holds it for about 80 ms. Whether the tone can be
+  heard this early in start-up, before the receiver is unmuted, has to be
+  checked on the radio.
+* **Speed.** 15 wpm: 1 unit = 3 soft-timer ticks of 26.6 ms = 80 ms
+  (`MO_UNIT`). Dit = 1 unit, dah = 3, the gap between elements 1, between
+  letters 3, and between words 7. VK2FN takes 68 units including the final
+  pause, about 5.4 s.
+* **Blocking.** It blocks start-up for that long. The main loop isn't
+  running, so no keep-alive poll is sent and nothing times out. Keys pressed
+  on the head meanwhile are ignored.
+* **Table.** `MO_TABLE` at `$197C` (48 bytes, after a `MOR1` marker at
+  `$1978`) holds 1 = dit, 3 = dah, `$80` = end of letter, `$81` = word space,
+  0 = end. It allows letters, digits and `/ ? . , =`, about 8 to 10
+  characters.
+* **Where the "88" comes from.** The stock firmware never sends `88`. A head
+  showing `88` at switch-on is either the head's own display test, shown
+  until the radio sends its first digits, or an EPROM built with
+  `patch_startup_msg.py --text 88`. This feature sends `00` as soon as the
+  radio has started. If it is the head's own test, the head can still show
+  `88` briefly before that.
+* **Hook.** It uses the same start-up hook as before, now 7 bytes:
+  `clr $10 ; lda #$aa ; jsr head_send` becomes `jsr fork_init` + 4 NOPs.
+
+## Feature: Rx frequency on the control head (FREQ)
 
 After the channel number has been shown for 2 s, the head shows the channel's
 Rx frequency two characters at a time, sliding one character every 0.5 s. Then
@@ -60,6 +94,9 @@ it shows the channel number for 2 s again, and repeats. 147.450 MHz shows:
   `show_channel`, `display_digits`, and the end of the main loop.
 
 **Bench-test checklist:**
+0. At switch-on: `00` on the head, and VK2FN audible in Morse, then the
+   channel. If there is no sound, the audio path is probably still muted at
+   that point in start-up; that is fixable by moving the ident later.
 1. The radio stays on with the head connected for several minutes. A
    collision on the head link would show up as the radio switching itself off.
 2. Keys, PTT and head monitor still work during the cycle.
@@ -93,9 +130,17 @@ factory EPROM.
 cd firmware/fork
 python3 build.py              # -> build/FM92R-fork.BIN, .lst (address + bytes), .sym
 python3 -m unittest test_fork
-python3 mkradio.py build ch.csv --hw 9244.... --sw ... -o radio.bin -v    # the radio EPROM image
-python3 mkradio.py fromjob ../../fm900/JOBS/2MHAM/2MHAM.JOB -o radio.bin
+python3 mkradio.py build ch.csv --hw 9244.... --sw ... --callsign VK2FN -o radio.bin -v   # ident + Rx frequency
+python3 mkradio.py fromjob ../../fm900/JOBS/2MHAM/2MHAM.JOB --variant intro --callsign VK2FN -o radio.bin   # ident only
 ```
+
+`build.py` assembles two variants from the same source, selected by the feature
+flags in `fork.asm` (`-D INTRO=1 FREQ=1` etc.):
+
+| Master | Flags | Web FPP name | `mkradio.py --variant` |
+|---|---|---|---|
+| `build/FM92R-intro.BIN` | INTRO | Start-up ident | `intro` |
+| `build/FM92R-fork.BIN` | INTRO + FREQ | Ident + Rx freq. | `enhanced` (default) |
 
 `mkradio.py` takes the same channel list / `.JOB` input and `--keys` /
 `--date` options as `fm900gen.py`. It refuses hardware codes that don't select

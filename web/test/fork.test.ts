@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { analyze } from '../src/core/analyze';
 import { readImage } from '../src/core/decode';
 import { readChl, readJob, verifyChecksum } from '../src/core/fm900';
-import { FQ0, entryNibbles, freqNibbles, isForkImage, tableEntry, windows } from '../src/core/fork';
+import { FQ0, MO_MAGIC, entryNibbles, freqNibbles, hasIntro, isForkImage, morseBytes, readMorse, tableEntry, windows } from '../src/core/fork';
 import { forkMaster, master } from '../src/core/masters';
 import { toProject } from '../src/core/project';
 
@@ -19,10 +19,10 @@ const DATE = '2026-11-21';
 let python = true;
 try { execFileSync('python3', ['--version']); } catch { python = false; }
 
-function project(job: string, firmware?: 'enhanced') {
+function project(job: string, firmware?: 'enhanced' | 'intro', callsign?: string) {
   const j = readJob(readFileSync(join(JOBS, job, job + '.JOB')));
   const p = toProject(j.hw, j.sw, readChl(readFileSync(join(JOBS, job, job + '.CHL'))), job, j.comments);
-  return { ...p, date: DATE, firmware };
+  return { ...p, date: DATE, firmware, callsign };
 }
 
 describe('enhanced firmware', () => {
@@ -59,22 +59,43 @@ describe('enhanced firmware', () => {
       expect(readImage(img, hw).channels).toEqual(readImage(s, hw).channels);
     });
 
-    it.skipIf(!python)(`${job}: byte-identical to mkradio.py`, () => {
-      const d = mkdtempSync(join(tmpdir(), 'fork-'));
-      const out = join(d, 'radio.bin');
-      execFileSync('python3', [join(ROOT, 'firmware', 'fork', 'mkradio.py'), 'fromjob', join(JOBS, job, job + '.JOB'),
-        '--date', DATE, '-o', out], { stdio: 'ignore' });
-      const want = new Uint8Array(readFileSync(out));
-      const got = analyze(project(job, 'enhanced')).img!;
-      expect(Buffer.from(got).equals(Buffer.from(want))).toBe(true);
-    });
+    for (const [variant, call] of [['enhanced', ''], ['enhanced', 'VK2FN'], ['intro', 'VK2FN'], ['intro', '']] as const) {
+      it.skipIf(!python)(`${job}: ${variant}${call ? ' + ' + call : ''} byte-identical to mkradio.py`, () => {
+        const d = mkdtempSync(join(tmpdir(), 'fork-'));
+        const out = join(d, 'radio.bin');
+        execFileSync('python3', [join(ROOT, 'firmware', 'fork', 'mkradio.py'), 'fromjob', join(JOBS, job, job + '.JOB'),
+          '--date', DATE, '--variant', variant, '--callsign', call, '-o', out], { stdio: 'ignore' });
+        const want = new Uint8Array(readFileSync(out));
+        const a = analyze(project(job, variant, call || undefined));
+        expect(a.buildError).toBeNull();
+        expect(Buffer.from(a.img!).equals(Buffer.from(want))).toBe(true);
+      });
+    }
   }
 
+  it('start-up callsign: encoding, read-back, variants', () => {
+    expect(morseBytes('VK2FN')).toEqual([1, 1, 1, 3, 0x80, 3, 1, 3, 0x80, 1, 1, 3, 3, 3, 0x80, 1, 1, 3, 1, 0x80, 3, 1, 0x80, 0]);
+    expect(morseBytes('de vk2fn').includes(0x81)).toBe(true);
+    expect(() => morseBytes('VK#')).toThrow();
+    const e = analyze(project('2MHAM', 'enhanced', 'DE VK2FN')).img!;
+    expect(hasIntro(e) && isForkImage(e)).toBe(true);
+    expect(readMorse(e)).toBe('DE VK2FN');
+    const i = analyze(project('2MHAM', 'intro', 'VK2FN')).img!;
+    expect(hasIntro(i)).toBe(true);
+    expect(isForkImage(i)).toBe(false);                 // no frequency display
+    expect(readMorse(i)).toBe('VK2FN');
+    expect(readMorse(analyze(project('2MHAM')).img!)).toBe('');
+    expect(String.fromCharCode(...forkMaster('intro')!.subarray(MO_MAGIC, MO_MAGIC + 4))).toBe('MOR1');
+    expect(analyze(project('2MHAM', 'intro', 'VK2#')).buildError).toMatch(/callsign/);
+  });
+
   it('refuses masters other than FM92R', () => {
-    const p = { ...project('2MHAM', 'enhanced'), hw: '92430150' };   // digit 4 = 3: FM92L
-    const a = analyze(p);
-    expect(a.img).toBeNull();
-    expect(a.buildError).toMatch(/FM92R only.*FM92L\.BIN/);
+    for (const fw of ['enhanced', 'intro'] as const) {
+      const p = { ...project('2MHAM', fw), hw: '92430150' };   // digit 4 = 3: FM92L
+      const a = analyze(p);
+      expect(a.img).toBeNull();
+      expect(a.buildError).toMatch(/FM92R only.*FM92L\.BIN/);
+    }
   });
 
   it('the table lies in the free area', () => {

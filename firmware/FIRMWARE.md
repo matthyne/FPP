@@ -654,9 +654,9 @@ These are designed but **not implemented**. Each would be a patch tool in the st
 
 All would be untested on hardware until burned.
 
-### 13.0 Implemented in the fork: Rx frequency on the head (FM92R)
+### 13.0 Implemented in the fork (FM92R)
 
-`fork/` adds this. After 2 s on the channel number, the head shows the channel's Rx frequency two characters at a time (147.450 → `14 47 7␣ ␣4 45 50`, 0.5 s each), then the channel again, in a loop. The radio image must be built with `fork/mkradio.py` or Web FPP's **Firmware: Enhanced** option, which write the per-channel frequency table. See `fork/README.md`.
+`fork/` adds a start-up `00` plus Morse callsign on the beep tone (`$29.7` enables the ~600 Hz tone that `uart_bit` makes on `$29.4`; the key beep uses it). It also adds the Rx frequency display: After 2 s on the channel number, the head shows the channel's Rx frequency two characters at a time (147.450 → `14 47 7␣ ␣4 45 50`, 0.5 s each), then the channel again, in a loop. The radio image must be built with `fork/mkradio.py` or Web FPP's Firmware menu, which fill the callsign and frequency tables. See `fork/README.md`.
 
 ### 13.1 Duplex / talk-around on/off key (FM92R and FM92L)
 
@@ -840,7 +840,7 @@ What each direct-page address is used for. **Bold** = confirmed from several use
 | `$21`–`$24` | **RAM stub** `LDA/ADD $hhll,X ; RTS` built at run time to index EPROM tables (§2); also scratch |
 | `$25`, `$26` | scratch (`bin_to_bcd`, `load_synth`, `head_send`) |
 | `$27`, `$28` | **tick counter** (`$28`, §4); `$27` TIMER_ISR scratch |
-| `$29`, `$2A`, `$2C` | **output latch shadows** (§3): `$29.2`/`$29.5` audio mute, `$29.3` follows `$17` ≠ 0, `$29.7` toggled by `latch29_toggle_b7` (beeper, inferred); `$2A.4`/`.6` economiser; `$2C` latch PB4 |
+| `$29`, `$2A`, `$2C` | **output latch shadows** (§3): `$29.2`/`$29.5` audio mute, `$29.3` follows `$17` ≠ 0, `$29.7` = beep on (key beep holds it ~80 ms; `latch29_toggle_b7` warbles it), and while it is set `uart_bit` toggles `$29.4` every odd tick (~600 Hz tone) and writes `$29` to the PB3 latch; `$2A.4`/`.6` economiser; `$2C` latch PB4 |
 | `$2B` | RAM-config check byte (`chk_ram_config`) |
 | `$2D` | bits 0–2 = **squelch setting** 0–7; bits 3–7 = synthesiser relock retry count (`synth_relock`) |
 | `$2E` | **current channel** number |

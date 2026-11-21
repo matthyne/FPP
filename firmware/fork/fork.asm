@@ -4,9 +4,152 @@
 ; master). Hook new routines into the original code by overwriting an original
 ; instruction with JSR/JMP (plus NOPs to keep the size), so every `.at` in
 ; FM92R.asm still matches.
+;
+; Features, selected by build.py with -D (each 0 or 1):
+;   INTRO  start-up: "00" on the head and a Morse ident (callsign from a table)
+;   FREQ   Rx frequency on the head after the channel number
+; Variants: FM92R-intro.BIN = INTRO; FM92R-fork.BIN ("enhanced") = INTRO + FREQ.
+;
+; Hooks (in `.if` blocks in FM92R.asm, each the same size as the original):
+;   $0270 wait_startup    clr $10 ; lda #$aa ; jsr head_send
+;                                             -> jsr fork_init ; 4 x nop   (FORK)
+;   $0C09 head_display_off lda #$e5 ; bclr 3,$1c  -> jsr fq_dispoff ; nop  (FREQ)
+;   $0C14 show_channel    lda $2e ; brclr 6,$13,L -> jsr fq_showch ; bra L_0c1b (FREQ)
+;   $0C24 display_digits  sta $41 ; and #$0f      -> jsr fq_disp ; nop     (FREQ)
+;   $0DCC main loop end   jmp main_loop           -> jmp fq_main           (FREQ)
+;
+; Head display messages: $80 + right character, $82 + left character
+; (display_digits sends the low nibble with $80; show_channel puts the tens
+; digit, blanked when 0, in the high nibble).
 
+; RAM. $B8-$BD lie in the unused gap of the external RAM ($A0-$A4 and $BE-$EC
+; are used by the selcall code; nothing in the firmware touches $A5-$BD).
+FQ_FLAGS        equ     $b8     ; bit 0 = armed by show_channel, bit 1 = cycling
+FQ_IDX          equ     $b9     ; 0 = channel number shown, n = window n shown
+FQ_CH           equ     $ba     ; channel whose frequency is shown
+FQ_CHB          equ     $bb     ; packed channel display byte (as display_digits takes it)
+FQ_TMP          equ     $bc
+FQ_K            equ     $bd
+
+MO_IDX          equ     $b7     ; Morse table index (start-up only)
+MO_TMP          equ     $b6
+
+FQ_TIMER        equ     $57     ; spare 27 ms soft timer (FIRMWARE.md §16.2)
+MO_TIMER        equ     $58     ; spare 27 ms soft timer (start-up only)
+T_CHAN          equ     74      ; 75 x 26.6 ms = 2.0 s
+T_STEP          equ     18      ; 19 x 26.6 ms = 0.51 s
+
+MO_MAGIC        equ     $1978   ; "MOR1": the tools check this before writing the callsign
+MO_TAB          equ     $197c   ; 48 bytes, up to FQ_MAGIC
+MO_UNIT         equ     3       ; Morse unit = 3 x 26.6 ms = 80 ms (15 wpm)
+FQ_MAGIC        equ     $19ac   ; "FQT1": mkradio.py checks this before filling the table
+FQ0             equ     $19b0
+FQ1             equ     FQ0+100
+FQ2             equ     FQ0+200
+FQ3             equ     FQ0+300
+
+; ---- hook at $0270 (warm start: the start-up message to the head)
+fork_init:
+        clr     $10                     ; (replaced)
+        .if FREQ
+        clr     FQ_FLAGS
+        .endif
+        lda     #$aa                    ; (replaced) start-up message
+        jsr     head_send               ; (replaced)
+        .if INTRO
+        jsr     intro
+        .endif
+        rts
+
+; A = two characters: high nibble left ($82), low nibble right ($80); $F = space.
+; Like display_digits, but without restarting the display timeout.
+fq_send:
+        sta     FQ_TMP
+        and     #$0f
+        bsr     fq_char
+        lda     #$80
+        jsr     head_send2
+        lda     FQ_TMP
+        lsra
+        lsra
+        lsra
+        lsra
+        bsr     fq_char
+        lda     #$82
+        jmp     head_send2
+
+fq_char:                                ; A = nibble -> X = character
+        cmp     #$0f
+        bne     fq_c1
+        ldx     #$20
+        rts
+fq_c1:  add     #$30
+        tax
+        rts
+
+
+        .if INTRO
 ; =============================================================================
-; Feature: Rx frequency on the control head
+; Feature INTRO: start-up "00" and Morse ident
+;
+; Right after the start-up message ($AA), before the channel is selected, show
+; "00" on the head and key the callsign in MO_TAB on the radio's beep tone
+; ($29.7, the same tone as the key beep: uart_bit toggles $29.4 at ~600 Hz while
+; $29.7 is set). Then the normal start-up carries on and shows the channel.
+; With an empty table, "00" is shown for 1 s and there is no sound.
+;
+; This blocks for the length of the ident (VK2FN: 68 units incl. the final
+; pause = 5.4 s). The
+; main loop isn't running, so no keep-alive poll ($E4) is sent and nothing can
+; time out; keys pressed on the head meanwhile are ignored.
+;
+; MO_TAB (filled by mkradio.py / Web FPP from the callsign text):
+;   1 = dit, 3 = dah (then a 1-unit gap), $80 = end of letter (2 more units),
+;   $81 = word space (6 more units), 0 = end.
+; =============================================================================
+intro:
+        lda     #$00
+        jsr     fq_send                 ; "00"
+        clr     MO_IDX
+        lda     MO_TAB
+        bne     mo_next
+        lda     #12                     ; no callsign: hold "00" for 1 s
+        bra     mo_wait
+mo_next:
+        ldx     MO_IDX
+        inc     MO_IDX
+        lda     MO_TAB,x                ; sets N and Z for the tests below
+        beq     mo_end
+        bmi     mo_gap
+        bset    7,$29                   ; tone on for 1 or 3 units
+        bsr     mo_wait
+        bclr    7,$29
+        lda     #1                      ; gap between elements
+        bsr     mo_wait
+        bra     mo_next
+mo_gap: and     #$01
+        beq     mo_g1
+        lda     #6                      ; word space: 1 + 6 = 7 units
+        bra     mo_g2
+mo_g1:  lda     #2                      ; letter space: 1 + 2 = 3 units
+mo_g2:  bsr     mo_wait
+        bra     mo_next
+mo_end: lda     #6                      ; a short pause before the channel shows
+; wait A Morse units (A x MO_UNIT x 26.6 ms) on soft timer MO_TIMER
+mo_wait:
+        sta     MO_TMP
+        lsla
+        add     MO_TMP                  ; x 3 (MO_UNIT)
+        deca
+        sta     MO_TIMER
+mo_w1:  brclr   7,MO_TIMER,mo_w1
+        rts
+
+        .endif
+
+        .if FREQ
+; =============================================================================
+; Feature FREQ: Rx frequency on the control head
 ;
 ; After the channel number has been on the head for 2 s, show the channel's Rx
 ; frequency two characters at a time, 0.5 s each, sliding one character per
@@ -25,47 +168,10 @@
 ; 147.450 -> 14 7F 45 0E ;  477.0125 -> 47 7F 01 25 ;  77.500 -> 77 F5 00 EE.
 ; Byte 0 = 0 means "no entry" (a frequency never starts with 0).
 ;
-; Hooks (each in an `.if FORK` block in FM92R.asm, same size as the original):
-;   $0270 wait_startup    clr $10 ; lda #$aa      -> jsr fq_init ; nop
-;   $0C09 head_display_off lda #$e5 ; bclr 3,$1c  -> jsr fq_dispoff ; nop
-;   $0C14 show_channel    lda $2e ; brclr 6,$13,L -> jsr fq_showch ; bra L_0c1b
-;   $0C24 display_digits  sta $41 ; and #$0f      -> jsr fq_disp ; nop
-;   $0DCC main loop end   jmp main_loop           -> jmp fq_main
-;
-; Head link: the display bytes use the same messages as display_digits:
-; $80 + right character, $82 + left character (display_digits sends the low
-; nibble with $80; show_channel puts the tens digit, blanked when 0, in the
-; high nibble). A window is only sent when the UART FIFO is empty and no
-; keep-alive reply ($49 to our $E4) is due, so it never talks over the head's
-; reply (two missed replies = the radio switches off, FIRMWARE.md §6.3).
+; A window is only sent when the UART FIFO is empty and no keep-alive reply
+; ($49 to our $E4) is due, so it never talks over the head's reply (two missed
+; replies = the radio switches off, FIRMWARE.md §6.3).
 ; =============================================================================
-
-; RAM. $B8-$BD lie in the unused gap of the external RAM ($A0-$A4 and $BE-$EC
-; are used by the selcall code; nothing in the firmware touches $A5-$BD).
-FQ_FLAGS        equ     $b8     ; bit 0 = armed by show_channel, bit 1 = cycling
-FQ_IDX          equ     $b9     ; 0 = channel number shown, n = window n shown
-FQ_CH           equ     $ba     ; channel whose frequency is shown
-FQ_CHB          equ     $bb     ; packed channel display byte (as display_digits takes it)
-FQ_TMP          equ     $bc
-FQ_K            equ     $bd
-
-FQ_TIMER        equ     $57     ; spare 27 ms soft timer (FIRMWARE.md §16.2)
-T_CHAN          equ     74      ; 75 x 26.6 ms = 2.0 s
-T_STEP          equ     18      ; 19 x 26.6 ms = 0.51 s
-
-FQ_MAGIC        equ     $19ac   ; "FQT1": mkradio.py checks this before filling the table
-FQ0             equ     $19b0
-FQ1             equ     FQ0+100
-FQ2             equ     FQ0+200
-FQ3             equ     FQ0+300
-
-; ---- hook at $0270 (warm start, before the start-up message)
-fq_init:
-        clr     $10                     ; (replaced)
-        clr     FQ_FLAGS
-        lda     #$aa                    ; (replaced)
-        rts
-
 ; ---- hook at $0C09 (head_display_off: intermittent display blanks)
 fq_dispoff:
         bclr    0,FQ_FLAGS
@@ -151,39 +257,14 @@ fq_rx:  brclr   7,FQ_TIMER,fq_ret       ; time for the next step?
         lsla
         lsla
         ora     FQ_TMP
-        bra     fq_send
+        jmp     fq_send
 
 fq_chan:                                ; end of the frequency: channel number for 2 s
         clr     FQ_IDX
         lda     #T_CHAN
         sta     FQ_TIMER
         lda     FQ_CHB
-
-; A = two characters: high nibble left ($82), low nibble right ($80); $F = space.
-; Like display_digits, but without restarting the display timeout.
-fq_send:
-        sta     FQ_TMP
-        and     #$0f
-        bsr     fq_char
-        lda     #$80
-        jsr     head_send2
-        lda     FQ_TMP
-        lsra
-        lsra
-        lsra
-        lsra
-        bsr     fq_char
-        lda     #$82
-        jmp     head_send2
-
-fq_char:                                ; A = nibble -> X = character
-        cmp     #$0f
-        bne     fq_c1
-        ldx     #$20
-        rts
-fq_c1:  add     #$30
-        tax
-        rts
+        jmp     fq_send
 
 ; A = character index 0-7 -> A = that nibble of FQ_CH's table entry
 fq_nib:
@@ -212,9 +293,22 @@ fq_nb:  brset   0,FQ_K,fq_lo            ; odd index = low nibble
 fq_lo:  and     #$0f
         rts
 
+        .endif
+
+; ---- tables at fixed addresses, after all the code (filled per radio by
+; mkradio.py / Web FPP; their addresses are constants in those tools)
+        .if INTRO
+        .org    MO_MAGIC
+        db      "MOR1"
+MO_TABLE:
+        ds      48
+        .at     FQ_MAGIC
+        .endif
+        .if FREQ
 ; ---- frequency table (filled per radio by mkradio.py)
         .org    FQ_MAGIC
         db      "FQT1"
 FQ_TABLE:
         ds      400
         .at     $1b40
+        .endif

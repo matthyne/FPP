@@ -43,18 +43,23 @@ export function HelpPanel() {
           <li><b>Not supported:</b> FM93, FM97WP / waterproof radios, and the selcall tone editor (selcall tones keep their defaults).</li>
         </ul>
 
-        <h3>Enhanced firmware (FM92R)</h3>
-        <p>The <b>Firmware</b> menu on the Build tab picks the radio's own program. <b>Standard</b> is the factory master, exactly as
-          the Original FPP builds. <b>Enhanced</b> is a modified FM92R firmware: after the channel number has been on the control
-          head for 2 s, the head shows the channel's Rx frequency two characters at a time, 0.5 s each, then the channel number
-          again, in a loop. 147.450 MHz shows <code>14 47 "7 " " 4" 45 50</code> (the point is shown as a space). It stops while
-          transmitting, scanning or showing selcall digits, and whenever the channel changes it starts again.</p>
+        <h3>Modified firmware (FM92R)</h3>
+        <p>The <b>Firmware</b> menu on the Build tab picks the radio's own program:</p>
         <ul>
-          <li>Only for the FM92R without selcall (hardware code digit 4 = 4 or 8, digit 6 not 3–5).</li>
-          <li>The image carries a table of each channel's frequency, so Read image recognises an enhanced image and loads it back
-            with Enhanced selected.</li>
+          <li><b>Factory (Original FPP):</b> the factory master, exactly as the Original FPP builds it.</li>
+          <li><b>Start-up ident:</b> at switch-on the head shows <code>00</code> while the radio sends the <b>start-up Morse
+            callsign</b> (e.g. VK2FN) on its key-beep tone at 15 wpm, then the channel. With no callsign it shows <code>00</code> for
+            1 s. The ident takes a few seconds (VK2FN about 5.4 s); keys pressed meanwhile are ignored.</li>
+          <li><b>Ident + Rx freq.:</b> the start-up ident, plus: after the channel number has been on the head for 2 s, the head shows
+            the channel's Rx frequency two characters at a time, 0.5 s each, then the channel number again, in a loop. 147.450 MHz
+            shows <code>14 47 "7 " " 4" 45 50</code> (the point is shown as a space). It stops while transmitting, scanning or
+            showing selcall digits, and whenever the channel changes it starts again.</li>
+        </ul>
+        <ul>
+          <li>The modified firmware is only for the FM92R without selcall (hardware code digit 4 = 4 or 8, digit 6 not 3–5).</li>
+          <li>Read image recognises these images, and loading one selects the same firmware and callsign.</li>
           <li><b>Not factory firmware, and untested on a radio.</b> Keep the original EPROM. If the radio switches itself off after
-            a few seconds or keys stop working, go back to Standard.</li>
+            a few seconds, or keys stop working, go back to Factory.</li>
         </ul>
 
         <h3>Paths the sample jobs don't cover</h3>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import { Analysis, enhancedProblem } from '../core/analyze';
-import { entryNibbles, tableEntry, windows } from '../core/fork';
+import { entryNibbles, morseBytes, tableEntry, windows } from '../core/fork';
 import { dump } from '../core/decode';
 import { verifyChecksum } from '../core/fm900';
 import { Firmware, Project } from '../core/project';
@@ -30,6 +30,8 @@ export function region(addr: number, fm91: boolean): string {
   if (hit) return hit[2];
   if (addr < 0x23) return 'copyright string';
   if (addr >= 0x1F00) return 'configuration block';
+  if (addr >= 0x1978 && addr < 0x197C) return 'modified firmware: start-up callsign marker';
+  if (addr >= 0x197C && addr < 0x19AC) return 'modified firmware: start-up Morse callsign';
   if (addr >= 0x19AC && addr < 0x19B0) return 'enhanced firmware: frequency table marker';
   if (addr >= 0x19B0 && addr < 0x1B40) return 'enhanced firmware: Rx frequency table';
   return 'firmware';
@@ -75,8 +77,9 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
   const chip = eprom(p.eprom);
   const fw: Firmware = p.firmware ?? 'standard';
   const noEnh = b ? enhancedProblem(b) : 'enter a valid hardware code first';
+  const morseOk = (() => { try { morseBytes(p.callsign ?? ''); return true; } catch { return false; } })();
   const sample = useMemo(() => {
-    if (!a.img || !a.enhanced) return null;
+    if (!a.img || p.firmware !== 'enhanced') return null;
     const ch = a.chans.map((c) => c.num).sort((x, y) => x - y)[0];
     const e = tableEntry(a.img, ch);
     return e[0] ? { ch, w: windows(entryNibbles(e)) } : null;
@@ -89,7 +92,8 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
           <h2>Build EPROM image</h2>
           {a.img && b && b.info ? (
             <dl>
-              <dt>Master</dt><dd class="mono">{a.enhanced ? 'FM92R.BIN + enhanced firmware' : b.info.master}</dd>
+              <dt>Master</dt><dd class="mono">{p.firmware === 'enhanced' ? 'FM92R.BIN + start-up ident + Rx frequency'
+                : p.firmware === 'intro' ? 'FM92R.BIN + start-up ident' : b.info.master}</dd>
               <dt>Channels</dt><dd>{a.chans.length} (numbers {b.info.ch_min}–{b.info.ch_max})</dd>
               <dt>Synth step</dt><dd>{b.info.step_khz} kHz, IF {b.info.if_mhz >= 0 ? '+' : ''}{b.info.if_mhz.toFixed(1)} MHz</dd>
               <dt>Checksum</dt><dd class="mono">0x1F64 = {hx(a.img[0x1F64])}, 0x1F65 = {hx(a.img[0x1F65])} {verifyChecksum(a.img) ? '✓' : '✗'}</dd>
@@ -102,6 +106,9 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
           {a.vcoWarnings.map((w) => <p class="msg warn">{w}! The radio may not operate correctly.</p>)}
           {p.sw.slice(11, 15) !== '0000' && <p class="msg warn">Selcall codes are set: the selcall tones are left at their defaults.</p>}
           {p.keys && <p class="msg info">Head function keys are overridden (not Original FPP behaviour).</p>}
+          {a.img && a.enhanced && <p class="msg info">At switch-on the head shows “00”{p.callsign?.trim()
+            ? <> while the radio sends <b class="mono">{p.callsign.trim().toUpperCase()}</b> in Morse on its beep tone (15 wpm)</>
+            : <> for 1 s (no callsign set, so no Morse)</>}, then the channel.</p>}
           {sample && <p class="msg info">Enhanced firmware: after 2 s on the channel number, the head shows the Rx frequency two
             characters at a time. Channel {sample.ch}: <span class="mono">{sample.w.map((w) => `“${w}”`).join(' ')}</span>, then the channel again.</p>}
         </div>
@@ -116,12 +123,20 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
               const v = (e.target as HTMLSelectElement).value as Firmware;
               update((q) => ({ ...q, firmware: v === 'standard' ? undefined : v }));
             }}>
-              <option value="standard">Standard (factory master)</option>
-              <option value="enhanced" disabled={!!noEnh && fw !== 'enhanced'} title="FM92R only: shows the Rx frequency on the head">Enhanced (Rx freq. on head)</option>
+              <option value="standard">Factory (Original FPP)</option>
+              <option value="intro" disabled={!!noEnh && fw !== 'intro'} title="FM92R only: 00 and a Morse callsign at switch-on">Start-up ident (FM92R)</option>
+              <option value="enhanced" disabled={!!noEnh && fw !== 'enhanced'} title="FM92R only: start-up ident, plus the Rx frequency on the head">Ident + Rx freq. (FM92R)</option>
             </select>
           </label>
-          {fw === 'standard' && noEnh && b && <p class="hint">Enhanced firmware: {noEnh}.</p>}
-          {fw === 'enhanced' && <p class="hint">Enhanced firmware is not factory firmware and is untested on a radio. Keep the original EPROM.</p>}
+          {fw === 'standard' && noEnh && b && <p class="hint">Modified firmware: {noEnh}.</p>}
+          {fw !== 'standard' && (
+            <label class="field">
+              <span class="lab">Start-up Morse callsign <small>(blank = none)</small></span>
+              <input class={`mono ${morseOk ? '' : 'invalid'}`} value={p.callsign ?? ''} maxLength={12} placeholder="e.g. VK2FN"
+                onInput={(e) => update((q) => ({ ...q, callsign: (e.target as HTMLInputElement).value.toUpperCase() || undefined }))} />
+            </label>
+          )}
+          {fw !== 'standard' && <p class="hint">Modified firmware is not factory firmware and is untested on a radio. Keep the original EPROM.</p>}
           <label class="field">
             <span class="lab">EPROM</span>
             <select value={chip.part} onChange={(e) => {

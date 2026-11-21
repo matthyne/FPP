@@ -13,9 +13,10 @@
 ;    the configuration when it builds a radio image.
 ;  * BSET n = $10+2n, BCLR n = $11+2n (Motorola manual).
 
-; Build with build.py, which assembles it twice: -D FORK=0 (stock, must equal the
-; master) and -D FORK=1 (the fork). Wrap every change to original code in
-;         .if FORK
+; Build with build.py, which assembles it with -D FORK=0 FREQ=0 INTRO=0 (stock,
+; must equal the master) and then once per fork variant (FORK=1 plus the
+; feature flags, see fork.asm). Wrap every change to original code in
+;         .if FORK   (or the feature's flag)
 ;         <new bytes, same size>
 ;         .else
 ;         <original instructions>
@@ -270,13 +271,16 @@ wait_startup:                    .at $026a
         cmp     #$19
         bcs     wait_startup
         .if FORK
-        jsr     fq_init
+        jsr     fork_init                       ; start-up message (+ intro), see fork.asm
+        nop
+        nop
+        nop
         nop
         .else
         clr     $10
         lda     #$aa
-        .endif
         jsr     head_send                       ; tell control head we (re)started
+        .endif
         jsr     tx_stop
         brclr   5,$1b,L_027f
         bset    3,$16
@@ -1972,7 +1976,7 @@ L_0bf2:                          .at $0bf2
         .at     $0c09
 
 head_display_off:                .at $0c09
-        .if FORK
+        .if FREQ
         jsr     fq_dispoff
         nop
         .else
@@ -1987,7 +1991,7 @@ head_send2:                      .at $0c0f
         bra     head_send
 
 show_channel:                    .at $0c14
-        .if FORK
+        .if FREQ
         jsr     fq_showch
         bra     L_0c1b
         .else
@@ -2003,7 +2007,7 @@ L_0c1b:                          .at $0c1b
         ora     #$f0
 
 display_digits:                  .at $0c24
-        .if FORK
+        .if FREQ
         jsr     fq_disp
         nop
         .else
@@ -2307,7 +2311,7 @@ L_0dc6:                          .at $0dc6
         jsr     auto_power_off_task
 
 L_0dcc:                          .at $0dcc
-        .if FORK
+        .if FREQ
         jmp     fq_main                 ; frequency display task, then main_loop
         .else
         jmp     main_loop                       ; signature sample byte $0DCC; 

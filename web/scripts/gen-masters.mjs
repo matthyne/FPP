@@ -16,16 +16,18 @@ for (const f of readdirSync(dir).filter((f) => f.toUpperCase().endsWith('.BIN'))
 }
 lines.push('};', '');
 
-// The fork master is assembled from source (stdlib Python 3). Without Python the
-// app still builds; the Enhanced firmware option is then unavailable.
-let fork = null;
+// The fork masters are assembled from source (stdlib Python 3). Without Python the
+// app still builds; the fork firmware options are then unavailable.
+const forks = {};
 try {
   execFileSync(process.env.PYTHON ?? 'python3', [join(forkDir, 'build.py')], { stdio: ['ignore', 'ignore', 'inherit'] });
-  const bin = join(forkDir, 'build', 'FM92R-fork.BIN');
-  if (existsSync(bin)) fork = readFileSync(bin).toString('base64');
+  for (const [id, f] of [['enhanced', 'FM92R-fork.BIN'], ['intro', 'FM92R-intro.BIN']]) {
+    const bin = join(forkDir, 'build', f);
+    if (existsSync(bin)) forks[id] = readFileSync(bin).toString('base64');
+  }
 } catch (e) {
-  console.warn(`gen-masters: could not build the FM92R fork (${e.message.split('\n')[0]}); Enhanced firmware disabled`);
+  console.warn(`gen-masters: could not build the FM92R fork (${e.message.split('\n')[0]}); fork firmware disabled`);
 }
-lines.push('/** Enhanced FM92R master (firmware/fork), null if it could not be built. */',
-  `export const FORK_B64: string | null = ${JSON.stringify(fork)};`, '');
+lines.push('/** FM92R fork masters (firmware/fork): enhanced = ident + Rx frequency, intro = ident only. */',
+  `export const FORKS_B64: Record<string, string> = ${JSON.stringify(forks)};`, '');
 writeFileSync(out, lines.join('\n'));

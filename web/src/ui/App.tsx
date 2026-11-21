@@ -150,9 +150,10 @@ export function App() {
       setTab('radio');
     }
   };
-  const loadRows = (rows: Row[], hw: string, keys: number[] | null, firmware: Firmware) => {
+  const loadRows = (rows: Row[], hw: string, keys: number[] | null, firmware: Firmware, callsign: string) => {
     if (!confirmReplace()) return;
-    update((p) => ({ ...p, rows, hw, keys, firmware: firmware === 'standard' ? undefined : firmware }));
+    update((p) => ({ ...p, rows, hw, keys, firmware: firmware === 'standard' ? undefined : firmware,
+      callsign: firmware === 'standard' ? p.callsign : callsign || undefined }));
     setTab('channels');
     notify(`Loaded ${rows.length} channels from the image`);
   };

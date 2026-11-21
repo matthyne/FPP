@@ -25,6 +25,7 @@ class CPU:
         self.pc = 0
         self.stubs = {}
         self.steps = 0
+        self.on_step = None        # called before every instruction (e.g. to run soft timers)
 
     # -- memory
     def rd(self, a):
@@ -79,6 +80,8 @@ class CPU:
         return r
 
     def step(self):
+        if self.on_step:
+            self.on_step(self)
         if self.pc in self.stubs:
             self.stubs[self.pc](self)
             self._rts()

@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""Build a radio EPROM image from the FM92R fork, with the Rx-frequency table.
+"""Build a radio EPROM image from the FM92R fork, with its callsign and Rx-frequency tables.
 
-    python3 mkradio.py build ch.csv --hw 9248.... --sw ... -o radio.bin [--keys ...] [--date ...]
-    python3 mkradio.py fromjob X.JOB [X.CHL] -o radio.bin
+    python3 mkradio.py build ch.csv --hw 9248.... --sw ... -o radio.bin [--callsign VK2FN] [--keys ...] [--date ...]
+    python3 mkradio.py fromjob X.JOB [X.CHL] -o radio.bin [--variant intro]
 
 Same channel-list / .JOB input as fm900gen.py build / fromjob. It builds the
-image with fm900gen from the fork master (build/FM92R-fork.BIN, made by
-build.py; --master to use another), then fills the frequency table the fork's
-head display reads (fork.asm, FQ_TABLE) and recomputes the checksums.
+image with fm900gen from a fork master made by build.py:
+  --variant enhanced (default)  build/FM92R-fork.BIN: start-up ident + Rx frequency display
+  --variant intro               build/FM92R-intro.BIN: start-up ident only
+(--master overrides the file). It then fills the tables the fork reads
+(fork.asm: MO_TABLE = the start-up Morse callsign, FQ_TABLE = frequencies)
+and recomputes the checksums. Without --callsign the start-up shows "00" for
+1 s with no sound.
 
 The frequency of each slot is decoded from the slot's own Rx divider,
 f = N x step - IF, so it is what the radio actually tunes. It is shown to
@@ -23,11 +27,53 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, ROOT)
 import fm900gen  # noqa: E402
 
-FORK_MASTER = os.path.join(HERE, 'build', 'FM92R-fork.BIN')
-FQ_MAGIC = 0x19AC           # keep in sync with fork.asm
+VARIANT_MASTERS = {'enhanced': os.path.join(HERE, 'build', 'FM92R-fork.BIN'),
+                   'intro': os.path.join(HERE, 'build', 'FM92R-intro.BIN')}
+FORK_MASTER = VARIANT_MASTERS['enhanced']
+MO_MAGIC = 0x1978           # keep in sync with fork.asm
+MO_TAB = 0x197C
+MO_LEN = 48                 # bytes, including the 0 terminator
+FQ_MAGIC = 0x19AC
 FQ0 = 0x19B0
 NCH = 100                   # each FQn array is indexed by channel number 0-99
 SLOTS = 0x1BE8              # FM92 channel table, 99 x 8 bytes, slot 0 = channel 1
+
+
+MORSE = {
+    'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.', 'G': '--.', 'H': '....',
+    'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..', 'M': '--', 'N': '-.', 'O': '---', 'P': '.--.',
+    'Q': '--.-', 'R': '.-.', 'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+    'Y': '-.--', 'Z': '--..', '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-',
+    '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.', '/': '-..-.', '?': '..--..',
+    '.': '.-.-.-', ',': '--..--', '=': '-...-',
+}
+
+
+def morse_bytes(text):
+    """Callsign text -> MO_TABLE bytes: 1 dit, 3 dah, $80 end of letter, $81 word space, 0 end."""
+    out = []
+    for word in text.upper().split():
+        if out:
+            out[-1] = 0x81                         # the letter gap before becomes a word gap
+        for c in word:
+            if c not in MORSE:
+                raise ValueError('no Morse code for %r (letters, digits and / ? . , = only)' % c)
+            out += [1 if e == '.' else 3 for e in MORSE[c]] + [0x80]
+    out.append(0)
+    if len(out) > MO_LEN:
+        raise ValueError('callsign too long for the Morse table (%d of %d bytes)' % (len(out), MO_LEN))
+    return bytes(out)
+
+
+def fill_morse(img, text):
+    """Write the start-up callsign into img (bytearray). Returns False if the master has no ident."""
+    if img[MO_MAGIC:MO_MAGIC + 4] != b'MOR1':
+        if text:
+            raise fm900gen.FM900Error('master has no start-up ident (not built from the fork)')
+        return False
+    b = morse_bytes(text or '')
+    img[MO_TAB:MO_TAB + MO_LEN] = b + bytes(MO_LEN - len(b))
+    return True
 
 
 def freq_nibbles(f100):
@@ -87,7 +133,10 @@ def main(argv=None):
     sub = ap.add_subparsers(dest='cmd', required=True)
 
     def common(p):
-        p.add_argument('--master', default=FORK_MASTER, help='fork master (default build/FM92R-fork.BIN)')
+        p.add_argument('--variant', choices=sorted(VARIANT_MASTERS), default='enhanced',
+                       help='enhanced = start-up ident + Rx frequency display (default); intro = start-up ident only')
+        p.add_argument('--master', help='fork master file (default: from --variant)')
+        p.add_argument('--callsign', default='', help='Morse ident at start-up, e.g. VK2FN (default: none, "00" only)')
         p.add_argument('--date')
         p.add_argument('--keys')
         p.add_argument('-o', '--output', required=True)
@@ -116,22 +165,28 @@ def main(argv=None):
         if b.master_name() != 'FM92R.BIN':
             raise fm900gen.FM900Error('hardware code %s selects %s; the fork is FM92R only '
                                       '(remote control, no selcall)' % (hw, b.master_name()))
-        if not os.path.exists(a.master):
-            raise fm900gen.FM900Error('%s not found: run build.py first' % a.master)
-        img = bytearray(b.build(chans, open(a.master, 'rb').read()))
+        mpath = a.master or VARIANT_MASTERS[a.variant]
+        if not os.path.exists(mpath):
+            raise fm900gen.FM900Error('%s not found: run build.py first' % mpath)
+        with open(mpath, 'rb') as f:
+            img = bytearray(b.build(chans, f.read()))
         for w in b.vco_warnings(chans):
             print('WARNING: %s! Radio may not operate correctly.' % w, file=sys.stderr)
-        shown = fill_table(img, b.step, b.ifo)
+        fill_morse(img, a.callsign)
+        shown = fill_table(img, b.step, b.ifo) if img[FQ_MAGIC:FQ_MAGIC + 4] == b'FQT1' else {}
         fm900gen.checksum(img)
     except (fm900gen.FM900Error, ValueError) as e:
         print('error: %s' % e, file=sys.stderr)
         return 1
-    open(a.output, 'wb').write(img)
+    with open(a.output, 'wb') as f:
+        f.write(img)
     if a.verbose:
         for ch in sorted(shown):
             print('  %2d  %s' % (ch, ', '.join(windows(entry_nibbles(table_entry(img, ch))))))
-    print('wrote %s: %d channels, frequency table filled (step %.2f kHz, IF %+.1f MHz)' % (
-        a.output, len(shown), b.step / 100, b.ifo / 100000))
+    print('wrote %s: %s firmware, start-up ident %s, %s' % (
+        a.output, a.variant if not a.master else a.master, a.callsign.upper() or 'none ("00" only)',
+        'frequency table for %d channels (step %.2f kHz, IF %+.1f MHz)' % (len(shown), b.step / 100, b.ifo / 100000)
+        if img[FQ_MAGIC:FQ_MAGIC + 4] == b'FQT1' else 'no frequency display'))
     return 0
 
 

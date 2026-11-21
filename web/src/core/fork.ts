@@ -1,8 +1,67 @@
-// Enhanced FM92R firmware (../../firmware/fork): the per-channel Rx-frequency
-// table its control-head display reads. A faithful port of firmware/fork/mkradio.py
-// (fill_table, freq_nibbles, windows): change both together. mkradio.py stays the
-// reference; test/fork.test.ts checks the two give byte-identical images.
+// FM92R fork firmware (../../firmware/fork): the start-up Morse callsign table
+// and the per-channel Rx-frequency table its control-head display reads. A faithful
+// port of firmware/fork/mkradio.py (morse_bytes, fill_morse, fill_table,
+// freq_nibbles, windows): change both together. mkradio.py stays the reference;
+// test/fork.test.ts checks the two give byte-identical images.
 import { decodeDivider } from './decode';
+
+export const MO_MAGIC = 0x1978;    // "MOR1", keep in sync with fork.asm
+export const MO_TAB = 0x197C;
+export const MO_LEN = 48;          // bytes, including the 0 terminator
+
+export const MORSE: Record<string, string> = {
+  A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.', H: '....', I: '..', J: '.---',
+  K: '-.-', L: '.-..', M: '--', N: '-.', O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-',
+  U: '..-', V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..', '0': '-----', '1': '.----',
+  '2': '..---', '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...', '8': '---..',
+  '9': '----.', '/': '-..-.', '?': '..--..', '.': '.-.-.-', ',': '--..--', '=': '-...-',
+};
+
+/** True if img has the start-up ident (either fork variant). */
+export function hasIntro(img: Uint8Array): boolean {
+  return img.length >= 0x2000 && String.fromCharCode(...img.subarray(MO_MAGIC, MO_MAGIC + 4)) === 'MOR1';
+}
+
+/** Callsign text -> table bytes: 1 dit, 3 dah, 0x80 end of letter, 0x81 word space, 0 end. Throws on bad input. */
+export function morseBytes(text: string): number[] {
+  const out: number[] = [];
+  for (const word of text.toUpperCase().split(/\s+/).filter(Boolean)) {
+    if (out.length) out[out.length - 1] = 0x81;
+    for (const c of word) {
+      const m = MORSE[c];
+      if (!m) throw new Error(`no Morse code for "${c}" (letters, digits and / ? . , = only)`);
+      out.push(...[...m].map((e) => (e === '.' ? 1 : 3)), 0x80);
+    }
+  }
+  out.push(0);
+  if (out.length > MO_LEN) throw new Error(`callsign too long for the Morse table (${out.length} of ${MO_LEN} bytes)`);
+  return out;
+}
+
+export function fillMorse(img: Uint8Array, text: string): void {
+  if (!hasIntro(img)) throw new Error('master has no start-up ident');
+  const b = morseBytes(text);
+  img.fill(0, MO_TAB, MO_TAB + MO_LEN);
+  img.set(b, MO_TAB);
+}
+
+/** Read the callsign back out of an image (best effort; '' if none or unreadable). */
+export function readMorse(img: Uint8Array): string {
+  if (!hasIntro(img)) return '';
+  const rev = new Map(Object.entries(MORSE).map(([k, v]) => [v, k]));
+  let text = '', letter = '';
+  for (let i = MO_TAB; i < MO_TAB + MO_LEN && img[i]; i++) {
+    const b = img[i];
+    if (b === 1 || b === 3) letter += b === 1 ? '.' : '-';
+    else if (b === 0x80 || b === 0x81) {
+      const c = rev.get(letter);
+      if (!c) return '';
+      text += c + (b === 0x81 ? ' ' : '');
+      letter = '';
+    } else return '';
+  }
+  return text.trim();
+}
 
 export const FQ_MAGIC = 0x19AC;    // "FQT1", keep in sync with fork.asm
 export const FQ0 = 0x19B0;         // 4 arrays of 100 bytes, indexed by channel number

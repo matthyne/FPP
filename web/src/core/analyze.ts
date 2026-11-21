@@ -1,6 +1,6 @@
 // Live analysis of a project for the UI: per-row problems plus a trial build.
 import { Builder, Channel, FM900Error, F_VOTE, checksum, freqUnits } from './fm900';
-import { fillTable } from './fork';
+import { fillMorse, fillTable, isForkImage } from './fork';
 import { forkMaster, master } from './masters';
 import { Project, isBlank, parseDate, rowToChannel } from './project';
 
@@ -15,24 +15,24 @@ export interface Analysis {
   vcoWarnings: string[];
   defaultKeys: number[] | null;  // FM92 key codes FM900.EXE would write
   nmax: number;
-  enhanced: boolean;             // built from the enhanced FM92R fork master
+  enhanced: boolean;             // built from an FM92R fork master (intro or enhanced)
   masterImg: Uint8Array | null;  // the master the image was built from (for the diff view)
 }
 
-/** Why the enhanced firmware can't be used for this hardware code, or null if it can. */
+/** Why the fork firmware can't be used for this hardware code, or null if it can. */
 export function enhancedProblem(b: Builder): string | null {
   const m = b.masterName();
   if (m !== 'FM92R.BIN') {
-    return `the enhanced firmware is for the FM92R only (remote head, no selcall); this hardware code selects ${m}`;
+    return `the modified firmware is for the FM92R only (remote head, no selcall); this hardware code selects ${m}`;
   }
-  if (!forkMaster()) return 'the enhanced firmware was not built into this copy of Web FPP';
+  if (!forkMaster('enhanced') || !forkMaster('intro')) return 'the modified firmware was not built into this copy of Web FPP';
   return null;
 }
 
 export function analyze(p: Project): Analysis {
   const a: Analysis = { chans: [], rowErrors: new Map(), rowWarnings: new Map(), codeError: null,
     buildError: null, img: null, builder: null, vcoWarnings: [], defaultKeys: null, nmax: p.hw[1] === '1' ? 120 : 99,
-    enhanced: p.firmware === 'enhanced', masterImg: null };
+    enhanced: p.firmware === 'enhanced' || p.firmware === 'intro', masterImg: null };
   const warn = (i: number, m: string) => a.rowWarnings.set(i, [...(a.rowWarnings.get(i) ?? []), m]);
   const rowOf: number[] = [];
   const seen = new Map<number, number>();
@@ -87,15 +87,20 @@ export function analyze(p: Project): Analysis {
   if (a.enhanced) {
     const why = enhancedProblem(b);
     if (why) {
-      a.buildError = `${why}: choose Standard firmware on the Build tab`;
+      a.buildError = `${why}: choose Factory firmware on the Build tab`;
       return a;
     }
   }
   try {
     if (a.enhanced) {
-      a.masterImg = forkMaster()!;
+      a.masterImg = forkMaster(p.firmware === 'intro' ? 'intro' : 'enhanced')!;
       const img = b.build(a.chans, a.masterImg);
-      fillTable(img, b.step, b.ifo);
+      try {
+        fillMorse(img, p.callsign ?? '');
+      } catch (e) {
+        throw new FM900Error(`start-up callsign: ${(e as Error).message}`);
+      }
+      if (isForkImage(img)) fillTable(img, b.step, b.ifo);
       checksum(img);
       a.img = img;
     } else {

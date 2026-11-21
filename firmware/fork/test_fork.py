@@ -153,6 +153,81 @@ class FreqTable(unittest.TestCase):
                 fork_radio(d, hw='92430150')       # digit 4 = 3: FM92L
 
 
+class Intro(unittest.TestCase):
+    """The start-up "00" and Morse ident, run in the simulator with a soft timer."""
+
+    def run_intro(self, callsign, variant='enhanced'):
+        with tempfile.TemporaryDirectory() as d:
+            build.build(d, quiet=True)
+            p = os.path.join(d, 'ch.csv')
+            with open(p, 'w') as f:
+                f.write(CSV_2M)
+            out = os.path.join(d, 'radio.bin')
+            master = os.path.join(d, {'enhanced': 'FM92R-fork.BIN', 'intro': 'FM92R-intro.BIN'}[variant])
+            self.assertEqual(mkradio.main(['build', p, '--hw', '92440150', '--sw', '110100201000000',
+                                           '--master', master, '--callsign', callsign, '-o', out]), 0)
+            with open(out, 'rb') as f:
+                img = f.read()
+        flags = build.VARIANTS['FM92R-fork' if variant == 'enhanced' else 'FM92R-intro']
+        sym = build.assemble(flags)[1].syms
+        c = sim6805.CPU(img)
+        sent, tone, t = [], [], [0, 0]   # tone: (tick, on) at each change; t = [steps, ticks]
+
+        def on_step(cpu):
+            t[0] += 1
+            if t[0] % 25 == 0:             # one 27 ms soft-timer tick every 25 instructions
+                t[1] += 1
+                for a in (0x57, 0x58):
+                    cpu.mem[a] = (cpu.mem[a] - 1) & 0xFF
+            on = cpu.mem[0x29] >> 7
+            if not tone or tone[-1][1] != on:
+                tone.append((t[1], on))
+        c.on_step = on_step
+        c.stub(sym['head_send'], lambda cpu: sent.append(cpu.a))
+        c.call(sym['fork_init'], max_steps=10 ** 6)
+        return sent, tone, t[1]
+
+    def morse_from(self, tone):
+        """Tone changes -> Morse text, in units of 3 ticks."""
+        units = [(round((b[0] - a[0]) / 3), a[1]) for a, b in zip(tone, tone[1:])]
+        rev = {v: k for k, v in mkradio.MORSE.items()}
+        text, letter = '', ''
+        for n, on in units:
+            if on:
+                letter += '.' if n == 1 else '-'
+            elif n >= 3:
+                text += rev[letter] + (' ' if n >= 7 else ''); letter = ''
+        return text + (rev[letter] if letter else ''), units
+
+    def test_vk2fn(self):
+        for variant in ('enhanced', 'intro'):
+            sent, tone, ticks = self.run_intro('VK2FN', variant)
+            self.assertEqual(sent, [0xAA, 0x80, 0x30, 0x82, 0x30], variant)   # start-up, then "00"
+            text, units = self.morse_from(tone)
+            self.assertEqual(text, 'VK2FN', variant)
+            self.assertTrue(all(n in (1, 3) for n, _ in units), units)
+            self.assertEqual(tone[-1][1], 0)                                     # tone off at the end
+            self.assertAlmostEqual(ticks / 3, 59 + 3 + 6, delta=2)              # 59 units + last letter gap + pause
+
+    def test_word_space(self):
+        text, units = self.morse_from(self.run_intro('DE VK2FN')[1])
+        self.assertEqual(text, 'DE VK2FN')
+        self.assertIn((7, 0), units)
+
+    def test_no_callsign(self):
+        sent, tone, ticks = self.run_intro('')
+        self.assertEqual(sent, [0xAA, 0x80, 0x30, 0x82, 0x30])
+        self.assertEqual([on for _, on in tone], [0])                           # never on
+        self.assertAlmostEqual(ticks / 3, 12, delta=1)                          # "00" for 1 s
+
+    def test_morse_encoding(self):
+        self.assertEqual(mkradio.morse_bytes('VK2FN').hex(), '0101010380030103800101030303800101030180030180' + '00')
+        with self.assertRaises(ValueError):
+            mkradio.morse_bytes('VK2#')
+        with self.assertRaises(ValueError):
+            mkradio.morse_bytes('VK2FN ' * 3)
+
+
 class FreqFirmware(unittest.TestCase):
     """Run the fork's display code in the 6805 simulator."""
 
