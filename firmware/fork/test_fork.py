@@ -130,7 +130,7 @@ class FreqTable(unittest.TestCase):
         """Every table entry is the job's Rx frequency; nothing else differs from fm900gen."""
         with tempfile.TemporaryDirectory() as d:
             master = build.build(d, quiet=True)
-            for j in ('2MHAM', 'SH', 'SHC'):
+            for j in ('2MHAM', 'SH', 'SHC', '477'):     # 477 = UHF (12.5/25 kHz step, other IF sign)
                 job = os.path.join(JOBS, j, j + '.JOB')
                 a, b = os.path.join(d, 'a.bin'), os.path.join(d, 'b.bin')
                 self.assertEqual(mkradio.main(['fromjob', job, '--master', master, '--date', '2026-11-21', '-o', a]), 0)

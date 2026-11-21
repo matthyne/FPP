@@ -30,6 +30,11 @@ it shows the channel number for 2 s again, and repeats. 147.450 MHz shows:
   The frequency sends don't restart the intermittent-display timeout.
 * **Transmit.** While transmitting, the channel number is shown. The end of a
   transmission redisplays the channel and restarts the 2 s wait.
+* **Nothing restarts it by itself.** Only user actions redisplay the
+  channel: keys, PTT, scan, lifting the mic, or the display timeout. No
+  interrupt handler touches the display. The economiser's wake-up calls
+  `tx_stop` with `$18.6` set, which returns before redisplaying, so it doesn't
+  restart the cycle either.
 * **Vote / scan channels.** It shows the home channel's frequency (`$50`),
   the same channel `show_channel` displays.
 * **Head link.** A step is only sent when the UART FIFO is empty and no
@@ -54,6 +59,10 @@ it shows the channel number for 2 s again, and repeats. 147.450 MHz shows:
    collision on the head link would show up as the radio switching itself off.
 2. Keys, PTT and head monitor still work during the cycle.
 3. If the display option is intermittent, the display still blanks.
+4. On a CTCSS channel, lift the mic or hold monitor and listen for a minute
+   while the frequency cycles. The head must repeat `$46` within 1.5 s or the
+   radio releases it, so a lost repeat would show up as the audio dropping
+   out.
 
 
 **Untested on hardware** until a change has been burned and tried. Keep the

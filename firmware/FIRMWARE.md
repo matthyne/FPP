@@ -274,7 +274,7 @@ Bytes `'0'`–`'?'` are key codes (`'1' '2' '4' '7'`, above). The mic PTT is sep
 
 | Bytes | Meaning |
 |---|---|
-| `$80`/`$81` + character, `$82`/`$83` + character | the two display digits: `$80` right, `$82` left (from `show_channel`/`display_digits`); `$81`/`$83` while scanning (`$1E.1`) |
+| `$80`/`$81` + character, `$82`/`$83` + character | the two display digits: `$80` right, `$82` left (from `show_channel`/`display_digits`); `$81`/`$83` when `$1E.1` is set (scan display, selcall digits) |
 | `$A0` | channel changed / back on receive |
 | `$A2` | transmitter on (Tx synthesiser settled) |
 | `$A4` / `$A6` | squelch closed / open (busy indicator, from `$12.2` / `$12.1`) (inferred) |
