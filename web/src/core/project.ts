@@ -14,6 +14,9 @@ export interface Row {
   name?: string;   // label for the user only: not stored in the .CHL or the EPROM
 }
 
+/** 'standard' = the factory master; 'enhanced' = the FM92R fork (firmware/fork), FM92R only. */
+export type Firmware = 'standard' | 'enhanced';
+
 export interface Project {
   format: 'fm900-web';
   version: 1;
@@ -24,6 +27,7 @@ export interface Project {
   keys: number[] | null;   // FM92 head keys 1/2/4/7 override, null = as FM900.EXE
   date: string;            // YYYY-MM-DD, '' = today
   eprom?: EpromPart;       // chip the image is burned to (absent = 2764); the 8 KB image is mirrored into every bank
+  firmware?: Firmware;     // absent = 'standard' (the factory master)
   rows: Row[];
 }
 

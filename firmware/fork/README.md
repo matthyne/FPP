@@ -4,12 +4,17 @@ An editable, re-assemblable source of the FM92R master firmware
 (`fm900/MASTERS/FM92R.BIN`). New functionality is added here. The output is
 a master image that `fm900gen.py --master-file` turns into a radio EPROM.
 
-**Build radio images with `mkradio.py`.** Web FPP only has the factory
-masters built in, and so does fm900gen without `--master-file`: building in
-either of those, or reading a fork EPROM back in the Read tab and rebuilding
-it, silently gives stock firmware. `fm900gen.py --master-file
-build/FM92R-fork.BIN` gives the fork firmware but an empty frequency table,
-so the head only shows channel numbers.
+**Build radio images with `mkradio.py` or Web FPP.** In Web FPP, choose
+**Firmware: Enhanced** on the Build tab. Its `src/core/fork.ts` is a port of
+`mkradio.py`, and its tests check that the two give byte-identical images.
+Web FPP assembles this fork when it is built (`web/scripts/gen-masters.mjs`
+runs `build.py`), so a change here reaches it on the next `npm run dev` /
+`build` / `test`. If you change the table format or addresses, change
+`fork.ts` too.
+
+Plain fm900gen gives stock firmware, and `fm900gen.py --master-file
+build/FM92R-fork.BIN` gives the fork firmware with an empty frequency table
+(the head then shows only channel numbers).
 
 ## Feature: Rx frequency on the control head
 

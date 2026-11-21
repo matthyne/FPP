@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'preact/hooks';
-import { Analysis } from '../core/analyze';
+import { Analysis, enhancedProblem } from '../core/analyze';
+import { entryNibbles, tableEntry, windows } from '../core/fork';
 import { dump } from '../core/decode';
 import { verifyChecksum } from '../core/fm900';
-import { master } from '../core/masters';
-import { Project } from '../core/project';
+import { Firmware, Project } from '../core/project';
 import type { Update } from './App';
 import { download, safeName } from './files';
 import { EPROMS, EpromPart, eprom, expandImage } from '../core/eprom';
@@ -30,6 +30,8 @@ export function region(addr: number, fm91: boolean): string {
   if (hit) return hit[2];
   if (addr < 0x23) return 'copyright string';
   if (addr >= 0x1F00) return 'configuration block';
+  if (addr >= 0x19AC && addr < 0x19B0) return 'enhanced firmware: frequency table marker';
+  if (addr >= 0x19B0 && addr < 0x1B40) return 'enhanced firmware: Rx frequency table';
   return 'firmware';
 }
 
@@ -67,10 +69,18 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
   const [view, setView] = useState<'table' | 'all' | 'dump'>('table');
   const b = a.builder;
   const fm91 = p.hw[1] === '1';
-  const base = useMemo(() => (b && a.img ? master(b.masterName()) : undefined), [a.img, b]);
+  const base = a.img ? a.masterImg ?? undefined : undefined;
   const changed = useMemo(() => (a.img && base ? a.img.reduce((n, x, i) => n + (x !== base[i] ? 1 : 0), 0) : 0), [a.img, base]);
   const fname = `${safeName(p.name)}.BIN`;
   const chip = eprom(p.eprom);
+  const fw: Firmware = p.firmware ?? 'standard';
+  const noEnh = b ? enhancedProblem(b) : 'enter a valid hardware code first';
+  const sample = useMemo(() => {
+    if (!a.img || !a.enhanced) return null;
+    const ch = a.chans.map((c) => c.num).sort((x, y) => x - y)[0];
+    const e = tableEntry(a.img, ch);
+    return e[0] ? { ch, w: windows(entryNibbles(e)) } : null;
+  }, [a.img, a.enhanced, a.chans]);
 
   return (
     <div class="panel build">
@@ -79,7 +89,7 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
           <h2>Build EPROM image</h2>
           {a.img && b && b.info ? (
             <dl>
-              <dt>Master</dt><dd class="mono">{b.info.master}</dd>
+              <dt>Master</dt><dd class="mono">{a.enhanced ? 'FM92R.BIN + enhanced firmware' : b.info.master}</dd>
               <dt>Channels</dt><dd>{a.chans.length} (numbers {b.info.ch_min}–{b.info.ch_max})</dd>
               <dt>Synth step</dt><dd>{b.info.step_khz} kHz, IF {b.info.if_mhz >= 0 ? '+' : ''}{b.info.if_mhz.toFixed(1)} MHz</dd>
               <dt>Checksum</dt><dd class="mono">0x1F64 = {hx(a.img[0x1F64])}, 0x1F65 = {hx(a.img[0x1F65])} {verifyChecksum(a.img) ? '✓' : '✗'}</dd>
@@ -92,12 +102,26 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
           {a.vcoWarnings.map((w) => <p class="msg warn">{w}! The radio may not operate correctly.</p>)}
           {p.sw.slice(11, 15) !== '0000' && <p class="msg warn">Selcall codes are set: the selcall tones are left at their defaults.</p>}
           {p.keys && <p class="msg info">Head function keys are overridden (not Original FPP behaviour).</p>}
+          {sample && <p class="msg info">Enhanced firmware: after 2 s on the channel number, the head shows the Rx frequency two
+            characters at a time. Channel {sample.ch}: <span class="mono">{sample.w.map((w) => `“${w}”`).join(' ')}</span>, then the channel again.</p>}
         </div>
         <div class="buildactions">
           <label class="field">
             <span class="lab">Build date</span>
             <input type="date" value={p.date} onInput={(e) => update((q) => ({ ...q, date: (e.target as HTMLInputElement).value }))} />
           </label>
+          <label class="field">
+            <span class="lab">Firmware</span>
+            <select value={fw} onChange={(e) => {
+              const v = (e.target as HTMLSelectElement).value as Firmware;
+              update((q) => ({ ...q, firmware: v === 'standard' ? undefined : v }));
+            }}>
+              <option value="standard">Standard (factory master)</option>
+              <option value="enhanced" disabled={!!noEnh && fw !== 'enhanced'} title="FM92R only: shows the Rx frequency on the head">Enhanced (Rx freq. on head)</option>
+            </select>
+          </label>
+          {fw === 'standard' && noEnh && b && <p class="hint">Enhanced firmware: {noEnh}.</p>}
+          {fw === 'enhanced' && <p class="hint">Enhanced firmware is not factory firmware and is untested on a radio. Keep the original EPROM.</p>}
           <label class="field">
             <span class="lab">EPROM</span>
             <select value={chip.part} onChange={(e) => {

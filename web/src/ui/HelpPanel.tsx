@@ -43,6 +43,20 @@ export function HelpPanel() {
           <li><b>Not supported:</b> FM93, FM97WP / waterproof radios, and the selcall tone editor (selcall tones keep their defaults).</li>
         </ul>
 
+        <h3>Enhanced firmware (FM92R)</h3>
+        <p>The <b>Firmware</b> menu on the Build tab picks the radio's own program. <b>Standard</b> is the factory master, exactly as
+          the Original FPP builds. <b>Enhanced</b> is a modified FM92R firmware: after the channel number has been on the control
+          head for 2 s, the head shows the channel's Rx frequency two characters at a time, 0.5 s each, then the channel number
+          again, in a loop. 147.450 MHz shows <code>14 47 "7 " " 4" 45 50</code> (the point is shown as a space). It stops while
+          transmitting, scanning or showing selcall digits, and whenever the channel changes it starts again.</p>
+        <ul>
+          <li>Only for the FM92R without selcall (hardware code digit 4 = 4 or 8, digit 6 not 3–5).</li>
+          <li>The image carries a table of each channel's frequency, so Read image recognises an enhanced image and loads it back
+            with Enhanced selected.</li>
+          <li><b>Not factory firmware, and untested on a radio.</b> Keep the original EPROM. If the radio switches itself off after
+            a few seconds or keys stop working, go back to Standard.</li>
+        </ul>
+
         <h3>Paths the sample jobs don't cover</h3>
         <p>VOTE rings, duplicate channel numbers, the FM92L and selcall (<code>*S</code>) masters, the VHF 6.25 kHz step, L or S power,
           the VOTE, C/R and SELCALL flags, receive-only channels, and the E, T, U and W2 bands have been checked on thousands of random
@@ -57,6 +71,7 @@ export function HelpPanel() {
         <ul>
           <li><a href={REPO + 'FM900_FORMAT.md'}>FM900_FORMAT.md</a>: codes, job files and the EPROM layout</li>
           <li><a href={REPO + 'firmware/FIRMWARE.md'}>firmware/FIRMWARE.md</a>: the radio's 68HC05 firmware, EPROM types and connectors</li>
+          <li><a href={REPO + 'firmware/fork/README.md'}>firmware/fork/README.md</a>: the enhanced FM92R firmware</li>
         </ul>
       </section>
     </div>

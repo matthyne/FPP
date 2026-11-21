@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { analyze } from '../core/analyze';
 import { formatChannels } from '../core/channels';
 import { FM900Error, readChl, readJob, writeChl, writeJob } from '../core/fm900';
-import { Project, Row, channelToRow, fromProject, isBlank, loadProjectJson, newProject } from '../core/project';
+import { Firmware, Project, Row, channelToRow, fromProject, isBlank, loadProjectJson, newProject } from '../core/project';
 import { BuildPanel } from './BuildPanel';
 import { ChannelsPanel } from './ChannelsPanel';
 import { HelpPanel } from './HelpPanel';
@@ -150,9 +150,9 @@ export function App() {
       setTab('radio');
     }
   };
-  const loadRows = (rows: Row[], hw: string, keys: number[] | null) => {
+  const loadRows = (rows: Row[], hw: string, keys: number[] | null, firmware: Firmware) => {
     if (!confirmReplace()) return;
-    update((p) => ({ ...p, rows, hw, keys }));
+    update((p) => ({ ...p, rows, hw, keys, firmware: firmware === 'standard' ? undefined : firmware }));
     setTab('channels');
     notify(`Loaded ${rows.length} channels from the image`);
   };

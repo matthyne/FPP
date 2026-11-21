@@ -656,7 +656,7 @@ All would be untested on hardware until burned.
 
 ### 13.0 Implemented in the fork: Rx frequency on the head (FM92R)
 
-`fork/` adds this. After 2 s on the channel number, the head shows the channel's Rx frequency two characters at a time (147.450 → `14 47 7␣ ␣4 45 50`, 0.5 s each), then the channel again, in a loop. The radio image must be built with `fork/mkradio.py`, which writes the per-channel frequency table. See `fork/README.md`.
+`fork/` adds this. After 2 s on the channel number, the head shows the channel's Rx frequency two characters at a time (147.450 → `14 47 7␣ ␣4 45 50`, 0.5 s each), then the channel again, in a loop. The radio image must be built with `fork/mkradio.py` or Web FPP's **Firmware: Enhanced** option, which write the per-channel frequency table. See `fork/README.md`.
 
 ### 13.1 Duplex / talk-around on/off key (FM92R and FM92L)
 

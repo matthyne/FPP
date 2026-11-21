@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { formatChannels, powerLetter, scanText } from '../core/channels';
 import { dump, imageKeys, imageModel, readImage } from '../core/decode';
 import { CTCSS_HZ_BY_CODE, F_CR, F_ECON, F_SELCALL, F_VOTE, KEY_FUNCS, MASTER_VERSION, latin1, verifyChecksum } from '../core/fm900';
-import { Project, Row, channelToRow } from '../core/project';
+import { Firmware, Project, Row, channelToRow } from '../core/project';
+import { isForkImage } from '../core/fork';
 import { errMsg } from './App';
 import { HexView } from './BuildPanel';
 import { download, pickFiles, readBytes } from './files';
@@ -13,7 +14,7 @@ const hx = (n: number) => n.toString(16).toUpperCase().padStart(2, '0');
 export function ReadPanel({ p, img, setImg, load }: {
   p: Project; img: { name: string; data: Uint8Array } | null;
   setImg: (v: { name: string; data: Uint8Array } | null) => void;
-  load: (rows: Row[], hw: string, keys: number[] | null) => void;
+  load: (rows: Row[], hw: string, keys: number[] | null, firmware: Firmware) => void;
 }) {
   const [hw, setHw] = useState(p.hw);
   const [step, setStep] = useState(0);
@@ -60,6 +61,7 @@ export function ReadPanel({ p, img, setImg, load }: {
   const mname = Object.entries(MASTER_VERSION).find(([, v]) => v[1] === id && v[0] === d[0x1FE5])?.[0];
   const model = size ? imageModel(d) : '';
   const fm92 = hw[1] === '2';
+  const enhanced = size && isForkImage(d);
   const chans = res?.ok?.channels ?? [];
 
   return (
@@ -71,7 +73,7 @@ export function ReadPanel({ p, img, setImg, load }: {
             {!size ? <p class="msg bad">Expected 8, 16, 32 or 64 KB (an EPROM image), got {d.length} bytes.</p> : (
               <dl>
                 {split.part.part !== '2764' && <><dt>EPROM</dt><dd>{split.part.part}, {split.banks.length} banks{split.mirrored ? ', all identical' : ''}</dd></>}
-                <dt>Master</dt><dd class="mono">{mname ?? `unknown (ID "${id}", version ${d[0x1FE5]})`}</dd>
+                <dt>Master</dt><dd class="mono">{mname ?? `unknown (ID "${id}", version ${d[0x1FE5]})`}{enhanced ? ' + enhanced firmware' : ''}</dd>
                 <dt>Built</dt><dd class="mono">{hx(d[0x1FE2])}/{hx(d[0x1FE3])}/{hx(d[0x1FE4])} <small>DD/MM/YY</small>, programmer {hx(d[0x1FE0])} {hx(d[0x1FE1])}</dd>
                 <dt>Checksum</dt><dd class={verifyChecksum(d) ? '' : 'bad'}>{verifyChecksum(d) ? 'OK' : 'BAD'}</dd>
                 <dt>Channels</dt><dd>{d[0x1F3F]}–{d[0x1F3E]}</dd>
@@ -106,7 +108,7 @@ export function ReadPanel({ p, img, setImg, load }: {
               <button onClick={open}>Open another…</button>
               <button onClick={() => res?.ok && download(img.name.replace(/\.bin$/i, '') + '.csv', formatChannels(chans), 'text/csv')} disabled={!res?.ok}>Export CSV</button>
               <button class="primary" disabled={!res?.ok || !chans.length}
-                onClick={() => load(chans.map(channelToRow), hw, keepKeys && fm92 ? imageKeys(d) : null)}>Load into project</button>
+                onClick={() => load(chans.map(channelToRow), hw, keepKeys && fm92 ? imageKeys(d) : null, enhanced ? 'enhanced' : 'standard')}>Load into project</button>
             </div>
           </div>
         </div>
