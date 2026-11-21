@@ -328,17 +328,22 @@ class FreqFirmware(unittest.TestCase):
         self.assertEqual(self.shown(), ' 3')
         self.assertEqual(c.mem[0x57], 74)                   # 2 s
         self.assertIsNone(self.task(c, expire=False))      # not yet
-        seq = [self.task(c) for _ in range(7)]
-        self.assertEqual(seq, ['14', '47', '7 ', ' 4', '45', '50', ' 3'])
-        self.assertEqual(c.mem[0x57], 74)                   # channel again for 2 s
-        self.assertEqual(self.task(c), '14')                # and round again
+        self.assertEqual(self.task(c), '  ')                # blank, 0.5 s
+        self.assertEqual(c.mem[0x57], 18)
+        seq = [self.task(c) for _ in range(6)]
+        self.assertEqual(seq, ['14', '47', '7 ', ' 4', '45', '50'])
+        self.assertEqual(self.task(c), '  ')                # blank, 0.5 s
+        self.assertEqual(c.mem[0x57], 18)
+        self.assertEqual(self.task(c), ' 3')                # channel again for 2 s
+        self.assertEqual(c.mem[0x57], 74)
+        self.assertEqual([self.task(c) for _ in range(2)], ['  ', '14'])   # and round again
         self.assertEqual(c.mem[0x57], 18)                   # 0.5 s
 
     def test_two_digit_channel(self):
         c = self.cpu(12)
         c.call(self.sym['show_channel'])
         self.assertEqual(self.shown(), '12')
-        self.assertEqual([self.task(c) for _ in range(7)], ['14', '46', '6 ', ' 0', '00', '00', '12'])
+        self.assertEqual([self.task(c) for _ in range(9)], ['  ', '14', '46', '6 ', ' 0', '00', '00', '  ', '12'])
 
     def test_waits_for_keepalive_and_uart(self):
         c = self.cpu(3)
@@ -349,19 +354,29 @@ class FreqFirmware(unittest.TestCase):
         c.mem[0x1A] |= 0x02                                 # UART FIFO not empty
         self.assertIsNone(self.task(c, expire=False))
         c.mem[0x1A] &= ~0x02
-        self.assertEqual(self.task(c, expire=False), '14')  # timer still expired: goes now
+        self.assertEqual(self.task(c, expire=False), '  ')  # timer still expired: goes now
 
     def test_transmit_shows_channel(self):
         c = self.cpu(3)
         c.call(self.sym['show_channel']); self.shown()
-        self.task(c); self.task(c)                          # showing "47"
+        self.task(c); self.task(c); self.task(c)            # blank, "14", "47"
         c.mem[0x11] |= 0x01                                 # transmitting
         self.assertEqual(self.task(c), ' 3')
         self.assertIsNone(self.task(c))                     # held
         self.assertEqual(c.mem[0x57], 74)
         c.mem[0x11] &= ~0x01
         self.assertIsNone(self.task(c, expire=False))
+        self.assertEqual(self.task(c), '  ')
         self.assertEqual(self.task(c), '14')
+
+    def test_transmit_during_blank(self):
+        c = self.cpu(3)
+        c.call(self.sym['show_channel']); self.shown()
+        self.assertEqual(self.task(c), '  ')                # blank before the frequency
+        c.mem[0x11] |= 0x01
+        self.assertEqual(self.task(c), ' 3')                # channel back at once
+        c.mem[0x11] &= ~0x01
+        self.assertEqual([self.task(c) for _ in range(2)], ['  ', '14'])
 
     def test_other_display_stops_it(self):
         c = self.cpu(3)

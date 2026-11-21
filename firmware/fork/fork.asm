@@ -24,7 +24,7 @@
 
 ; RAM. $B8-$BD lie in the unused gap of the external RAM ($A0-$A4 and $BE-$EC
 ; are used by the selcall code; nothing in the firmware touches $A5-$BD).
-FQ_FLAGS        equ     $b8     ; bit 0 = armed by show_channel, bit 1 = cycling
+FQ_FLAGS        equ     $b8     ; bit 0 = armed by show_channel, bit 1 = cycling, bit 2 = blank shown
 FQ_IDX          equ     $b9     ; 0 = channel number shown, n = window n shown
 FQ_CH           equ     $ba     ; channel whose frequency is shown
 FQ_CHB          equ     $bb     ; packed channel display byte (as display_digits takes it)
@@ -151,11 +151,13 @@ mo_w1:  brclr   7,MO_TIMER,mo_w1
 ; =============================================================================
 ; Feature FREQ: Rx frequency on the control head
 ;
-; After the channel number has been on the head for 2 s, show the channel's Rx
-; frequency two characters at a time, 0.5 s each, sliding one character per
-; step, then the channel number again for 2 s, and repeat, until something
-; else is put on the display (channel change, scan, selcall, display off).
-; 147.450 MHz shows: 14, 47, "7 ", " 4", 45, 50 (the '.' is shown as a space).
+; After the channel number has been on the head for 2 s, blank the display
+; for 0.5 s, show the channel's Rx frequency two characters at a time, 0.5 s
+; each, sliding one character per step, blank for 0.5 s, then the channel
+; number again for 2 s, and repeat, until something else is put on the display
+; (channel change, scan, selcall, display off).
+; 147.450 MHz on channel 3: " 3" (2 s), "  ", 14, 47, "7 ", " 4", 45, 50, "  ",
+; " 3" ... (the '.' is shown as a space; blank = two spaces).
 ;
 ; The firmware can't work out the frequency itself (the step and IF depend on
 ; the hardware code), so mkradio.py writes a per-channel table (FQ_TABLE, below)
@@ -207,6 +209,7 @@ fq_disp:
         clr     FQ_IDX
         lda     #T_CHAN
         sta     FQ_TIMER
+        bclr    2,FQ_FLAGS
         bset    1,FQ_FLAGS
         bra     fq_d1
 fq_off: bclr    0,FQ_FLAGS
@@ -224,13 +227,15 @@ fq_task:
         brclr   1,FQ_FLAGS,fq_ret
         brclr   0,$11,fq_rx
         ; transmitting: put the channel number back, hold the 2 s timer
+        brset   2,FQ_FLAGS,fq_tx1       ; blank shown
         lda     FQ_IDX
-        beq     fq_hold
-        brset   5,$1c,fq_ret            ; keep-alive reply due
+        beq     fq_hold                 ; channel number already shown
+fq_tx1: brset   5,$1c,fq_ret            ; keep-alive reply due
         brset   1,$1a,fq_ret            ; UART FIFO not empty
         lda     FQ_CHB
         jsr     fq_send
         clr     FQ_IDX
+        bclr    2,FQ_FLAGS
 fq_hold:
         lda     #T_CHAN
         sta     FQ_TIMER
@@ -241,13 +246,23 @@ fq_rx:  brclr   7,FQ_TIMER,fq_ret       ; time for the next step?
         brset   1,$1a,fq_ret            ; UART FIFO not empty: try again later
         lda     #T_STEP
         sta     FQ_TIMER
-        inc     FQ_IDX
+        ; Sequence: channel (2 s), blank, windows 1..n, blank, channel ...
+        ; (each step 0.5 s). FQ_FLAGS bit 2 = the blank is shown; FQ_IDX tells
+        ; which blank: 0 = before the frequency, >0 = after it.
+        brclr   2,FQ_FLAGS,fq_r1
+        bclr    2,FQ_FLAGS
+        lda     FQ_IDX
+        bne     fq_chan                 ; blank after the frequency: channel next
+        bra     fq_win                  ; blank before it: first window next
+fq_r1:  lda     FQ_IDX
+        beq     fq_blank                ; channel shown: blank next
+fq_win: inc     FQ_IDX
         lda     FQ_IDX
         cmp     #8
-        bcc     fq_chan
+        bcc     fq_blank
         jsr     fq_nib                  ; right character = character IDX
         cmp     #$0e
-        beq     fq_chan                 ; past the end
+        beq     fq_blank                ; past the end: blank, then the channel
         sta     FQ_TMP
         lda     FQ_IDX
         deca
@@ -259,7 +274,12 @@ fq_rx:  brclr   7,FQ_TIMER,fq_ret       ; time for the next step?
         ora     FQ_TMP
         jmp     fq_send
 
-fq_chan:                                ; end of the frequency: channel number for 2 s
+fq_blank:                               ; both characters blank for 0.5 s
+        bset    2,FQ_FLAGS
+        lda     #$ff                    ; $F = space
+        jmp     fq_send
+
+fq_chan:                                ; after the frequency: channel number for 2 s
         clr     FQ_IDX
         lda     #T_CHAN
         sta     FQ_TIMER

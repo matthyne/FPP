@@ -120,7 +120,7 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
             ? <> while the radio sends <b class="mono">{p.callsign.trim().toUpperCase()}</b> in Morse on its beep tone (15 wpm)</>
             : <> for 1 s (no callsign set, so no Morse)</>}, then the channel.</p>}
           {sample && <p class="msg info">Enhanced firmware: after 2 s on the channel number, the head shows the Rx frequency two
-            characters at a time. Channel {sample.ch}: <span class="mono">{sample.w.map((w) => `“${w}”`).join(' ')}</span>, then the channel again.</p>}
+            characters at a time, 0.5 s each, with a 0.5 s blank before and after. Channel {sample.ch}: <span class="mono">(blank) {sample.w.map((w) => `“${w}”`).join(' ')} (blank)</span>, then the channel again.</p>}
         </div>
         <div class="buildactions">
           <label class="field">

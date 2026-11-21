@@ -113,11 +113,17 @@ callsign, `00` stays for 1 s and there is no sound.
 
 ## Feature: Rx frequency on the control head (FREQ)
 
-After the channel number has been shown for 2 s, the head shows the channel's
-Rx frequency two characters at a time, sliding one character every 0.5 s. Then
-it shows the channel number for 2 s again, and repeats. 147.450 MHz shows:
+After the channel number has been shown for 2 s, the display is blanked for
+0.5 s. Then the head shows the channel's Rx frequency two characters at a time,
+sliding one character every 0.5 s, blanks for 0.5 s again, shows the channel
+number for 2 s, and repeats. 147.450 MHz on channel 3:
 
-    14   47   "7 "   " 4"   45   50   (channel, 2 s)   14 ...
+    " 3" (2 s)   "  "   14   47   "7 "   " 4"   45   50   "  "   " 3" (2 s)   "  "   14 ...
+
+* **Blank.** Two spaces (`$80 ' '`, `$82 ' '`), not the `$E5` display-off
+  message, which belongs to the intermittent-display option. Transmitting
+  during a blank brings the channel number back at once, like during the
+  frequency.
 
 * **Format.** The decimal point is shown as a space; the stock firmware only
   ever sends digits and space, so other characters may not exist on the head.
@@ -263,3 +269,4 @@ firmware (`stackdepth.py`, checked by `build.py`).
 | `4eb17d1` | INTRO: start-up "00" + Morse callsign; two variants; Web FPP callsign field and three-way menu. |
 | `b99ce34`, `d624717` | Web FPP: "Experimental firmware" note on the Build and Read tabs. |
 | `ca3f4b5` | What the factory firmware sends to the head at switch-on (FIRMWARE.md §6.1); start-up regression test. |
+| (this commit) | FREQ: 0.5 s blank before and after the frequency. |
