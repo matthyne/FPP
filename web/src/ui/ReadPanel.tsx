@@ -5,7 +5,7 @@ import { CTCSS_HZ_BY_CODE, F_CR, F_ECON, F_SELCALL, F_VOTE, KEY_FUNCS, MASTER_VE
 import { Firmware, Project, Row, channelToRow } from '../core/project';
 import { hasIntro, isForkImage, readMorse } from '../core/fork';
 import { errMsg } from './App';
-import { HexView } from './BuildPanel';
+import { ExperimentalBanner, HexView } from './BuildPanel';
 import { download, pickFiles, readBytes } from './files';
 import { splitBanks } from '../core/eprom';
 
@@ -67,6 +67,7 @@ export function ReadPanel({ p, img, setImg, load }: {
 
   return (
     <div class="panel read">
+      {firmware !== 'standard' && <div class="fullrow"><ExperimentalBanner what="the firmware in this image" /></div>}
       <section class="card wide">
         <div class="readhead">
           <div>

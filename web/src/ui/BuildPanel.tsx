@@ -67,6 +67,20 @@ export function HexView({ img, orig: refImg, fm91, from, to }: { img: Uint8Array
   );
 }
 
+/** Shown wherever a non-factory (fork) firmware image is built or read. */
+export function ExperimentalBanner({ what }: { what: string }) {
+  return (
+    <div class="banner-exp" role="alert">
+      <span class="ico" aria-hidden="true">⚠</span>
+      <div>
+        <p>Experimental firmware: {what} may not work.</p>
+        <p>This is modified FM92R firmware, not the factory program, and it has not been tested on a radio. Keep the original
+          EPROM so you can go back, and choose Factory if the radio misbehaves.</p>
+      </div>
+    </div>
+  );
+}
+
 export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; update: Update; notify: (m: string, e?: boolean) => void }) {
   const [view, setView] = useState<'table' | 'all' | 'dump'>('table');
   const b = a.builder;
@@ -87,6 +101,7 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
 
   return (
     <div class="panel build">
+      {fw !== 'standard' && <div class="fullrow"><ExperimentalBanner what="this image" /></div>}
       <section class="card wide buildcard">
         <div>
           <h2>Build EPROM image</h2>
@@ -136,7 +151,6 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
                 onInput={(e) => update((q) => ({ ...q, callsign: (e.target as HTMLInputElement).value.toUpperCase() || undefined }))} />
             </label>
           )}
-          {fw !== 'standard' && <p class="hint">Modified firmware is not factory firmware and is untested on a radio. Keep the original EPROM.</p>}
           <label class="field">
             <span class="lab">EPROM</span>
             <select value={chip.part} onChange={(e) => {
