@@ -2,8 +2,12 @@
 
 An editable, re-assemblable source of the FM92R master firmware
 (`fm900/MASTERS/FM92R.BIN`). New functionality is added here. The output is
-a master image that `fm900gen.py` (or Web FPP) turns into a radio EPROM in the
-usual way.
+a master image that `fm900gen.py --master-file` turns into a radio EPROM.
+
+**Always pass `--master-file`.** Web FPP only has the factory masters built in,
+and so does fm900gen without that option. Building in either of those, or
+reading a fork EPROM back in the Read tab and rebuilding it, silently gives
+stock firmware.
 
 **Untested on hardware** until a change has been burned and tried. Keep the
 factory EPROM.

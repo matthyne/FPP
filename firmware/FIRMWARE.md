@@ -649,7 +649,7 @@ These are designed but **not implemented**. Each would be a patch tool in the st
 
 * verify the original bytes;
 * write a patched copy of the master;
-* put new code in the empty EPROM area 0x15AF–0x1B3F, avoiding the signature-sample bytes 0x15CC, 0x19CC and 0x1ACC;
+* put new code in the empty EPROM area 0x15AF–0x1B3F. The signature-sample bytes 0x15CC, 0x19CC and 0x1ACC only need avoiding if 0x1F65 is not recomputed afterwards; fm900gen, FM900.EXE and the fork's `build.py` always recompute it;
 * use the patched master with `fm900gen.py --master-file`.
 
 All would be untested on hardware until burned.
