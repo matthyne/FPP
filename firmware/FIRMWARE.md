@@ -649,25 +649,39 @@ Wiring PB7 to EPROM A13, with a 10 kΩ pull-down because the pin floats until th
 
 You'd have to confirm on the board that the CPU's PB7 pin is accessible and not connected to anything on an FM92R PCB. The external output latches (`$80`–`$86`) may also have spare bits, but without a schematic that can't be determined.
 
-## 13. Future Upgrade Options
+## 13. Upgrade options
 
-> Larger changes are easier in the FM92R fork (`fork/`, see `fork/README.md`). It is a re-assemblable source of the master, with new code in the free area, and `build.py` checks that the stock build still equals the master. The patch-tool recipe below still works for small one-off patches.
+| § | Upgrade | Status |
+|---|---|---|
+| 13.0 | Start-up `00` + Morse callsign; Rx frequency on the head (FM92R) | **Implemented, in the experimental images only.** These are Web FPP's "Start-up ident" and "Ident + Rx freq." firmware, or `fork/mkradio.py`. The Factory image doesn't have them. Untested on a radio. |
+| 13.1 | Duplex / talk-around key | **Not implemented.** Design only. |
+| 13.2 | Bank switching from a function key | **Not implemented.** Design only. |
+| 13.3 | PC / tablet control over the head link | **Not implemented.** Design only (needs no firmware change). |
+| 13.4 | Other gaps | **Not implemented.** |
 
-These are designed but **not implemented**. Each would be a patch tool in the style of
-`patch_startup_msg.py`:
+### 13.0 Implemented in the experimental images (FM92R fork)
+
+> **Status: implemented, experimental.** Only images built from the fork have these features: Web FPP's Firmware menu ("Start-up ident" or "Ident + Rx freq.") or `fork/mkradio.py`. The **Factory** image (Original FPP) doesn't. Nothing here has been tested on a radio yet.
+
+* **Start-up ident** (both experimental images). At switch-on the head shows `00` while the radio sends a Morse callsign (set when building) on its beep tone. `$29.7` enables the ~600 Hz tone that `uart_bit` makes on `$29.4`; the key beep uses the same tone. Then the channel is shown as usual.
+* **Rx frequency display** ("Ident + Rx freq." only). After 2 s on the channel number, the head shows the channel's Rx frequency two characters at a time (147.450 → `14 47 7␣ ␣4 45 50`, 0.5 s each), then the channel again, in a loop.
+
+Details, build commands and the bench-test checklist: `fork/README.md`.
+
+### Designs not implemented (13.1–13.4)
+
+> **Status: not implemented.** 13.1–13.4 are designs only. No image, factory or experimental, contains them.
+
+The easiest way to implement one is as a new feature in the fork (`fork/`, see `fork/README.md`). The fork is a re-assemblable source of the master: new code goes in the free area, and `build.py` checks that the stock build still equals the master. For a small one-off change, a patch tool in the style of `patch_startup_msg.py` also works:
 
 * verify the original bytes;
 * write a patched copy of the master;
 * put new code in the empty EPROM area 0x15AF–0x1B3F. The signature-sample bytes 0x15CC, 0x19CC and 0x1ACC only need avoiding if 0x1F65 is not recomputed afterwards; fm900gen, FM900.EXE and the fork's `build.py` always recompute it;
 * use the patched master with `fm900gen.py --master-file`.
 
-All would be untested on hardware until burned.
+Either way, the result is untested on hardware until burned.
 
-### 13.0 Implemented in the fork (FM92R)
-
-`fork/` adds a start-up `00` plus Morse callsign on the beep tone (`$29.7` enables the ~600 Hz tone that `uart_bit` makes on `$29.4`; the key beep uses it). It also adds the Rx frequency display: After 2 s on the channel number, the head shows the channel's Rx frequency two characters at a time (147.450 → `14 47 7␣ ␣4 45 50`, 0.5 s each), then the channel again, in a loop. The radio image must be built with `fork/mkradio.py` or Web FPP's Firmware menu, which fill the callsign and frequency tables. See `fork/README.md`.
-
-### 13.1 Duplex / talk-around on/off key (FM92R and FM92L)
+### 13.1 Duplex / talk-around on/off key (FM92R and FM92L) — not implemented
 
 **Goal:** one function key that toggles between normal repeater operation and transmitting
 on the receive frequency.
@@ -689,7 +703,7 @@ on the receive frequency.
 * **Check:** C/R / CTCSS behaviour and the PA power windows are unaffected, because power still comes from byte 5.
 * **Alternative with no patch:** program pairs of channels (repeater and simplex), ideally 10 apart, and use the `tens` key.
 
-### 13.2 Bank switching from the radio (FM92R only)
+### 13.2 Bank switching from the radio (FM92R only) — not implemented
 
 **Goal:** select 27128/27256 banks (§12.3) from a function key instead of an external switch.
 
@@ -706,7 +720,7 @@ on the receive frequency.
   * On a true cold start, bank 0 is selected (pull-down plus port reset).
 * **Display.** Optionally show `b0`/`b1` on the head when switching, reusing the `patch_startup_msg.py` display code.
 
-### 13.3 PC / tablet control through the head interface (FM92R, no firmware change)
+### 13.3 PC / tablet control through the head interface (FM92R, no firmware change) — not implemented
 
 **Goal:** a PC or tablet emulates the CU91R control head on the radio's head link.
 
@@ -730,7 +744,7 @@ on the receive frequency.
   * Optionally an ESP32 bridge on the wire serving a web page or Bluetooth link for a tablet.
 * **Living with a real head.** Listening in parallel with a real head is safe. Sending while the head is connected risks collisions on the single wire, so either disconnect the head or only send when the line is idle.
 
-### 13.4 Other gaps
+### 13.4 Other gaps — not implemented
 
 | Item | Notes |
 |---|---|
