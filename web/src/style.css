@@ -119,6 +119,12 @@ small { color: var(--muted); font-weight: normal; }
   border-radius: 4px; padding: 4px 0; min-width: 40px; text-align: center; box-shadow: 0 1px 0 var(--border); vertical-align: middle; }
 .pill { font: 600 11px/1 var(--sans); background: var(--surface-2); border: 1px solid var(--border); border-radius: 99px; padding: 3px 7px; color: var(--muted); }
 .pill.bad { color: var(--bad); border-color: var(--bad); }
+/* Build tab drawn as a filled accent button, so it stands out from the other tabs */
+.tabs button.tab-build { align-self: center; margin: 0 6px; padding: 6px 14px; border: 0; border-radius: 6px;
+  background: var(--accent); color: var(--accent-ink); }
+.tabs button.tab-build:hover { background: var(--accent); color: var(--accent-ink); filter: brightness(1.08); }
+.tabs button.tab-build.active { color: var(--accent-ink); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.tabs button.tab-build .dot { box-shadow: 0 0 0 1.5px var(--accent-ink); }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); }
 

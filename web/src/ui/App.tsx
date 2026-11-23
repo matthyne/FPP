@@ -203,7 +203,7 @@ export function App() {
 
       <nav class="tabs" role="tablist">
         {TABS.map(([id, label]) => (
-          <button role="tab" aria-selected={tab === id} class={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
+          <button role="tab" aria-selected={tab === id} class={`${tab === id ? 'active' : ''}${id === 'build' ? ' tab-build' : ''}`} onClick={() => setTab(id)}>
             {label}
             {id === 'channels' && <span class="pill">{nch}</span>}
             {id === 'build' && <span class={`dot ${a.img ? 'ok' : 'bad'}`} />}
