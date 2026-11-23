@@ -214,7 +214,8 @@ export function App() {
           <button role="tab" aria-selected={tab === id} class={`${tab === id ? 'active' : ''}${id === 'build' ? ' tab-build' : ''}`} onClick={() => setTab(id)}>
             {label}
             {id === 'channels' && <span class="pill">{nch}</span>}
-            {id === 'build' && <span class={`dot ${a.img ? 'ok' : 'bad'}`} />}
+            {id === 'build' && <span class={`bstate ${a.img ? 'is-ok' : 'is-bad'}`} title={a.img ? 'Ready: the EPROM image builds' : `Not ready: ${status ?? 'nothing to build yet'}`}>
+              <Icon name={a.img ? 'ok' : 'notOk'} size={12} />{a.img ? 'READY' : 'NOT READY'}</span>}
           </button>
         ))}
         {buttons && (
