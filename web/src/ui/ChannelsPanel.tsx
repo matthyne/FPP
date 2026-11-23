@@ -132,11 +132,11 @@ export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport
       <div class="toolbar">
         <button class="primary" onClick={addRow}>+ Channel</button>
         <button onClick={() => setDialog('fill')}>Fill range…</button>
-        <button onClick={() => setDialog('plans')} title="Built-in channel plans, e.g. UHF CB">Channel plans…</button>
         <button onClick={() => setDialog('import')} title="CSV from CHIRP, RepeaterBook, RadioReference or a spreadsheet">Import CSV / paste…</button>
         <button onClick={renumber} title="Number the rows 1, 2, 3… in their current order">Renumber</button>
         <button onClick={sortByNum}>Sort by Ch</button>
         <span class="count">{a.chans.length} / {a.nmax} channels</span>
+        <button onClick={() => setDialog('plans')} title="Built-in channel plans, e.g. UHF CB">Channel plans…</button>
       </div>
       {selected.length > 0 && (
         <div class="toolbar selbar">
