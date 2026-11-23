@@ -10,7 +10,7 @@ This directory holds the original DOS **Philips Field Personality Programmer**:
 It also holds a Linux replacement for the image-building part:
 
 * **`fm900gen.py`**: builds the 8 KB 2764 EPROM image for FM91 and FM92 radios from a list of frequencies. It is Python 3 with no dependencies.
-* **`web/`**: the same builder as **Web FPP (FM900 CPS)**, a web CPS that runs in the browser: a channel grid, HW/SW code menus, scan and key setup, `.BIN` download, `.JOB`/`.CHL`/CSV import and export, and read-back of an existing `.BIN`. See [Web FPP](#web-fpp-fm900-cps).
+* **`web/`**: the same builder as **Web FPP (FM900 CPS)**, a web CPS that runs in the browser: a channel grid, HW/SW code menus, scan and key setup, `.BIN` download, `.JOB`/`.CHL`/CSV import and export, a printable one-page A4 channel cheat sheet (PDF), and read-back of an existing `.BIN`. See [Web FPP](#web-fpp-fm900-cps).
 * **`docs/`**: reference manuals and notes (FM93 service manual, FM92 guides). See `docs/README.md`. **Converting an A-band FM92 to 2 m:** see `docs/A-BAND-TO-2M.md`.
 * **`STM900/`**: plans for replacing the radio's 146805E2 CPU and EPROM with an STM32 running new open-source firmware. Planning only so far; see `STM900/README.md`.
 * **`FM900_FORMAT.md`**: full documentation of FPP.EXE, FM900.EXE, the job file formats, the hardware/software codes, and the EPROM layout.
@@ -138,7 +138,7 @@ Options:
   * Any table with a header row. Columns are matched by name and can be remapped in the dialog.
 
   The dialog has short guides for getting a list out of RadioReference, RepeaterBook, CHIRP and spreadsheets. The preview marks rows it can't import: non-FM modes such as DMR, P25 and D-STAR, and frequencies needing more than 4 decimals. DCS codes are dropped with a note, because the FM900 only does CTCSS. CHIRP's 0-based memory numbers are shifted to start at 1.
-* **Save** writes a `.json` project. **Export JOB/CHL** writes files FM900.EXE can open. **Export CSV** writes the README format, with a trailing `name` column that `fm900gen.py` ignores.
+* **Save** writes a `.json` project. **Export JOB/CHL** writes files FM900.EXE can open. **Export CSV** writes the README format, with a trailing `name` column that `fm900gen.py` ignores. **Cheat sheet (PDF)** downloads a one-page A4 PDF to print: a header with the job name, band, control/spacing, signalling, HW/SW codes, master, checksum, build date and (if modified) the firmware and callsign, then channel number, Rx MHz, Tx MHz (grey when simplex, `Rx only` for receive-only) and name for every record in grid order. It switches between one, two and three columns and shrinks the type so up to 180 records fit; long names are cut with an ellipsis, and rows with errors are left out (the footer says how many).
 * Work is kept in the browser automatically, with undo/redo.
 * The top-bar photo of the FM900 front panel is from [MWRS](https://www.mwrs.org.au/).
 * Colour themes. The **Theme** menu in the top bar picks System (follows the OS setting), Light, Dark, FPP Blue (the DOS programmer's blue screens), Amber and Green screen (phosphor terminals), Slate or High contrast. The choice is remembered in the browser.
@@ -151,7 +151,7 @@ Developing:
 cd web
 npm install
 npm run dev        # http://localhost:5173/FPP/
-npm test           # golden jobs, ~3000 random cases vs fm900gen.py, BIN read-back, CSV import, channel plans
+npm test           # golden jobs, ~3000 random cases vs fm900gen.py, BIN read-back, CSV import, channel plans, cheat-sheet PDF
 npm run build      # static site in web/dist
 ```
 

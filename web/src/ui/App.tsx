@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { analyze } from '../core/analyze';
+import { cheatSheet, sheetEntries } from '../core/cheatsheet';
 import { formatChannels } from '../core/channels';
 import { FM900Error, readChl, readJob, writeChl, writeJob } from '../core/fm900';
 import { Firmware, Project, Row, channelToRow, fromProject, isBlank, loadProjectJson, newProject } from '../core/project';
@@ -142,6 +143,12 @@ export function App() {
       fail(e);
     }
   };
+  const exportSheet = () => {
+    const { entries, skipped } = sheetEntries(project);
+    if (!entries.length) return notify('No valid channels to put on the cheat sheet', true);
+    download(`${safeName(project.name)}-CH.pdf`, cheatSheet(project, a), 'application/pdf');
+    notify(`Saved ${safeName(project.name)}-CH.pdf${skipped ? ` (${skipped} row${skipped === 1 ? '' : 's'} with errors left out)` : ''}`);
+  };
   const saveJson = () =>
     download(`${safeName(project.name)}.fm900.json`, JSON.stringify(project, null, 1), 'application/json');
   const newProj = () => {
@@ -179,6 +186,7 @@ export function App() {
           <button onClick={saveJson} title="Save the whole project as JSON">Save</button>
           <button onClick={exportJob} title="Write .JOB + .CHL for the Original FPP">Export JOB/CHL</button>
           <button onClick={exportCsv}>Export CSV</button>
+          <button onClick={exportSheet} title="One-page A4 PDF: channel, Rx, Tx and name, with the radio details">Cheat sheet (PDF)</button>
           <span class="sep" />
           <button onClick={doUndo} disabled={!undo.current.length} title="Undo (Ctrl+Z)">Undo</button>
           <button onClick={doRedo} disabled={!redo.current.length} title="Redo (Ctrl+Y)">Redo</button>
