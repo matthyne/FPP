@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { analyze } from '../core/analyze';
 import { cheatSheet, sheetEntries } from '../core/cheatsheet';
+import { headButtons } from '../core/codes';
 import { formatChannels } from '../core/channels';
 import { FM900Error, readChl, readJob, writeChl, writeJob } from '../core/fm900';
 import { Firmware, Project, Row, channelToRow, fromProject, isBlank, loadProjectJson, newProject } from '../core/project';
@@ -167,6 +168,7 @@ export function App() {
   };
 
   const status = a.codeError ?? a.buildError;
+  const buttons = headButtons(project, a.defaultKeys);
   const nch = a.chans.length;
 
   return (
@@ -207,6 +209,11 @@ export function App() {
             {id === 'build' && <span class={`dot ${a.img ? 'ok' : 'bad'}`} />}
           </button>
         ))}
+        {buttons && (
+          <div class="headkeys" aria-label="FM92 head buttons" title={`FM92 head buttons (${project.keys ? 'your key override' : 'Original FPP defaults'}). Change them on the Scan & Keys tab.`}>
+            {buttons.map(([b, f]) => <span class="hk"><span class="kbtn">{b}</span>{f}</span>)}
+          </div>
+        )}
       </nav>
 
       <main class="main">

@@ -111,6 +111,12 @@ small { color: var(--muted); font-weight: normal; }
   color: var(--muted); font-weight: 600; white-space: nowrap; display: flex; gap: 6px; align-items: center; }
 .tabs button:hover { color: var(--text); background: none; }
 .tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
+/* FM92 head buttons summary, right end of the tab bar (App.tsx); .kbtn = key name as a button, like the cheat sheet */
+.headkeys { margin-left: auto; display: flex; align-items: center; gap: 4px 12px; padding: 0 4px 0 16px; font-size: 12px;
+  color: var(--muted); white-space: nowrap; }
+.headkeys .hk { display: flex; align-items: center; gap: 5px; }
+.kbtn { display: inline-block; font: 700 10px/1 var(--sans); letter-spacing: 0.04em; color: var(--surface); background: var(--text);
+  border-radius: 4px; padding: 4px 0; min-width: 40px; text-align: center; box-shadow: 0 1px 0 var(--border); vertical-align: middle; }
 .pill { font: 600 11px/1 var(--sans); background: var(--surface-2); border: 1px solid var(--border); border-radius: 99px; padding: 3px 7px; color: var(--muted); }
 .pill.bad { color: var(--bad); border-color: var(--bad); }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }

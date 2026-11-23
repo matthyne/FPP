@@ -94,7 +94,7 @@ export function ScanKeysPanel({ p, a, update }: { p: Project; a: Analysis; updat
             <div class="keys">
               {[1, 2, 4, 7].map((k, j) => (
                 <label class="field">
-                  <span class="lab">{HEAD_BUTTONS[j]} button <small>(key {k})</small> {a.defaultKeys && <small>(default: {KEY_FUNCS[a.defaultKeys[j]] ?? a.defaultKeys[j]})</small>}</span>
+                  <span class="lab"><span class="kbtn">{HEAD_BUTTONS[j]}</span> button <small>(key {k})</small> {a.defaultKeys && <small>(default: {KEY_FUNCS[a.defaultKeys[j]] ?? a.defaultKeys[j]})</small>}</span>
                   <select disabled={p.keys === null} value={keys[j]}
                     onChange={(e) => update((q) => ({ ...q, keys: (q.keys ?? keys).map((x, m) => (m === j ? +(e.target as HTMLSelectElement).value : x)) }))}>
                     {KEY_FUNCS.map((f, v) => <option value={v}>{v} · {f} — {KEY_HELP[f]}</option>)}
