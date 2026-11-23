@@ -899,7 +899,7 @@ All count down to below zero (bit 7 = expired). Rates in §4.1.
 |---|---|---|
 | `$55` | odd tick (~0.83 ms) | synthesiser settle after a load: `$11` (~14 ms), then `tx_synth_settled` / `rx_synth_settled` |
 | `$56` | odd tick | squelch / scan dwell (`squelch_open_test`, `scan_task`) |
-| `$57`, `$58` | 27 ms | not used outside `soft_timers` (spare). The fork (`fork/`) uses `$57` (frequency display) and `$58` (start-up Morse) |
+| `$57`, `$58` | 27 ms | not used outside `soft_timers` (spare). The fork (`fork/`) uses `$57` (frequency display); `$58` is still spare (the start-up Morse times itself from the tick counter `$28`, bit 5 = 13.3 ms) |
 | `$59` | 27 ms | key hold / alert-tone toggle |
 | `$5A` | 27 ms | head `$46` auto-release, 1.5 s (§6.2) |
 | `$5B` | 27 ms | head PTT `$44` auto-release, 1.5 s (§6.2) |

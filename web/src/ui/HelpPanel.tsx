@@ -49,8 +49,8 @@ export function HelpPanel() {
         <ul>
           <li><b>Factory (Original FPP):</b> the factory master, exactly as the Original FPP builds it.</li>
           <li><b>Start-up ident:</b> at switch-on the head shows <code>00</code> while the radio sends the <b>start-up Morse
-            callsign</b> (e.g. VK2FN) on its key-beep tone at 15 wpm, then the channel. With no callsign it shows <code>00</code> for
-            1 s. The ident takes a few seconds (VK2FN about 5.4 s); keys pressed meanwhile are ignored.</li>
+            callsign</b> (e.g. VK2FN) on its key-beep tone at 18 wpm, then the channel. With no callsign it shows <code>00</code> for
+            1 s. The ident takes a few seconds (VK2FN about 4.5 s); keys pressed meanwhile are ignored.</li>
           <li><b>Ident + Rx freq.:</b> the start-up ident, plus: after the channel number has been on the head for 2 s, the head shows
             the channel's Rx frequency two characters at a time, 0.5 s each, with the display blanked for 0.5 s before and after it,
             then the channel number again, in a loop. 147.450 MHz shows <code>(blank) 14 47 "7 " " 4" 45 50 (blank)</code> (the point

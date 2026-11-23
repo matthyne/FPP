@@ -39,13 +39,12 @@ MO_IDX          equ     $b7     ; Morse table index (start-up only)
 MO_TMP          equ     $b6
 
 FQ_TIMER        equ     $57     ; spare 27 ms soft timer (FIRMWARE.md §16.2)
-MO_TIMER        equ     $58     ; spare 27 ms soft timer (start-up only)
 T_CHAN          equ     74      ; 75 x 26.6 ms = 2.0 s
 T_STEP          equ     18      ; 19 x 26.6 ms = 0.51 s
 
 MO_MAGIC        equ     $1978   ; "MOR1": the tools check this before writing the callsign
 MO_TAB          equ     $197c   ; 48 bytes, up to FQ_MAGIC
-MO_UNIT         equ     3       ; Morse unit = 3 x 26.6 ms = 80 ms (15 wpm)
+MO_UNIT         equ     5       ; Morse unit = 5 x 13.3 ms = 66.5 ms (18 wpm)
 FQ_MAGIC        equ     $19ac   ; "FQT1": mkradio.py checks this before filling the table
 FQ0             equ     $19b0
 FQ1             equ     FQ0+100
@@ -102,8 +101,11 @@ fq_c1:  add     #$30
 ; $29.7 is set). Then the normal start-up carries on and shows the channel.
 ; With an empty table, "00" is shown for 1 s and there is no sound.
 ;
+; Speed 18 wpm: 1 unit = 5 flips of bit 5 of the timer ISR's tick counter $28
+; (it flips every 32 ticks of ~415 us = 13.3 ms) = 66.5 ms.
+;
 ; This blocks for the length of the ident (VK2FN: 68 units incl. the final
-; pause = 5.4 s). The
+; pause = 4.5 s). The
 ; main loop isn't running, so no keep-alive poll ($E4) is sent and nothing can
 ; time out; keys pressed on the head meanwhile are ignored.
 ;
@@ -117,7 +119,7 @@ intro:
         clr     MO_IDX
         lda     MO_TAB
         bne     mo_next
-        lda     #12                     ; no callsign: hold "00" for 1 s
+        lda     #15                     ; no callsign: hold "00" for 1 s
         bra     mo_wait
 mo_next:
         ldx     MO_IDX
@@ -139,14 +141,20 @@ mo_g1:  lda     #2                      ; letter space: 1 + 2 = 3 units
 mo_g2:  bsr     mo_wait
         bra     mo_next
 mo_end: lda     #6                      ; a short pause before the channel shows
-; wait A Morse units (A x MO_UNIT x 26.6 ms) on soft timer MO_TIMER
+; wait A Morse units (A x MO_UNIT x 13.3 ms, A <= 51), timed from the tick counter $28
 mo_wait:
         sta     MO_TMP
         lsla
-        add     MO_TMP                  ; x 3 (MO_UNIT)
-        deca
-        sta     MO_TIMER
-mo_w1:  brclr   7,MO_TIMER,mo_w1
+        lsla
+        add     MO_TMP                  ; x 5 (MO_UNIT)
+        sta     MO_TMP                  ; = number of 13.3 ms steps
+mo_w0:  ldx     $28                     ; X = tick counter now
+mo_w1:  txa
+        eor     $28
+        and     #$20                    ; bit 5 flips every 32 ticks
+        beq     mo_w1
+        dec     MO_TMP
+        bne     mo_w0
         rts
 
         .endif

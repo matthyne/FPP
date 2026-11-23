@@ -154,7 +154,7 @@ class FreqTable(unittest.TestCase):
 
 
 class Intro(unittest.TestCase):
-    """The start-up "00" and Morse ident, run in the simulator with a soft timer."""
+    """The start-up "00" and Morse ident, run in the simulator with the tick counter $28."""
 
     def run_intro(self, callsign, variant='enhanced'):
         with tempfile.TemporaryDirectory() as d:
@@ -175,10 +175,9 @@ class Intro(unittest.TestCase):
 
         def on_step(cpu):
             t[0] += 1
-            if t[0] % 25 == 0:             # one 27 ms soft-timer tick every 25 instructions
+            if t[0] % 3 == 0:              # one ~415 us timer tick ($28 += 1) every 3 instructions
                 t[1] += 1
-                for a in (0x57, 0x58):
-                    cpu.mem[a] = (cpu.mem[a] - 1) & 0xFF
+                cpu.mem[0x28] = (cpu.mem[0x28] + 1) & 0xFF
             on = cpu.mem[0x29] >> 7
             if not tone or tone[-1][1] != on:
                 tone.append((t[1], on))
@@ -188,8 +187,8 @@ class Intro(unittest.TestCase):
         return sent, tone, t[1]
 
     def morse_from(self, tone):
-        """Tone changes -> Morse text, in units of 3 ticks."""
-        units = [(round((b[0] - a[0]) / 3), a[1]) for a, b in zip(tone, tone[1:])]
+        """Tone changes -> Morse text, in units of 160 ticks (66.5 ms)."""
+        units = [(round((b[0] - a[0]) / 160), a[1]) for a, b in zip(tone, tone[1:])]
         rev = {v: k for k, v in mkradio.MORSE.items()}
         text, letter = '', ''
         for n, on in units:
@@ -205,9 +204,11 @@ class Intro(unittest.TestCase):
             self.assertEqual(sent, [0xAA, 0x80, 0x30, 0x82, 0x30], variant)   # start-up, then "00"
             text, units = self.morse_from(tone)
             self.assertEqual(text, 'VK2FN', variant)
-            self.assertTrue(all(n in (1, 3) for n, _ in units), units)
+            first = next(i for i, (_, on) in enumerate(units) if on)          # skip the "00" send before the first tone
+            self.assertTrue(all(n in (1, 3) for n, on in units[first:] if on), units)
+            self.assertTrue(all(n in (1, 3, 7) for n, on in units[first:] if not on), units)
             self.assertEqual(tone[-1][1], 0)                                     # tone off at the end
-            self.assertAlmostEqual(ticks / 3, 59 + 3 + 6, delta=2)              # 59 units + last letter gap + pause
+            self.assertAlmostEqual(ticks / 160, 59 + 3 + 6, delta=1)              # 59 units + last letter gap + pause
 
     def test_word_space(self):
         text, units = self.morse_from(self.run_intro('DE VK2FN')[1])
@@ -218,7 +219,7 @@ class Intro(unittest.TestCase):
         sent, tone, ticks = self.run_intro('')
         self.assertEqual(sent, [0xAA, 0x80, 0x30, 0x82, 0x30])
         self.assertEqual([on for _, on in tone], [0])                           # never on
-        self.assertAlmostEqual(ticks / 3, 12, delta=1)                          # "00" for 1 s
+        self.assertAlmostEqual(ticks * 0.415e-3, 1.0, delta=0.03)               # "00" for 1 s
 
     def test_morse_encoding(self):
         self.assertEqual(mkradio.morse_bytes('VK2FN').hex(), '0101010380030103800101030303800101030180030180' + '00')

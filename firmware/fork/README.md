@@ -89,10 +89,13 @@ callsign, `00` stays for 1 s and there is no sound.
   is set. The key beep holds it for about 80 ms. Whether the tone can be
   heard this early in start-up, before the receiver is unmuted, has to be
   checked on the radio.
-* **Speed.** 15 wpm: 1 unit = 3 soft-timer ticks of 26.6 ms = 80 ms
-  (`MO_UNIT`). Dit = 1 unit, dah = 3, the gap between elements 1, between
-  letters 3, and between words 7. VK2FN takes 68 units including the final
-  pause, about 5.4 s.
+* **Speed.** 18 wpm: 1 unit = 66.5 ms. The 27 ms soft timers only allow
+  80 ms (15 wpm) or 53 ms (22.6 wpm), so `mo_wait` counts flips of bit 5 of
+  the timer ISR's tick counter `$28` instead. It flips every 32 ticks of
+  ~415 µs, which is 13.3 ms, and 1 unit = 5 flips (`MO_UNIT`). Dit = 1 unit,
+  dah = 3, the gap between elements 1, between letters 3, and between words 7.
+  VK2FN takes 68 units including the final pause, about 4.5 s. (Before
+  2026-11-23 it was 15 wpm on soft timer `$58`.)
 * **Blocking.** It blocks start-up for that long. The main loop isn't
   running, so no keep-alive poll is sent and nothing times out. Keys pressed
   on the head meanwhile are ignored.
@@ -111,7 +114,7 @@ callsign, `00` stays for 1 s and there is no sound.
   and then the channel (or, on an unprogrammed channel, it keeps the `00`).
 * **Hook.** The start-up hook (7 bytes): `clr $10 ; lda #$aa ; jsr
   head_send` becomes `jsr fork_init` + 4 NOPs. `fork_init` sends the `$AA`
-  itself, then runs the ident. RAM `$B6`–`$B7` and soft timer `$58`.
+  itself, then runs the ident. RAM `$B6`–`$B7`; timing from the tick counter `$28` (read only).
 
 ## Feature: Rx frequency on the control head (FREQ)
 
@@ -187,7 +190,7 @@ original instructions put back (tone on, scan parked) and with NOHOOK (neither).
 |---|---|---|
 | Morse table index / scratch | external RAM `$B7` / `$B6` | INTRO |
 | Frequency display state | external RAM `$B8`–`$BD` | FREQ |
-| Soft timer (27 ms) | `$58` (spare in stock) | INTRO |
+| Tick counter (read only, bit 5 = 13.3 ms) | `$28` | INTRO |
 | Soft timer (27 ms) | `$57` (spare in stock) | FREQ |
 | Callsign table | `$1978` "MOR1" + 48 bytes at `$197C` | INTRO, filled by mkradio / Web FPP |
 | Frequency table | `$19AC` "FQT1" + 4 × 100 bytes at `$19B0` | FREQ, filled by mkradio / Web FPP |
@@ -294,3 +297,4 @@ firmware (`stackdepth.py`, checked by `build.py`).
 | `4b694e9` | FREQ: 0.5 s blank before and after the frequency. |
 | (2026-11-23) | First hardware report: an image burned and worked on an FM92R. Still experimental. |
 | (2026-11-23) | NOHOOK in both variants: scan ignores the handset hook (no off-hook scan stop, no continuous tone). |
+| (2026-11-23) | INTRO: Morse ident 15 → 18 wpm, timed from the tick counter `$28`; soft timer `$58` is spare again. |
