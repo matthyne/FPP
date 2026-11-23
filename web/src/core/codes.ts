@@ -1,5 +1,6 @@
 // Hardware / software code digit tables (FM900_FORMAT.md §3), for the code editor UI.
 
+import { KEY_FUNCS } from './fm900';
 import { Project, loadProjectJson } from './project';
 import ham2mJson from './examples/2m-channelised.json';
 
@@ -70,4 +71,22 @@ export const EXAMPLES: Example[] = [
 
 export function describeHw(hw: string): string[] {
   return HW_DIGITS.map((d, i) => `${d.label}: ${d.options.find(([k]) => k === hw[i])?.[1] ?? `? (${hw[i] ?? ''})`}`);
+}
+
+// FM92 control-head buttons for key codes 1/2/4/7 (0x1F58-0x1F5B). Button names from the
+// VK2DOT FM92E guide (UP/DOWN, AUX, SEND); which code each sends is inferred from FM900.EXE's
+// defaults: up/down on 1/2, scan/monitor/dial on 4 (AUX), send selcall on 7 (SEND).
+export const HEAD_BUTTONS = ['UP', 'DOWN', 'AUX', 'SEND'];
+
+export const KEY_LABELS: Record<string, string> = {
+  none: 'Not used', up: 'Channel up', down: 'Channel down', tens: 'Channel tens (next 10)',
+  units: 'Channel units', scan: 'Scan on/off', monitor: 'Monitor on/off', selcall: 'Send selcall', dial: 'Selcall dial mode',
+};
+
+/** [button, function] for the FM92 head (the override, else the Original FPP defaults); null if not an FM92 or unknown. */
+export function headButtons(p: Project, defaultKeys: number[] | null | undefined): [string, string][] | null {
+  if (p.hw[1] !== '2') return null;
+  const keys = p.keys ?? defaultKeys;
+  if (!keys) return null;
+  return HEAD_BUTTONS.map((b, j) => [b, KEY_LABELS[KEY_FUNCS[keys[j]]] ?? `code ${keys[j]}`]);
 }

@@ -2,7 +2,7 @@
 // Rx, Tx and name for every record, in record order, in 1–3 columns sized to fit the page.
 import { Analysis } from './analyze';
 import { Segment, splitCallsigns } from './callsign';
-import { describeHw } from './codes';
+import { describeHw, headButtons } from './codes';
 import { Font, PdfPage, textWidth } from './pdf';
 import { Project, isBlank, rowToChannel } from './project';
 import { VERSION_LABEL } from '../version';
@@ -90,33 +90,64 @@ export function sheetLayout(n: number, width: number, height: number): SheetLayo
   return { cols, perCol, lineH, fontSize, nameW };
 }
 
-export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder'>): Uint8Array {
+/** Lay out `items` joined by a separator, wrapping onto new lines so no line is wider than `maxW`. */
+function flow(items: string[], font: Font, size: number, maxW: number): string[] {
+  const sep = '   ·   ';
+  const lines: string[] = [];
+  let cur = '';
+  for (const it of items) {
+    const next = cur ? cur + sep + it : it;
+    if (cur && textWidth(next, font, size) > maxW) { lines.push(cur); cur = it; } else cur = next;
+  }
+  if (cur) lines.push(cur);
+  return lines.map((l) => fit(l, font, size, maxW));
+}
+
+export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'defaultKeys'>): Uint8Array {
   const page = new PdfPage();
   const W = page.width - 2 * MARGIN;
   const { entries, skipped } = sheetEntries(p);
   const hw = describeHw(p.hw);
   const model = p.hw[1] === '1' ? 'FM91' : p.hw[1] === '2' ? 'FM92' : p.hw[1] === '3' ? 'FM93' : 'FM9?';
 
+  // Head buttons box, top right (FM92 only); the header text wraps to the left of it.
+  const buttons = headButtons(p, a?.defaultKeys);
+  const BOX_W = 150, boxX = MARGIN + W - BOX_W, boxRow = 12.5;
+  const leftW = buttons ? W - BOX_W - 14 : W;
+  let boxBottom = MARGIN;
+  if (buttons) {
+    const h = 16 + buttons.length * boxRow + 3;
+    page.rect(boxX, MARGIN, BOX_W, h, 0.93);
+    page.text(boxX + 7, MARGIN + 11, 'Head buttons', 'Helvetica-Bold', 8, 0.3);
+    buttons.forEach(([btn, fn], i) => {
+      const ry = MARGIN + 16 + i * boxRow;
+      page.rect(boxX + 6, ry + 1, 34, boxRow - 2, 0.15);              // button name reversed out, like the channel badges
+      page.text(boxX + 6 + (34 - textWidth(btn, 'Helvetica-Bold', 7.5)) / 2, ry + 9, btn, 'Helvetica-Bold', 7.5, 1);
+      page.text(boxX + 46, ry + 9, fit(fn, 'Helvetica', 8.5, BOX_W - 50), 'Helvetica', 8.5);
+    });
+    boxBottom = MARGIN + h;
+  }
+
   // Header
   let y = MARGIN + 14;
-  page.text(MARGIN, y, `${p.name.trim() || 'NEWJOB'}: Philips ${model} channels`, 'Helvetica-Bold', 16);
-  y += 15;
-  page.text(MARGIN, y, [hw[2], hw[3], hw[5]].join('   ·   '), 'Helvetica', 9);
-  y += 12;
-  const info = [`HW ${p.hw}`, `SW ${p.sw}`];
+  page.text(MARGIN, y, fit(`${p.name.trim() || 'NEWJOB'}: Philips ${model} channels`, 'Helvetica-Bold', 16, leftW), 'Helvetica-Bold', 16);
+  y += 3;
+  const info = [hw[2], hw[3], hw[5], `HW ${p.hw}`, `SW ${p.sw}`];
   if (a?.builder) info.push(`Master ${a.builder.masterName()}`);
   if (a?.img) info.push(`Checksum ${a.img[0x1F64].toString(16).toUpperCase().padStart(2, '0')}`);
-  page.text(MARGIN, y, info.join('   ·   '), 'Helvetica', 9);
-  y += 12;
-  const more = [`Build date ${p.date || today()}`, `${entries.length} channel${entries.length === 1 ? '' : 's'}`];
-  if (p.firmware && p.firmware !== 'standard') more.push(`Firmware: ${FW[p.firmware] ?? p.firmware}`);
-  if (p.firmware && p.firmware !== 'standard' && p.callsign?.trim()) more.push(`Callsign ${p.callsign.trim().toUpperCase()}`);
-  page.text(MARGIN, y, more.join('   ·   '), 'Helvetica', 9);
+  info.push(`Build date ${p.date || today()}`, `${entries.length} channel${entries.length === 1 ? '' : 's'}`);
+  if (p.firmware && p.firmware !== 'standard') info.push(`Firmware: ${FW[p.firmware] ?? p.firmware}`);
+  if (p.firmware && p.firmware !== 'standard' && p.callsign?.trim()) info.push(`Callsign ${p.callsign.trim().toUpperCase()}`);
+  for (const line of flow(info, 'Helvetica', 9, leftW)) {
+    y += 12;
+    page.text(MARGIN, y, line, 'Helvetica', 9);
+  }
   const comments = p.comments.map((c) => c.trim()).filter(Boolean);
   if (comments.length) {
     y += 12;
-    page.text(MARGIN, y, fit(comments.join(' / '), 'Helvetica', 9, W), 'Helvetica', 9, 0.3);
+    page.text(MARGIN, y, fit(comments.join(' / '), 'Helvetica', 9, leftW), 'Helvetica', 9, 0.3);
   }
+  y = Math.max(y, boxBottom - 4);
   y += 8;
   page.line(MARGIN, y, MARGIN + W, y, 1);
   y += 6;

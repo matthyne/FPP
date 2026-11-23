@@ -262,6 +262,9 @@ FM900.EXE always writes `01 02` to the first two keys (channel up/down). The thi
 5 (scan) if scanning is enabled (s6 > 0), or 6 (monitor) if variable mute is chosen; it gets 8
 if selcall is set up. The fourth key gets 7 if a selcall code is set.
 
+The FM92 head's buttons are UP, DOWN, AUX and SEND (VK2DOT FM92E guide, docs/). Matching those to
+FM900.EXE's defaults gives key 1 = UP, 2 = DOWN, 4 = AUX, 7 = SEND (inferred, not traced in the head).
+
 **Head commands (FM92R).** Bytes `$44–$4A` from the head:
 
 | Bytes | Meaning |

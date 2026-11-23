@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { analyze } from '../src/core/analyze';
 import { cheatSheet, sheetEntries, sheetLayout } from '../src/core/cheatsheet';
+import { headButtons } from '../src/core/codes';
 import { readChl, readJob } from '../src/core/fm900';
 import { pdfString } from '../src/core/pdf';
 import { Project, toProject } from '../src/core/project';
@@ -81,6 +82,22 @@ describe('cheat sheet PDF', () => {
   it('footer carries the Web FPP version from package.json', () => {
     expect(VERSION).toBe(JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8')).version);
     expect(latin1(cheatSheet(job('80CHCB')))).toContain(`Web FPP \\(FM900 CPS\\) ${VERSION_LABEL.replace(/[()]/g, '\\$&')}`);
+  });
+
+  it('head buttons box: FM92 only, defaults or override', () => {
+    const fm92 = job('2MHAM/2MHAM');
+    const a = analyze(fm92);
+    expect(headButtons(fm92, a.defaultKeys)?.map(([b]) => b)).toEqual(['UP', 'DOWN', 'AUX', 'SEND']);
+    expect(headButtons(fm92, a.defaultKeys)?.slice(0, 2).map(([, f]) => f)).toEqual(['Channel up', 'Channel down']);
+    let s = latin1(cheatSheet(fm92, a));
+    expect(s).toContain('(Head buttons) Tj');
+    expect(s).toContain('(AUX) Tj');
+    const over = { ...fm92, keys: [5, 6, 3, 4] };
+    s = latin1(cheatSheet(over, analyze(over)));
+    for (const f of ['Scan on/off', 'Monitor on/off', 'Channel tens \\(next 10\\)', 'Channel units']) expect(s).toContain(`(${f}) Tj`);
+    const fm91 = job('80CHCB');
+    expect(headButtons(fm91, analyze(fm91).defaultKeys)).toBeNull();
+    expect(latin1(cheatSheet(fm91, analyze(fm91)))).not.toContain('Head buttons');
   });
 
   it('pdfString escapes', () => {
