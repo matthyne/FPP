@@ -6,6 +6,7 @@ import { verifyChecksum } from '../core/fm900';
 import { Firmware, Project } from '../core/project';
 import type { Update } from './App';
 import { download, safeName } from './files';
+import { Icon } from './icons';
 import { EPROMS, EpromPart, eprom, expandImage } from '../core/eprom';
 
 /** Short description of an image address, from FM900_FORMAT.md §4. */
@@ -163,7 +164,8 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
             <input type="date" value={p.date} onInput={(e) => update((q) => ({ ...q, date: (e.target as HTMLInputElement).value }))} />
           </label>
           <label class="field">
-            <span class="lab">Firmware</span>
+            <span class={`lab labicon ${fw !== 'standard' ? 'exp' : ''}`}>
+              <Icon name={fw !== 'standard' ? 'heartPulse' : 'heart'} size={14} />Firmware</span>
             <select value={fw} onChange={(e) => {
               const v = (e.target as HTMLSelectElement).value as Firmware;
               update((q) => ({ ...q, firmware: v === 'standard' ? undefined : v }));
