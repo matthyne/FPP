@@ -235,12 +235,12 @@ export function App() {
       </main>
 
       <footer class="statusbar">
-        <span>{project.hw[1] === '1' ? 'FM91' : project.hw[1] === '2' ? 'FM92' : 'FM9?'}</span>
+        <span class="sbi" title="Radio model (from the hardware code)"><Icon name="radio" size={14} />{project.hw[1] === '1' ? 'FM91' : project.hw[1] === '2' ? 'FM92' : 'FM9?'}</span>
         {(() => {
           const exp = (project.firmware ?? 'standard') !== 'standard';
           const fwName = project.firmware === 'enhanced' ? 'Ident + Rx freq.' : 'Start-up ident';
           return (
-            <span class={`image ${exp ? 'exp' : ''}`} title={exp
+            <span class={`sbi ${exp ? 'exp' : ''}`} title={exp
               ? `Image: experimental FM92R firmware (${fwName}), built from ${a.builder?.masterName() ?? 'FM92R.BIN'} (Build tab)`
               : `Image: factory firmware, master ${a.builder ? a.builder.masterName() : '— (no valid hardware code)'}`}>
               <Icon name={exp ? 'flask' : 'factory'} size={14} />{exp ? 'Experimental' : 'Factory'}
@@ -248,9 +248,8 @@ export function App() {
           );
         })()}
         <span>{nch}/{a.nmax} ch</span>
-        {a.img && a.builder && <span>step {a.builder.step / 100} kHz</span>}
-        <span title={`EPROM: ${eprom(project.eprom).size / 1024} KB (change it on the Build tab)`} class="eprom"><Icon name="chip" size={14} />{eprom(project.eprom).part}</span>
-        {a.img && <span>sum {a.img[0x1F64].toString(16).padStart(2, '0').toUpperCase()}</span>}
+        {a.img && a.builder && <span class="sbi" title="Synthesiser step (channel raster)"><Icon name="step" size={14} />{a.builder.step / 100} kHz</span>}
+        <span title={`EPROM: ${eprom(project.eprom).size / 1024} KB (change it on the Build tab)`} class="sbi"><Icon name="chip" size={14} />{eprom(project.eprom).part}</span>
         <span class={`grow ${status ? 'bad' : 'ok'}`}>{status ? `⚠ ${status}` : '✓ ready to build'}</span>
         <span class="ver" title="Web FPP version (quote this when reporting a problem)">Web FPP {VERSION_LABEL}</span>
       </footer>
