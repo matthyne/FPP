@@ -21,4 +21,9 @@ export function splitCallsigns(s: string): Segment[] {
   return out;
 }
 
+/** QRZ.com lookup page for a callsign (portable/mobile suffixes such as /P are dropped). */
+export function qrzUrl(call: string): string {
+  return `https://www.qrz.com/db/${encodeURIComponent(call.split('/')[0].toUpperCase())}`;
+}
+
 export const hasCallsign = (s: string): boolean => splitCallsigns(s).some((g) => g.call);

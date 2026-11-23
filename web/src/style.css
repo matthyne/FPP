@@ -237,7 +237,9 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
 .namewrap { position: relative; display: inline-block; vertical-align: middle; }
 .namehl { position: absolute; inset: 0; display: flex; align-items: center; padding: 5px 6px; border: 1px solid transparent;
   white-space: pre; overflow: hidden; pointer-events: none; font: inherit; color: var(--text); }
-.namehl .call { color: var(--accent); font-weight: 700; }
+.namehl .call { color: var(--accent); font-weight: 700; pointer-events: auto; text-decoration: underline;
+  text-decoration-thickness: 1px; text-underline-offset: 2px; cursor: pointer; }
+.namehl .call:hover { text-decoration-thickness: 2px; }
 .namewrap.hascall:not(:focus-within) input.name { color: transparent; }
 .namewrap:focus-within .namehl { display: none; }
 

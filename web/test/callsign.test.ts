@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasCallsign, splitCallsigns } from '../src/core/callsign';
+import { hasCallsign, qrzUrl, splitCallsigns } from '../src/core/callsign';
 import { cheatSheet, fitName } from '../src/core/cheatsheet';
 import { newProject } from '../src/core/project';
 
@@ -18,6 +18,11 @@ describe('callsigns in names', () => {
       '146.500', 'Mt Ku-ring-gai', 'VK2', 'APRS 145.175', '2m', 'VK2RXX2', 'X VK2RXXXXX']) {
       expect(hasCallsign(s), s).toBe(false);
     }
+  });
+
+  it('QRZ links', () => {
+    expect(qrzUrl('VK2RXX')).toBe('https://www.qrz.com/db/VK2RXX');
+    expect(qrzUrl('vk3byy/m')).toBe('https://www.qrz.com/db/VK3BYY');
   });
 
   it('split is lossless', () => {
