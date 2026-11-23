@@ -37,6 +37,19 @@ export function region(addr: number, fm91: boolean): string {
   return 'firmware';
 }
 
+// The builder's VCO warnings keep the Original FPP wording (fm900.ts / fm900gen.py, checked by the
+// vector tests); this is the friendlier text shown on the Build tab.
+const VCO_SPAN: Record<string, string> = {
+  'Rx - Rx': 'the receive frequencies span',
+  'Tx - Tx': 'the transmit frequencies span',
+  'Rx - Tx': 'the receive and transmit frequencies together span',
+};
+export function vcoMessage(w: string): string {
+  const what = VCO_SPAN[w.slice(0, 7)] ?? 'the frequencies span';
+  return `Channels outside the factory range: ${what} more than the VCO's factory switching bandwidth. ` +
+    'The VCO / radio may require modification (re-tuning) to work on every channel.';
+}
+
 const hx = (n: number, w = 2) => n.toString(16).toUpperCase().padStart(w, '0');
 
 export function HexView({ img, orig: refImg, fm91, from, to }: { img: Uint8Array; orig?: Uint8Array; fm91: boolean; from: number; to: number }) {
@@ -113,7 +126,7 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
           ) : (
             <p class="msg bad">{a.codeError ?? a.buildError}</p>
           )}
-          {a.vcoWarnings.map((w) => <p class="msg warn">{w}! The radio may not operate correctly.</p>)}
+          {a.vcoWarnings.map((w) => <p class="msg warn" title={`Original FPP warning: ${w}`}>{vcoMessage(w)}</p>)}
           {p.sw.slice(11, 15) !== '0000' && <p class="msg warn">Selcall codes are set: the selcall tones are left at their defaults.</p>}
           {p.keys && <p class="msg info">Head function keys are overridden (not Original FPP behaviour).</p>}
           {a.img && a.enhanced && <p class="msg info">At switch-on the head shows “00”{p.callsign?.trim()
