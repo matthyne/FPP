@@ -3,26 +3,42 @@
 import { Analysis } from './analyze';
 import { Segment, splitCallsigns } from './callsign';
 import { describeHw, headButtons } from './codes';
-import { Font, PdfPage, textWidth } from './pdf';
+import { F_SCAN1, F_SCAN2, F_SCAN3 } from './fm900';
+import { Colour, Font, PdfPage, textWidth } from './pdf';
 import { Project, isBlank, rowToChannel } from './project';
 import { VERSION_LABEL } from '../version';
 
-export interface SheetEntry { num: string; rx: string; tx: string; name: string }
+/** `scan` = the scan groups (1-based) the channel is in; FM91 has 3 groups, FM92 2. */
+export interface SheetEntry { num: string; rx: string; tx: string; name: string; scan: number[] }
 
 /** Valid, non-blank rows in record order. Rows with errors are skipped (`skipped` counts them). */
 export function sheetEntries(p: Project): { entries: SheetEntry[]; skipped: number } {
   const entries: SheetEntry[] = [];
   let skipped = 0;
+  const groups = p.hw[1] === '1' ? [F_SCAN1, F_SCAN2, F_SCAN3] : [F_SCAN1, F_SCAN2];
   for (const r of p.rows) {
     if (isBlank(r)) continue;
     try {
       const c = rowToChannel(r);
-      entries.push({ num: String(c.num), rx: c.rx, tx: c.tx.startsWith('X') ? 'Rx only' : c.tx, name: (r.name ?? '').trim() });
+      entries.push({ num: String(c.num), rx: c.rx, tx: c.tx.startsWith('X') ? 'Rx only' : c.tx, name: (r.name ?? '').trim(),
+        scan: groups.flatMap((f, g) => (r.flags & f ? [g + 1] : [])) });
     } catch {
       skipped++;
     }
   }
   return { entries, skipped };
+}
+
+// Channel-number badge colours: black = not scanned, then one colour per scan group. They also
+// differ in lightness, so they stay distinguishable on a greyscale printout.
+export const BADGE_PLAIN: Colour = 0.15;
+export const SCAN_COLOURS: Colour[] = [[0.13, 0.42, 0.86], [0.90, 0.45, 0.02], [0.08, 0.50, 0.28]];
+
+/** A channel badge: one horizontal band per scan group, top to bottom (solid when 0 or 1 group), with the text centred in white. */
+function badge(page: PdfPage, x: number, y: number, w: number, h: number, scan: number[], text: string, font: Font, size: number, base: number): void {
+  if (!scan.length) page.rect(x, y, w, h, BADGE_PLAIN);
+  else scan.forEach((g, k) => page.rect(x, y + (k * h) / scan.length, w, h / scan.length, SCAN_COLOURS[g - 1]));
+  page.text(x + (w - textWidth(text, font, size)) / 2, base, text, font, size, 1);
 }
 
 const FW: Record<string, string> = {
@@ -113,18 +129,32 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   // Head buttons box, top right (FM92 only); the header text wraps to the left of it.
   const buttons = headButtons(p, a?.defaultKeys);
   const BOX_W = 150, boxX = MARGIN + W - BOX_W, boxRow = 12.5;
-  const leftW = buttons ? W - BOX_W - 14 : W;
+  const leftW = buttons || entries.some((e) => e.scan.length) ? W - BOX_W - 14 : W;
   let boxBottom = MARGIN;
-  if (buttons) {
-    const h = 16 + buttons.length * boxRow + 3;
+  // Legend rows: [badge text, badge groups (null = plain), description], under section titles.
+  const sections: [string, [string, number[] | null, string][]][] = [];
+  if (buttons) sections.push(['Head buttons', buttons.map(([b, f]) => [b, null, f])]);
+  const used = [...new Set(entries.flatMap((e) => e.scan))].sort();
+  if (used.length) {
+    const rows: [string, number[] | null, string][] = used.map((g) => [`${g}`, [g], `Scan group ${g}`]);
+    const multi = [...new Set(entries.filter((e) => e.scan.length > 1).map((e) => e.scan.join('+')))];
+    for (const m of multi) rows.push([m, m.split('+').map(Number), `In groups ${m.replace(/\+/g, ' and ')}`]);
+    rows.push(['', [], 'Not scanned']);
+    sections.push(['Channel number colour', rows]);
+  }
+  if (sections.length) {
+    let by = MARGIN;
+    const h = sections.reduce((t, [, rows]) => t + 16 + rows.length * boxRow, 0) + 3;
     page.rect(boxX, MARGIN, BOX_W, h, 0.93);
-    page.text(boxX + 7, MARGIN + 11, 'Head buttons', 'Helvetica-Bold', 8, 0.3);
-    buttons.forEach(([btn, fn], i) => {
-      const ry = MARGIN + 16 + i * boxRow;
-      page.rect(boxX + 6, ry + 1, 34, boxRow - 2, 0.15);              // button name reversed out, like the channel badges
-      page.text(boxX + 6 + (34 - textWidth(btn, 'Helvetica-Bold', 7.5)) / 2, ry + 9, btn, 'Helvetica-Bold', 7.5, 1);
-      page.text(boxX + 46, ry + 9, fit(fn, 'Helvetica', 8.5, BOX_W - 50), 'Helvetica', 8.5);
-    });
+    for (const [title, rows] of sections) {
+      page.text(boxX + 7, by + 11, title, 'Helvetica-Bold', 8, 0.3);
+      rows.forEach(([label, scan, desc], i) => {
+        const ry = by + 16 + i * boxRow;
+        badge(page, boxX + 6, ry + 1, 34, boxRow - 2, scan ?? [], label, 'Helvetica-Bold', 7.5, ry + 9);
+        page.text(boxX + 46, ry + 9, fit(desc, 'Helvetica', 8.5, BOX_W - 50), 'Helvetica', 8.5);
+      });
+      by += 16 + rows.length * boxRow;
+    }
     boxBottom = MARGIN + h;
   }
 
@@ -178,10 +208,9 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
       const ry = y + (i + 1) * L.lineH;
       if (i % 2) page.rect(x, ry, colW, L.lineH, 0.93);
       const by = ry + base;
-      // Channel number reversed out: white, centred on a dark badge.
+      // Channel number reversed out: white, centred on a badge coloured by scan group.
       const inset = L.lineH * 0.08;
-      page.rect(x, ry + inset, badgeW, L.lineH - 2 * inset, 0.15);
-      page.text(x + (badgeW - textWidth(e.num, 'Helvetica-Bold', fs)) / 2, by, e.num, 'Helvetica-Bold', fs, 1);
+      badge(page, x, ry + inset, badgeW, L.lineH - 2 * inset, e.scan, e.num, 'Helvetica-Bold', fs, by);
       page.text(x2, by, e.rx, 'Helvetica-Bold', fs);
       page.text(x3, by, e.tx, 'Helvetica', fs, e.tx === e.rx ? 0.45 : 0);
       if (L.nameW > 0 && e.name) {

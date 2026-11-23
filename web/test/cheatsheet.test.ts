@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { analyze } from '../src/core/analyze';
 import { cheatSheet, sheetEntries, sheetLayout } from '../src/core/cheatsheet';
 import { headButtons } from '../src/core/codes';
-import { readChl, readJob } from '../src/core/fm900';
+import { F_SCAN1, F_SCAN2, F_SCAN3, readChl, readJob } from '../src/core/fm900';
 import { pdfString } from '../src/core/pdf';
 import { Project, toProject } from '../src/core/project';
 import { VERSION, VERSION_LABEL } from '../src/version';
@@ -98,6 +98,24 @@ describe('cheat sheet PDF', () => {
     const fm91 = job('80CHCB');
     expect(headButtons(fm91, analyze(fm91).defaultKeys)).toBeNull();
     expect(latin1(cheatSheet(fm91, analyze(fm91)))).not.toContain('Head buttons');
+  });
+
+  it('scan groups colour the channel badges, with a legend', () => {
+    const p = job('2MHAM/2MHAM');
+    p.rows = [
+      { num: '1', rx: '146.5', tx: '', flags: F_SCAN1, ctcss: '' },
+      { num: '2', rx: '146.6', tx: '', flags: F_SCAN2, ctcss: '' },
+      { num: '3', rx: '146.7', tx: '', flags: F_SCAN1 | F_SCAN2, ctcss: '' },
+      { num: '4', rx: '146.8', tx: '', flags: F_SCAN3, ctcss: '' },          // FM92: no group 3, so not scanned
+      { num: '5', rx: '146.9', tx: '', flags: 0, ctcss: '' },
+    ];
+    expect(sheetEntries(p).entries.map((e) => e.scan)).toEqual([[1], [2], [1, 2], [], []]);
+    const s = latin1(cheatSheet(p, analyze(p)));
+    expect(s).toContain('0.13 0.42 0.86 rg');
+    expect(s).toContain('0.9 0.45 0.02 rg');
+    for (const t of ['Channel number colour', 'Scan group 1', 'Scan group 2', 'In groups 1 and 2', 'Not scanned']) expect(s).toContain(`(${t}) Tj`);
+    p.rows = p.rows.map((r) => ({ ...r, flags: 0 }));
+    expect(latin1(cheatSheet(p, analyze(p)))).not.toContain('Channel number colour');
   });
 
   it('pdfString escapes', () => {

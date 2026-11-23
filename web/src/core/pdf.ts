@@ -56,13 +56,17 @@ export function textWidth(s: string, font: Font, size: number): number {
 
 const n = (x: number) => (Math.round(x * 100) / 100).toString();
 
+/** A grey level (0 = black, 1 = white) or an [r, g, b] colour, each 0–1. */
+export type Colour = number | [number, number, number];
+const fillOp = (c: Colour) => (typeof c === 'number' ? `${n(c)} g` : `${c.map(n).join(' ')} rg`);
+
 export class PdfPage {
   private ops: string[] = [];
   constructor(readonly width = A4[0], readonly height = A4[1]) {}
 
-  text(x: number, y: number, s: string, font: Font = 'Helvetica', size = 10, grey = 0): void {
+  text(x: number, y: number, s: string, font: Font = 'Helvetica', size = 10, colour: Colour = 0): void {
     const f = FONTS.indexOf(font) + 1;
-    this.ops.push(`BT ${n(grey)} g /F${f} ${n(size)} Tf ${n(x)} ${n(this.height - y)} Td (${pdfString(s)}) Tj ET`);
+    this.ops.push(`BT ${fillOp(colour)} /F${f} ${n(size)} Tf ${n(x)} ${n(this.height - y)} Td (${pdfString(s)}) Tj ET`);
   }
 
   line(x1: number, y1: number, x2: number, y2: number, width = 0.5, grey = 0): void {
@@ -70,8 +74,8 @@ export class PdfPage {
   }
 
   /** Filled rectangle, (x, y) = top-left corner. */
-  rect(x: number, y: number, w: number, h: number, grey: number): void {
-    this.ops.push(`${n(grey)} g ${n(x)} ${n(this.height - y - h)} ${n(w)} ${n(h)} re f`);
+  rect(x: number, y: number, w: number, h: number, colour: Colour): void {
+    this.ops.push(`${fillOp(colour)} ${n(x)} ${n(this.height - y - h)} ${n(w)} ${n(h)} re f`);
   }
 
   toBytes(title = ''): Uint8Array {
