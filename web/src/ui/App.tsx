@@ -243,7 +243,7 @@ export function App() {
             <span class={`sbi ${exp ? 'exp' : ''}`} title={exp
               ? `Image: experimental FM92R firmware (${fwName}), built from ${a.builder?.masterName() ?? 'FM92R.BIN'} (Build tab)`
               : `Image: factory firmware, master ${a.builder ? a.builder.masterName() : '— (no valid hardware code)'}`}>
-              <Icon name={exp ? 'flask' : 'factory'} size={14} />{exp ? 'Experimental' : 'Factory'}
+              <Icon name={exp ? 'heartPulse' : 'heart'} size={14} />{exp ? 'Experimental' : 'Factory'}
             </span>
           );
         })()}
