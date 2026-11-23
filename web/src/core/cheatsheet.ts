@@ -1,6 +1,7 @@
 // Printable one-page A4 channel cheat sheet (PDF): a radio header, then channel number,
 // Rx, Tx and name for every record, in record order, in 1–3 columns sized to fit the page.
 import { Analysis } from './analyze';
+import { Segment, splitCallsigns } from './callsign';
 import { describeHw } from './codes';
 import { Font, PdfPage, textWidth } from './pdf';
 import { Project, isBlank, rowToChannel } from './project';
@@ -40,6 +41,29 @@ function fit(s: string, font: Font, size: number, maxW: number): string {
   const g = [...s];
   while (g.length && textWidth(g.join('') + '…', font, size) > maxW) g.pop();
   return g.length ? g.join('').trimEnd() + '…' : '';
+}
+
+const segFont = (g: Segment): Font => (g.call ? 'Helvetica-Bold' : 'Helvetica');
+
+/** A name as runs of regular text and bold callsigns, cut to `maxW` points with an ellipsis if needed. */
+export function fitName(name: string, size: number, maxW: number): Segment[] {
+  const segs = splitCallsigns(name);
+  const width = (gs: Segment[]) => gs.reduce((w, g) => w + textWidth(g.text, segFont(g), size), 0);
+  if (width(segs) <= maxW) return segs;
+  const ell = textWidth('…', 'Helvetica', size);
+  const out: Segment[] = [];
+  let used = 0;
+  for (const g of segs) {
+    const w = textWidth(g.text, segFont(g), size);
+    if (used + w + ell <= maxW) { out.push(g); used += w; continue; }
+    const cs = [...g.text];
+    while (cs.length && used + textWidth(cs.join(''), segFont(g), size) + ell > maxW) cs.pop();
+    if (cs.length) out.push({ text: cs.join(''), call: g.call });
+    break;
+  }
+  if (out.length) out[out.length - 1] = { ...out[out.length - 1], text: out[out.length - 1].text.trimEnd() };
+  out.push({ text: '…', call: false });
+  return out;
 }
 
 /** Column geometry, in points. `nameW` = room left for the name. */
@@ -129,7 +153,13 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder'>): U
       page.text(x + badgeW - PAD * fs - textWidth(e.num, 'Helvetica-Bold', fs), by, e.num, 'Helvetica-Bold', fs, 1);
       page.text(x2, by, e.rx, 'Helvetica-Bold', fs);
       page.text(x3, by, e.tx, 'Helvetica', fs, e.tx === e.rx ? 0.45 : 0);
-      if (L.nameW > 0 && e.name) page.text(x4, by, fit(e.name, 'Helvetica-Bold', fs, L.nameW), 'Helvetica-Bold', fs);
+      if (L.nameW > 0 && e.name) {
+        let nx = x4;                                   // regular text, callsigns in bold
+        for (const g of fitName(e.name, fs, L.nameW)) {
+          page.text(nx, by, g.text, segFont(g), fs);
+          nx += textWidth(g.text, segFont(g), fs);
+        }
+      }
     });
     page.line(x, y + (part.length + 1) * L.lineH, x + colW, y + (part.length + 1) * L.lineH, 0.5, 0.5);
   }

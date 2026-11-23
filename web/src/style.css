@@ -213,6 +213,13 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
 .grid tr.off td { color: var(--muted); }
 .grid td.name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .grid input.name { width: 11em; }
+/* Callsign highlight in the name cell (ChannelsPanel NameInput): an overlay with the same box as the input. */
+.namewrap { position: relative; display: inline-block; vertical-align: middle; }
+.namehl { position: absolute; inset: 0; display: flex; align-items: center; padding: 5px 6px; border: 1px solid transparent;
+  white-space: pre; overflow: hidden; pointer-events: none; font: inherit; color: var(--text); }
+.namehl .call { color: var(--accent); font-weight: 700; }
+.namewrap.hascall:not(:focus-within) input.name { color: transparent; }
+.namewrap:focus-within .namehl { display: none; }
 
 /* channel plans, import guides */
 .plans { display: grid; gap: 8px; margin-bottom: 12px; }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Analysis } from '../core/analyze';
+import { splitCallsigns } from '../core/callsign';
 import {
   CTCSS, F_CR, F_ECON, F_HIGH, F_LOW, F_MED, F_PRI1, F_PRI2, F_PRI3, F_SCAN1, F_SCAN2, F_SCAN3,
   F_SCANSEL, F_SELCALL, F_SELPWR, F_VOTE, normFreq,
@@ -190,8 +191,7 @@ export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport
                       {!ctKnown && <option value={r.ctcss}>{r.ctcss} (invalid)</option>}
                       {TONES.map(([c, , hz]) => <option value={c}>{hz.toFixed(1)}</option>)}
                     </select></td>
-                    <td><input class="name" data-row={i} data-col="name" value={r.name ?? ''} placeholder="—" aria-label="Name (not stored in the radio)"
-                      onInput={(e) => setRow(i, { name: (e.target as HTMLInputElement).value })} onKeyDown={onKey(i, 'name')} /></td>
+                    <td><NameInput row={i} value={r.name ?? ''} onInput={(v) => setRow(i, { name: v })} onKeyDown={onKey(i, 'name')} /></td>
                     {cols.map((c) => (
                       <td class="flag"><input type="checkbox" aria-label={`${c.title}, row ${i + 1}`} checked={!!(r.flags & c.f)}
                         onChange={() => setRow(i, { flags: r.flags ^ c.f })} /></td>
@@ -311,5 +311,22 @@ function OffsetDialog({ close, apply }: { close: () => void; apply: (khz: number
         <button class="primary" disabled={Number.isNaN(n)} onClick={() => apply(n)}>Apply</button>
       </div>
     </Modal>
+  );
+}
+
+/** Name cell: while not being edited, callsigns in the text are highlighted by an overlay
+ *  drawn exactly over the input (whose own text is made transparent); editing shows the plain input. */
+function NameInput({ row, value, onInput, onKeyDown }: { row: number; value: string; onInput: (v: string) => void;
+  onKeyDown: (e: KeyboardEvent) => void }) {
+  const segs = splitCallsigns(value);
+  const calls = segs.some((g) => g.call);
+  return (
+    <div class={`namewrap${calls ? ' hascall' : ''}`}>
+      {calls && <div class="namehl" aria-hidden="true">
+        {segs.map((g) => (g.call ? <span class="call">{g.text}</span> : g.text))}
+      </div>}
+      <input class="name" data-row={row} data-col="name" value={value} placeholder="—" aria-label="Name (not stored in the radio)"
+        onInput={(e) => onInput((e.target as HTMLInputElement).value)} onKeyDown={onKeyDown} />
+    </div>
   );
 }
