@@ -14,6 +14,7 @@ import { ScanKeysPanel } from './ScanKeysPanel';
 import { download, loadSaved, pickFiles, readBytes, safeName, save } from './files';
 import { THEMES, Theme, applyTheme, loadTheme } from './theme';
 import radioPhoto from '../assets/fm900.webp';
+import { VERSION_LABEL } from '../version';
 
 export type Tab = 'radio' | 'channels' | 'scan' | 'build' | 'read' | 'help';
 const TABS: [Tab, string][] = [
@@ -225,6 +226,7 @@ export function App() {
         {a.img && a.builder && <span>step {a.builder.step / 100} kHz</span>}
         {a.img && <span>sum {a.img[0x1F64].toString(16).padStart(2, '0').toUpperCase()}</span>}
         <span class={`grow ${status ? 'bad' : 'ok'}`}>{status ? `⚠ ${status}` : '✓ ready to build'}</span>
+        <span class="ver" title="Web FPP version (quote this when reporting a problem)">Web FPP {VERSION_LABEL}</span>
       </footer>
 
       {jobDialog && (

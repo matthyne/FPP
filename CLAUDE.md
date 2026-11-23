@@ -76,6 +76,7 @@ The original DOS files are reference material. **Never modify them.**
   * `eprom.test.ts`: each EPROM size is the golden image in every bank, reads back, and non-mirrored banks are detected.
   * `cheatsheet.test.ts`: the cheat-sheet PDF is structurally valid (xref offsets, one page, ASCII only), lists every channel for 80CHCB/2MHAM/477, escapes names, and the layout stays inside the page.
   * `presets.test.ts`: the UHF CB 80 plan equals the `80CHCB.CHL` sample channel for channel, and both plans build. Every full-project example builds with no row errors or warnings.
+* **Version number: bump `web/package.json` `version` in every commit that changes `web/`** (semver: patch = fix/tweak, minor = new feature, major = breaking project-file change). `vite.config.ts` injects it as `__APP_VERSION__`, plus `__APP_COMMIT__` (`git rev-parse --short HEAD`, '' outside git); `src/version.ts` exports `VERSION`, `COMMIT` and `VERSION_LABEL` (`v1.1.0 (abc1234)`). Shown at the right of the status bar and in the cheat-sheet footer so users can say which build they used.
 * Dev: `cd web && npm install && npm run dev`, then open `http://localhost:5173/FPP/`. Vite `base` is `/FPP/` (override with `FM900_BASE`).
 
 ## Facts confirmed from both sides

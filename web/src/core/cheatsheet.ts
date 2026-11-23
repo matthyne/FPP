@@ -4,6 +4,7 @@ import { Analysis } from './analyze';
 import { describeHw } from './codes';
 import { PdfPage, glyphs } from './pdf';
 import { Project, isBlank, rowToChannel } from './project';
+import { VERSION_LABEL } from '../version';
 
 export interface SheetEntry { num: string; rx: string; tx: string; name: string }
 
@@ -93,7 +94,7 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder'>): U
 
   // Footer
   const footY = page.height - MARGIN + 10;
-  page.text(MARGIN, footY, `Web FPP (FM900 CPS), ${today()}${skipped ? `. ${skipped} row${skipped === 1 ? '' : 's'} with errors not shown.` : ''}`,
+  page.text(MARGIN, footY, `Web FPP (FM900 CPS) ${VERSION_LABEL}, ${today()}${skipped ? `. ${skipped} row${skipped === 1 ? '' : 's'} with errors not shown.` : ''}`,
     'Helvetica', 7, 0.4);
 
   // Table

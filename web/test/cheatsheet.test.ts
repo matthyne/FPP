@@ -6,6 +6,7 @@ import { cheatSheet, sheetEntries, sheetLayout } from '../src/core/cheatsheet';
 import { readChl, readJob } from '../src/core/fm900';
 import { pdfString } from '../src/core/pdf';
 import { Project, toProject } from '../src/core/project';
+import { VERSION, VERSION_LABEL } from '../src/version';
 
 const JOBS = join(__dirname, '..', '..', 'fm900', 'JOBS');
 const latin1 = (b: Uint8Array) => String.fromCharCode(...b);
@@ -75,6 +76,11 @@ describe('cheat sheet PDF', () => {
     expect(s).toContain('\\205) Tj');                      // truncated with an ellipsis
     expect(s).toContain('(\\265\\200?) Tj');
     expect(s).toContain('1 row with errors not shown');
+  });
+
+  it('footer carries the Web FPP version from package.json', () => {
+    expect(VERSION).toBe(JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8')).version);
+    expect(latin1(cheatSheet(job('80CHCB')))).toContain(`Web FPP \\(FM900 CPS\\) ${VERSION_LABEL.replace(/[()]/g, '\\$&')}`);
   });
 
   it('pdfString escapes', () => {
