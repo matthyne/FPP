@@ -108,7 +108,7 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder'>): U
     const x2 = x + CH_CHARS * cw, x3 = x2 + FREQ_CHARS * cw, x4 = x3 + FREQ_CHARS * cw;
     page.rect(x, y, colW, L.lineH, 0.82);
     const hy = y + base;
-    page.text(x, hy, 'Ch', 'Courier-Bold', L.fontSize);
+    page.text(x + 0.25 * cw, hy, 'Ch', 'Courier-Bold', L.fontSize);
     page.text(x2, hy, 'Rx MHz', 'Courier-Bold', L.fontSize);
     page.text(x3, hy, 'Tx MHz', 'Courier-Bold', L.fontSize);
     if (L.nameChars > 0) page.text(x4, hy, 'Name', 'Courier-Bold', L.fontSize);
@@ -116,7 +116,10 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder'>): U
       const ry = y + (i + 1) * L.lineH;
       if (i % 2) page.rect(x, ry, colW, L.lineH, 0.93);
       const by = ry + base;
-      page.text(x, by, e.num.padStart(CH_CHARS - 1), 'Courier-Bold', L.fontSize);
+      // Channel number reversed out: white on a dark badge, 3 digits + a quarter-glyph pad each side.
+      const inset = L.lineH * 0.08;
+      page.rect(x, ry + inset, (CH_CHARS - 0.5) * cw, L.lineH - 2 * inset, 0.15);
+      page.text(x + 0.25 * cw, by, e.num.padStart(CH_CHARS - 1), 'Courier-Bold', L.fontSize, 1);
       page.text(x2, by, e.rx, 'Courier-Bold', L.fontSize);
       page.text(x3, by, e.tx, 'Courier', L.fontSize, e.tx === e.rx ? 0.45 : 0);
       if (L.nameChars > 0 && e.name) page.text(x4, by, fit(e.name, L.nameChars), 'Courier-Bold', L.fontSize);
