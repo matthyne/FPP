@@ -5,8 +5,9 @@ An editable, re-assemblable source of the FM92R master firmware
 modified masters, and `mkradio.py` or Web FPP turn those into radio EPROM
 images.
 
-**Untested on hardware.** Nothing here has been burned and tried on a radio
-yet. Keep the factory EPROM. Web FPP shows an "Experimental firmware" note
+**Experimental.** An image has been burned and worked on an FM92R
+(reported 2026-11-23), but this is still not guaranteed to work on every
+radio. Keep the factory EPROM. Web FPP shows an "Experimental firmware" note
 for these images.
 
 FM92R only (remote head, no selcall). Background: `../FIRMWARE.md`
@@ -270,3 +271,4 @@ firmware (`stackdepth.py`, checked by `build.py`).
 | `b99ce34`, `d624717` | Web FPP: "Experimental firmware" note on the Build and Read tabs. |
 | `ca3f4b5` | What the factory firmware sends to the head at switch-on (FIRMWARE.md §6.1); start-up regression test. |
 | `4b694e9` | FREQ: 0.5 s blank before and after the frequency. |
+| (2026-11-23) | First hardware report: an image burned and worked on an FM92R. Still experimental. |

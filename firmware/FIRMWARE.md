@@ -417,6 +417,13 @@ The channel's tone code is slot byte 6 bits 0–5 (1–38, 0 = none), copied to 
 * Scanning stops on a busy channel: squelch open, plus the CTCSS match if required.
 * Option byte 0x1F34 bit 7 selects occupied versus vacant scanning.
 * The priority channel is revisited periodically.
+* **Off-hook while scanning (inferred from the code, not yet confirmed on a radio).** `$11.4` (PA7 high AND head `$46` held, §7.2: handset off-hook) stops the scan. The radio goes to the priority channel, or the home channel `$50` (0x0F12), and stays there. If that channel then stays quiet with the handset still off-hook, 0x0FF5 starts the 1 s timer `$65` = `$20` (about 32 s). When it runs out, 0x1004 sets `$1B.0`, and `key_hold_handler` (0x0488) holds the beep tone `$29.7` on, so the tone is **continuous**. It stops when any of these happens:
+  * the handset goes back on-hook (0x0FD3: scanning resumes, 0x0FDB clears `$1B.0`);
+  * a signal arrives (0x0FD7);
+  * PTT is pressed (`tx_synth_settled`);
+  * scan is switched off (`scan_stop`).
+
+  This is factory behaviour (the fork doesn't touch `$11`, `$14`, `$1B`, `$1F` or `$65`). So a handset left off its hanger, or a head that keeps reporting `$46`, gives a continuous tone in scan mode.
 
 ### 7.4 Transmit
 
@@ -656,7 +663,7 @@ You'd have to confirm on the board that the CPU's PB7 pin is accessible and not 
 
 | § | Upgrade | Status |
 |---|---|---|
-| 13.0 | Start-up `00` + Morse callsign; Rx frequency on the head (FM92R) | **Implemented, in the experimental images only.** These are Web FPP's "Start-up ident" and "Ident + Rx freq." firmware, or `fork/mkradio.py`. The Factory image doesn't have them. Untested on a radio. |
+| 13.0 | Start-up `00` + Morse callsign; Rx frequency on the head (FM92R) | **Implemented, in the experimental images only.** These are Web FPP's "Start-up ident" and "Ident + Rx freq." firmware, or `fork/mkradio.py`. The Factory image doesn't have them. Experimental: an image has been burned and worked on an FM92R (2026-11), but it is not guaranteed. |
 | 13.1 | Duplex / talk-around key | **Not implemented.** Design only. |
 | 13.2 | Bank switching from a function key | **Not implemented.** Design only. |
 | 13.3 | PC / tablet control over the head link | **Not implemented.** Design only (needs no firmware change). |

@@ -1,7 +1,7 @@
 {
   "name": "fm900-web-cps",
   "private": true,
-  "version": "1.10.0",
+  "version": "1.10.1",
   "type": "module",
   "scripts": {
     "masters": "node scripts/gen-masters.mjs",

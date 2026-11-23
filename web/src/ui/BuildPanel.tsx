@@ -84,7 +84,7 @@ export function HexView({ img, orig: refImg, fm91, from, to }: { img: Uint8Array
 export function ExperimentalBanner({ what }: { what: string }) {
   return (
     <div class="banner-exp" role="note">
-      <p><b>Experimental firmware:</b> {what} is modified and untested on a radio, so it may not work. Keep the original EPROM.</p>
+      <p><b>Experimental firmware:</b> {what} is modified. It has worked on an FM92R, but it is still experimental and not guaranteed to work on yours. Keep the original EPROM.</p>
     </div>
   );
 }

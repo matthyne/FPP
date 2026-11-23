@@ -60,7 +60,7 @@ export function HelpPanel() {
         <ul>
           <li>The modified firmware is only for the FM92R without selcall (hardware code digit 4 = 4 or 8, digit 6 not 3–5).</li>
           <li>Read image recognises these images, and loading one selects the same firmware and callsign.</li>
-          <li><b>Not factory firmware, and untested on a radio.</b> Keep the original EPROM. If the radio switches itself off after
+          <li><b>Not factory firmware, and experimental.</b> It has worked on an FM92R, but it is not guaranteed to work on yours. Keep the original EPROM. If the radio switches itself off after
             a few seconds, or keys stop working, go back to Factory.</li>
         </ul>
 
