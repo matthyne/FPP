@@ -247,7 +247,7 @@ export function App() {
             </span>
           );
         })()}
-        <span>{nch}/{a.nmax} ch</span>
+        <span class="sbi" title="Channels programmed / maximum for this radio"><Icon name="antenna" size={14} />{nch}/{a.nmax} ch</span>
         {a.img && a.builder && <span class="sbi" title="Synthesiser step (channel raster)"><Icon name="step" size={14} />{a.builder.step / 100} kHz</span>}
         <span title={`EPROM: ${eprom(project.eprom).size / 1024} KB (change it on the Build tab)`} class="sbi"><Icon name="chip" size={14} />{eprom(project.eprom).part}</span>
         <span class={`grow ${status ? 'bad' : 'ok'}`}>{status ? `⚠ ${status}` : '✓ ready to build'}</span>
