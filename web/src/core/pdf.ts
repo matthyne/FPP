@@ -73,6 +73,12 @@ export class PdfPage {
     this.ops.push(`${n(grey)} G ${n(width)} w ${n(x1)} ${n(this.height - y1)} m ${n(x2)} ${n(this.height - y2)} l S`);
   }
 
+  /** Filled polygon through `pts` ([x, y] pairs, top-left coordinates). */
+  poly(pts: [number, number][], colour: Colour): void {
+    const path = pts.map(([x, y], i) => `${n(x)} ${n(this.height - y)} ${i ? 'l' : 'm'}`).join(' ');
+    this.ops.push(`${fillOp(colour)} ${path} h f`);
+  }
+
   /** Filled rectangle, (x, y) = top-left corner. */
   rect(x: number, y: number, w: number, h: number, colour: Colour): void {
     this.ops.push(`${fillOp(colour)} ${n(x)} ${n(this.height - y - h)} ${n(w)} ${n(h)} re f`);

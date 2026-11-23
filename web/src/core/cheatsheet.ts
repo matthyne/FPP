@@ -3,25 +3,28 @@
 import { Analysis } from './analyze';
 import { Segment, splitCallsigns } from './callsign';
 import { headButtons } from './codes';
-import { F_SCAN1, F_SCAN2, F_SCAN3 } from './fm900';
+import { F_PRI1, F_PRI2, F_PRI3, F_SCAN1, F_SCAN2, F_SCAN3 } from './fm900';
 import { Colour, Font, PdfPage, textWidth } from './pdf';
 import { Project, isBlank, rowToChannel } from './project';
 import { VERSION_LABEL } from '../version';
 
-/** `scan` = the scan groups (1-based) the channel is in; FM91 has 3 groups, FM92 2. */
-export interface SheetEntry { num: string; rx: string; tx: string; name: string; scan: number[] }
+/** `scan` = the scan groups (1-based) the channel is in, `pri` = the groups it is the priority channel of; FM91 has 3 groups, FM92 2. */
+export interface SheetEntry { num: string; rx: string; tx: string; name: string; scan: number[]; pri: number[] }
 
 /** Valid, non-blank rows in record order. Rows with errors are skipped (`skipped` counts them). */
 export function sheetEntries(p: Project): { entries: SheetEntry[]; skipped: number } {
   const entries: SheetEntry[] = [];
   let skipped = 0;
-  const groups = p.hw[1] === '1' ? [F_SCAN1, F_SCAN2, F_SCAN3] : [F_SCAN1, F_SCAN2];
+  const fm91 = p.hw[1] === '1';
+  const groups = fm91 ? [F_SCAN1, F_SCAN2, F_SCAN3] : [F_SCAN1, F_SCAN2];
+  const pris = fm91 ? [F_PRI1, F_PRI2, F_PRI3] : [F_PRI1, F_PRI2];
   for (const r of p.rows) {
     if (isBlank(r)) continue;
     try {
       const c = rowToChannel(r);
       entries.push({ num: String(c.num), rx: c.rx, tx: c.tx.startsWith('X') ? 'Rx only' : c.tx, name: (r.name ?? '').trim(),
-        scan: groups.flatMap((f, g) => (r.flags & f ? [g + 1] : [])) });
+        scan: groups.flatMap((f, g) => (r.flags & f ? [g + 1] : [])),
+        pri: pris.flatMap((f, g) => (r.flags & f ? [g + 1] : [])) });
     } catch {
       skipped++;
     }
@@ -34,10 +37,16 @@ export function sheetEntries(p: Project): { entries: SheetEntry[]; skipped: numb
 export const BADGE_PLAIN: Colour = 0.15;
 export const SCAN_COLOURS: Colour[] = [[0.13, 0.42, 0.86], [0.90, 0.45, 0.02], [0.08, 0.50, 0.28]];
 
-/** A channel badge: one horizontal band per scan group, top to bottom (solid when 0 or 1 group), with the text centred in white. */
-function badge(page: PdfPage, x: number, y: number, w: number, h: number, scan: number[], text: string, font: Font, size: number, base: number): void {
+/** A channel badge: one horizontal band per scan group, top to bottom (solid when 0 or 1 group), with the text centred
+ *  in white. A priority channel gets a white folded corner (triangle) at the top right. */
+function badge(page: PdfPage, x: number, y: number, w: number, h: number, scan: number[], text: string, font: Font, size: number,
+  base: number, priority = false): void {
   if (!scan.length) page.rect(x, y, w, h, BADGE_PLAIN);
   else scan.forEach((g, k) => page.rect(x, y + (k * h) / scan.length, w, h / scan.length, SCAN_COLOURS[g - 1]));
+  if (priority) {
+    const c = h * 0.6;
+    page.poly([[x + w - c, y], [x + w, y], [x + w, y + c]], 1);
+  }
   page.text(x + (w - textWidth(text, font, size)) / 2, base, text, font, size, 1);
 }
 
@@ -126,16 +135,19 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   const model = p.hw[1] === '1' ? 'FM91' : p.hw[1] === '2' ? 'FM92' : p.hw[1] === '3' ? 'FM93' : 'FM9?';
 
   // Legend boxes, side by side at the top right: head buttons (FM92) and scan-group colours.
-  // Rows: [badge text, badge groups (null = plain), description]. Header text goes to the left.
+  // Rows: [badge text, badge groups (null = plain), description, priority corner]. Header text goes to the left.
   const buttons = headButtons(p, a?.defaultKeys);
   const boxRow = 12.5, BOX_GAP = 8;
-  const boxes: [string, [string, number[] | null, string][]][] = [];
+  type LegendRow = [string, number[] | null, string, boolean?];
+  const boxes: [string, LegendRow[]][] = [];
   if (buttons) boxes.push(['Head buttons', buttons.map(([b, f]) => [b, null, f])]);
   const used = [...new Set(entries.flatMap((e) => e.scan))].sort();
   if (used.length) {
-    const rows: [string, number[] | null, string][] = used.map((g) => [`${g}`, [g], `Scan group ${g}`]);
+    const rows: LegendRow[] = used.map((g) => [`${g}`, [g], `Scan group ${g}`]);
     const multi = [...new Set(entries.filter((e) => e.scan.length > 1).map((e) => e.scan.join('+')))];
     for (const m of multi) rows.push([m, m.split('+').map(Number), `In groups ${m.replace(/\+/g, ' and ')}`]);
+    const pg = [...new Set(entries.flatMap((e) => e.pri))].sort();
+    if (pg.length) rows.push(['', [pg[0]], 'Priority channel', true]);
     rows.push(['', [], 'Not scanned']);
     boxes.push(['Channel number colour', rows]);
   }
@@ -148,9 +160,9 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
     const h = 16 + rows.length * boxRow + 3;
     page.rect(bx, MARGIN, bw, h, 0.93);
     page.text(bx + 7, MARGIN + 11, title, 'Helvetica-Bold', 8, 0.3);
-    rows.forEach(([label, scan, desc], i) => {
+    rows.forEach(([label, scan, desc, pri], i) => {
       const ry = MARGIN + 16 + i * boxRow;
-      badge(page, bx + 6, ry + 1, 34, boxRow - 2, scan ?? [], label, 'Helvetica-Bold', 7.5, ry + 9);
+      badge(page, bx + 6, ry + 1, 34, boxRow - 2, scan ?? [], label, 'Helvetica-Bold', 7.5, ry + 9, pri);
       page.text(bx + 46, ry + 9, desc, 'Helvetica', 8.5);
     });
     boxBottom = Math.max(boxBottom, MARGIN + h);
@@ -209,7 +221,7 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
       const by = ry + base;
       // Channel number reversed out: white, centred on a badge coloured by scan group.
       const inset = L.lineH * 0.08;
-      badge(page, x, ry + inset, badgeW, L.lineH - 2 * inset, e.scan, e.num, 'Helvetica-Bold', fs, by);
+      badge(page, x, ry + inset, badgeW, L.lineH - 2 * inset, e.scan, e.num, 'Helvetica-Bold', fs, by, e.pri.length > 0);
       page.text(x2, by, e.rx, 'Helvetica-Bold', fs);
       page.text(x3, by, e.tx, 'Helvetica', fs, e.tx === e.rx ? 0.45 : 0);
       if (L.nameW > 0 && e.name) {

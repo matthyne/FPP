@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { analyze } from '../src/core/analyze';
 import { cheatSheet, sheetEntries, sheetLayout } from '../src/core/cheatsheet';
 import { headButtons } from '../src/core/codes';
-import { F_SCAN1, F_SCAN2, F_SCAN3, readChl, readJob } from '../src/core/fm900';
+import { F_PRI2, F_SCAN1, F_SCAN2, F_SCAN3, readChl, readJob } from '../src/core/fm900';
 import { pdfString } from '../src/core/pdf';
 import { Project, toProject } from '../src/core/project';
 import { VERSION, VERSION_LABEL } from '../src/version';
@@ -111,6 +111,12 @@ describe('cheat sheet PDF', () => {
       { num: '5', rx: '146.9', tx: '', flags: 0, ctcss: '' },
     ];
     expect(sheetEntries(p).entries.map((e) => e.scan)).toEqual([[1], [2], [1, 2], [], []]);
+    expect(latin1(cheatSheet(p, analyze(p)))).not.toContain('Priority channel');
+    p.rows[1] = { ...p.rows[1], flags: F_SCAN2 | F_PRI2 };
+    expect(sheetEntries(p).entries.map((e) => e.pri)).toEqual([[], [2], [], [], []]);
+    const sp = latin1(cheatSheet(p, analyze(p)));
+    expect(sp).toContain('(Priority channel) Tj');
+    expect(sp.match(/1 g [\d. ]+ m [\d. ]+ l [\d. ]+ l h f/g)).toHaveLength(2);   // corner on channel 2 + the legend sample
     const s = latin1(cheatSheet(p, analyze(p)));
     expect(s).toContain('0.13 0.42 0.86 rg');
     expect(s).toContain('0.9 0.45 0.02 rg');
