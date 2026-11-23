@@ -239,7 +239,7 @@ export function App() {
         <span>{a.builder ? a.builder.masterName() : '—'}</span>
         <span>{nch}/{a.nmax} ch</span>
         {a.img && a.builder && <span>step {a.builder.step / 100} kHz</span>}
-        <span title={`EPROM: ${eprom(project.eprom).size / 1024} KB (change it on the Build tab)`}>{eprom(project.eprom).part}</span>
+        <span title={`EPROM: ${eprom(project.eprom).size / 1024} KB (change it on the Build tab)`} class="eprom"><Icon name="chip" size={14} />{eprom(project.eprom).part}</span>
         {a.img && <span>sum {a.img[0x1F64].toString(16).padStart(2, '0').toUpperCase()}</span>}
         <span class={`grow ${status ? 'bad' : 'ok'}`}>{status ? `⚠ ${status}` : '✓ ready to build'}</span>
         <span class="ver" title="Web FPP version (quote this when reporting a problem)">Web FPP {VERSION_LABEL}</span>
