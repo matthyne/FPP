@@ -160,12 +160,12 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
         </div>
         <div class="buildactions">
           <label class="field">
-            <span class="lab">Build date</span>
+            <span class="lab labicon"><Icon name="calendar" size={14} />Build date</span>
             <input type="date" value={p.date} onInput={(e) => update((q) => ({ ...q, date: (e.target as HTMLInputElement).value }))} />
           </label>
           <label class="field">
             <span class={`lab labicon ${fw !== 'standard' ? 'exp' : ''}`}>
-              <Icon name={fw !== 'standard' ? 'heartPulse' : 'heart'} size={14} />Firmware</span>
+              <Icon name="heartPulse" size={14} />Firmware</span>
             <select value={fw} onChange={(e) => {
               const v = (e.target as HTMLSelectElement).value as Firmware;
               update((q) => ({ ...q, firmware: v === 'standard' ? undefined : v }));
@@ -184,7 +184,7 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
             </label>
           )}
           <label class="field">
-            <span class="lab">EPROM</span>
+            <span class="lab labicon"><Icon name="chip" size={14} />EPROM</span>
             <select value={chip.part} onChange={(e) => {
               const v = (e.target as HTMLSelectElement).value as EpromPart;
               update((q) => ({ ...q, eprom: v === '2764' ? undefined : v }));
