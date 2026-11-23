@@ -17,19 +17,27 @@ const TONES = [...CTCSS].sort((x, y) => x[2] - y[2]);
 
 const powerOf = (f: number) => (f & F_HIGH ? F_HIGH : f & F_MED ? F_MED : f & F_LOW ? F_LOW : f & F_SELPWR ? F_SELPWR : 0);
 
-interface FlagCol { f: number; label: string; title: string; fm91?: boolean }
+// `title` = one-line summary, `help` = the header popup text.
+interface FlagCol { f: number; label: string; title: string; help: string; fm91?: boolean }
+const scanHelp = (n: number) => `This channel is in scan group ${n}. A group holds up to 10 channels; when scanning, the radio steps through them and stops on a busy one. Scanning must be enabled in the software code (Radio tab). Not allowed together with Sel.`;
+const priHelp = (n: number) => `The priority channel of scan group ${n} (one per group). While scanning, the radio keeps going back to check this channel, so you don't miss activity on it.`;
 const FLAG_COLS: FlagCol[] = [
-  { f: F_SCAN1, label: 'S1', title: 'Member of scan block 1 (max 10)' },
-  { f: F_PRI1, label: 'P1', title: 'Priority channel of scan block 1' },
-  { f: F_SCAN2, label: 'S2', title: 'Member of scan block 2 (max 10)' },
-  { f: F_PRI2, label: 'P2', title: 'Priority channel of scan block 2' },
-  { f: F_SCAN3, label: 'S3', title: 'Member of scan block 3 (FM91 only)', fm91: true },
-  { f: F_PRI3, label: 'P3', title: 'Priority channel of scan block 3 (FM91 only)', fm91: true },
-  { f: F_SCANSEL, label: 'OpS', title: 'Operator-selectable scanning' },
-  { f: F_VOTE, label: 'Vote', title: 'VOTE: linked-slot voting ring' },
-  { f: F_ECON, label: 'Econ', title: 'Economiser on this channel' },
-  { f: F_SELCALL, label: 'Sel', title: 'SELCALL on this channel' },
-  { f: F_CR, label: 'C/R', title: 'Community repeater (CTCSS)' },
+  { f: F_SCAN1, label: 'S1', title: 'Scan group 1', help: scanHelp(1) },
+  { f: F_PRI1, label: 'P1', title: 'Priority channel, scan group 1', help: priHelp(1) },
+  { f: F_SCAN2, label: 'S2', title: 'Scan group 2', help: scanHelp(2) },
+  { f: F_PRI2, label: 'P2', title: 'Priority channel, scan group 2', help: priHelp(2) },
+  { f: F_SCAN3, label: 'S3', title: 'Scan group 3 (FM91 only)', help: scanHelp(3), fm91: true },
+  { f: F_PRI3, label: 'P3', title: 'Priority channel, scan group 3 (FM91 only)', help: priHelp(3), fm91: true },
+  { f: F_SCANSEL, label: 'OpS', title: 'Operator-selectable scan',
+    help: 'The operator can choose whether this channel is scanned, instead of it being fixed by the programming. Goes with the "Occupied + operator selectable" scanning option in the software code.' },
+  { f: F_VOTE, label: 'Vote', title: 'Voting',
+    help: 'Give several rows the same channel number and tick Vote on each: they form a voting ring. The radio hops round them, measures the signal strength on each and settles on the strongest, e.g. one repeater network heard through several sites. Needs voting enabled in the software code and the I/O expander hardware. Not allowed together with Econ.' },
+  { f: F_ECON, label: 'Econ', title: 'Economiser',
+    help: 'Battery economiser: in standby the receiver is switched on and off to save power, so a call can take a moment to open the speaker. Applies per channel when the software code\'s Economiser option is "Per channel". Not allowed together with Vote or Sel.' },
+  { f: F_SELCALL, label: 'Sel', title: 'Selcall',
+    help: 'Selective calling on this channel: a short burst of tones that identifies or calls a particular radio. Needs selcall hardware and a selcall code in the software code. Not allowed together with scanning or Econ.' },
+  { f: F_CR, label: 'C/R', title: 'Community repeater',
+    help: 'Community-repeater CTCSS mode for a shared repeater. The speaker stays muted until your own tone is heard, and you can\'t transmit while another user\'s carrier (without your tone) is on the channel. Needs a CTCSS tone on the channel and CTCSS encode/decode hardware.' },
 ];
 
 function fmtMHz(units100: number): string {
@@ -56,6 +64,16 @@ export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport
   useEffect(() => { if (pendingImport) setDialog('import'); }, [pendingImport]);
   const fm91 = p.hw[1] === '1';
   const cols = FLAG_COLS.filter((c) => fm91 || !c.fm91);
+  // Header help popup: position: fixed from the header's box, so the grid's scroll box can't clip it.
+  const [tip, setTip] = useState<{ c: FlagCol; r: DOMRect } | null>(null);
+  const showTip = (c: FlagCol, el: HTMLElement) => setTip({ c, r: el.getBoundingClientRect() });
+  useEffect(() => {
+    if (!tip) return;
+    const hide = () => setTip(null);
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+    return () => { window.removeEventListener('scroll', hide, true); window.removeEventListener('resize', hide); };
+  }, [tip]);
   const selected = [...sel].filter((i) => i < p.rows.length).sort((x, y) => x - y);
 
   const setRows = (fn: (rows: Row[]) => Row[]) => update((q) => ({ ...q, rows: fn(q.rows) }));
@@ -152,6 +170,13 @@ export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport
         </div>
       ) : (
         <div class="gridwrap">
+          {tip && (
+            <div id="flagtip" role="tooltip" class="fliptip"
+              style={{ top: `${tip.r.bottom + 6}px`, left: `${Math.max(8, Math.min(tip.r.left + tip.r.width / 2 - 150, window.innerWidth - 308))}px` }}>
+              <b>{tip.c.label}: {tip.c.title}</b>
+              <p>{tip.c.help}</p>
+            </div>
+          )}
           <table class="grid">
             <thead>
               <tr>
@@ -159,7 +184,12 @@ export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport
                   onChange={() => setSel(allSel ? new Set() : new Set(p.rows.map((_, i) => i)))} /></th>
                 <th class="st" />
                 <th>Ch</th><th>Rx MHz</th><th>Tx MHz <small>(X = Rx only)</small></th><th>Power</th><th>CTCSS Hz</th><th>Name</th>
-                {cols.map((c) => <th class="flag" title={c.title}>{c.label}</th>)}
+                {cols.map((c) => (
+                  <th class="flag help" tabIndex={0} aria-label={`${c.label}: ${c.title}`}
+                    aria-describedby={tip?.c === c ? 'flagtip' : undefined}
+                    onMouseEnter={(e) => showTip(c, e.currentTarget as HTMLElement)} onMouseLeave={() => setTip(null)}
+                    onFocus={(e) => showTip(c, e.currentTarget as HTMLElement)} onBlur={() => setTip(null)}>{c.label}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
