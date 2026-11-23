@@ -175,6 +175,8 @@ dt { color: var(--muted); } dd { margin: 0; }
 .msg.bad { background: var(--bad-soft); color: var(--bad); }
 .msg.warn { background: var(--warn-soft); color: var(--warn); }
 .msg.info { background: var(--info-soft); }
+.fwinfo ul { margin: 6px 0 0; padding-left: 20px; }
+.fwinfo li { margin: 4px 0; }
 .hint { color: var(--muted); font-size: 12.5px; }
 .empty { text-align: center; padding: 40px 16px; }
 

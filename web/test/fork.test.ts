@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { analyze } from '../src/core/analyze';
 import { readImage } from '../src/core/decode';
 import { readChl, readJob, verifyChecksum } from '../src/core/fm900';
-import { FQ0, MO_MAGIC, entryNibbles, freqNibbles, hasIntro, isForkImage, morseBytes, readMorse, tableEntry, windows } from '../src/core/fork';
+import { FQ0, MO_MAGIC, entryNibbles, freqNibbles, hasIntro, identSeconds, isForkImage, morseBytes, readMorse, tableEntry, windows } from '../src/core/fork';
 import { forkMaster, master } from '../src/core/masters';
 import { toProject } from '../src/core/project';
 
@@ -24,6 +24,14 @@ function project(job: string, firmware?: 'enhanced' | 'intro', callsign?: string
   const p = toProject(j.hw, j.sw, readChl(readFileSync(join(JOBS, job, job + '.CHL'))), job, j.comments);
   return { ...p, date: DATE, firmware, callsign };
 }
+
+describe('identSeconds', () => {
+  it('matches the firmware timing (68 units for VK2FN at 66.5 ms, 1 s with no callsign)', () => {
+    expect(identSeconds('VK2FN')).toBeCloseTo(68 * 0.0665, 6);
+    expect(identSeconds('')).toBeCloseTo(1.0, 1);
+    expect(identSeconds('DE VK2FN')).toBeGreaterThan(identSeconds('VK2FN'));
+  });
+});
 
 describe('enhanced firmware', () => {
   it('the fork master is embedded and differs from FM92R only in code and the table marker', () => {

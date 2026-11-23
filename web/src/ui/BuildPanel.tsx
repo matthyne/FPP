@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import { Analysis, enhancedProblem } from '../core/analyze';
-import { entryNibbles, morseBytes, tableEntry, windows } from '../core/fork';
+import { MORSE_WPM, entryNibbles, identSeconds, morseBytes, tableEntry, windows } from '../core/fork';
 import { dump } from '../core/decode';
 import { verifyChecksum } from '../core/fm900';
 import { Firmware, Project } from '../core/project';
@@ -89,6 +89,32 @@ export function ExperimentalBanner({ what }: { what: string }) {
   );
 }
 
+/** What the experimental image does, feature by feature (Build tab, in place of the factory summary). */
+function FirmwareInfo({ fw, callsign, sample }: { fw: Firmware; callsign: string; sample: { ch: number; w: string[] } | null }) {
+  const secs = identSeconds(callsign).toFixed(1);
+  return (
+    <div class="msg info fwinfo">
+      <b>What this experimental image does</b> ({fw === 'enhanced' ? 'Ident + Rx freq.' : 'Start-up ident'}, FM92R):
+      <ul>
+        <li><b>Start-up ident.</b> At switch-on the head shows “00”{callsign
+          ? <> while the radio sends <b class="mono">{callsign}</b> in Morse on its beep tone at {MORSE_WPM} wpm (about {secs} s)</>
+          : <> for 1 s (no callsign set, so no Morse)</>}, then the channel. Keys pressed meanwhile are ignored.</li>
+        {fw === 'enhanced' && <li><b>Rx frequency on the head.</b> After 2 s on the channel number, the head shows the channel's
+          Rx frequency two characters at a time, 0.5 s each, with a 0.5 s blank before and after, then the channel number again,
+          in a loop{sample && <> (channel {sample.ch}: <span class="mono">(blank) {sample.w.map((w) => `“${w}”`).join(' ')} (blank)</span>)</>}.
+          The channel number stays while transmitting; the cycle stops while scanning or showing selcall digits, and restarts on a
+          channel change.</li>}
+        <li><b>No off-hook timer in scan.</b> The factory firmware stops scanning when the handset is lifted (it parks on the
+          priority or home channel), and if the handset is left off-hook on a quiet channel, its off-hook timer sounds a continuous
+          tone after about 30 s until the handset is hung up. In this image scanning ignores the hook: the scan carries on with the
+          handset off-hook, there is no off-hook timer and no tone. To stay on one channel, switch scan off.</li>
+        <li><b>Everything else is factory.</b> Channels, CTCSS, keys, PTT, the Tx timeout and the head link behave as with the
+          factory FM92R firmware.</li>
+      </ul>
+    </div>
+  );
+}
+
 export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; update: Update; notify: (m: string, e?: boolean) => void }) {
   const [view, setView] = useState<'table' | 'all' | 'dump'>('table');
   const b = a.builder;
@@ -129,11 +155,7 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
           {a.vcoWarnings.map((w) => <p class="msg warn" title={`Original FPP warning: ${w}`}>{vcoMessage(w)}</p>)}
           {p.sw.slice(11, 15) !== '0000' && <p class="msg warn">Selcall codes are set: the selcall tones are left at their defaults.</p>}
           {p.keys && <p class="msg info">Head function keys are overridden (not Original FPP behaviour).</p>}
-          {a.img && a.enhanced && <p class="msg info">At switch-on the head shows “00”{p.callsign?.trim()
-            ? <> while the radio sends <b class="mono">{p.callsign.trim().toUpperCase()}</b> in Morse on its beep tone (18 wpm)</>
-            : <> for 1 s (no callsign set, so no Morse)</>}, then the channel. Scanning ignores the handset hook (no off-hook scan stop or tone).</p>}
-          {sample && <p class="msg info">Enhanced firmware: after 2 s on the channel number, the head shows the Rx frequency two
-            characters at a time, 0.5 s each, with a 0.5 s blank before and after. Channel {sample.ch}: <span class="mono">(blank) {sample.w.map((w) => `“${w}”`).join(' ')} (blank)</span>, then the channel again.</p>}
+          {a.img && a.enhanced && <FirmwareInfo fw={fw} callsign={morseOk ? p.callsign?.trim().toUpperCase() ?? '' : ''} sample={sample} />}
         </div>
         <div class="buildactions">
           <label class="field">

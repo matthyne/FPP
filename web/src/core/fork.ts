@@ -38,6 +38,19 @@ export function morseBytes(text: string): number[] {
   return out;
 }
 
+/** Ident speed of the fork firmware (fork.asm MO_UNIT: 5 x 13.3 ms = 66.5 ms per unit). */
+export const MORSE_WPM = 18;
+export const MORSE_UNIT_S = 0.0665;
+
+/** How long the start-up ident blocks, in seconds (as fork.asm `intro` times it; 1 s with no callsign). */
+export function identSeconds(text: string): number {
+  const b = morseBytes(text);
+  if (b[0] === 0) return 15 * MORSE_UNIT_S;
+  let units = 0;
+  for (const x of b) units += x === 0 ? 6 : x === 0x80 ? 2 : x === 0x81 ? 6 : x + 1;
+  return units * MORSE_UNIT_S;
+}
+
 export function fillMorse(img: Uint8Array, text: string): void {
   if (!hasIntro(img)) throw new Error('master has no start-up ident');
   const b = morseBytes(text);
