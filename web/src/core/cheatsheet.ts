@@ -158,11 +158,11 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   }
   const leftW = boxes.length ? bx - MARGIN - 6 : W;
 
-  // Header: job name, then model and the build details, wrapped to fit left of the boxes.
+  // Header: "FMxx Channel Sheet", then the job name and build details, wrapped to fit left of the boxes.
   let y = MARGIN + 14;
-  page.text(MARGIN, y, fit(p.name.trim() || 'NEWJOB', 'Helvetica-Bold', 16, leftW), 'Helvetica-Bold', 16);
+  page.text(MARGIN, y, fit(`${model} Channel Sheet`, 'Helvetica-Bold', 16, leftW), 'Helvetica-Bold', 16);
   y += 3;
-  const info = [`Philips ${model} channels`];
+  const info = [`Job ${p.name.trim() || 'NEWJOB'}`];
   if (a?.builder) info.push(`Master ${a.builder.masterName()}`);
   info.push(`Build date ${p.date || today()}`, `${entries.length} channel${entries.length === 1 ? '' : 's'}`);
   if (p.firmware && p.firmware !== 'standard') info.push(`Firmware: ${FW[p.firmware] ?? p.firmware}`);
@@ -224,5 +224,5 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   }
   if (!entries.length) page.text(MARGIN, y + 30, 'No channels.', 'Helvetica', 12);
 
-  return page.toBytes(`${p.name} channels`);
+  return page.toBytes(`${model} Channel Sheet (${p.name.trim() || 'NEWJOB'})`);
 }

@@ -47,7 +47,8 @@ describe('cheat sheet PDF', () => {
         expect(s).toContain(`(${e.tx}) Tj`);
         expect(s).toContain(`(${e.num}) Tj`);
       }
-      expect(s).toContain(`(${p.name}) Tj`);
+      expect(s).toContain(`(Job ${p.name}`);
+      expect(s).toMatch(/\((FM91|FM92) Channel Sheet\) Tj/);
     });
   }
 
