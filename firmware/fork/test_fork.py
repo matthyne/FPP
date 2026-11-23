@@ -413,5 +413,61 @@ class FreqFirmware(unittest.TestCase):
                 self.assertEqual(out[0], out[1], (ch, flags))
 
 
+class NoHookScan(unittest.TestCase):
+    """NOHOOK: an off-hook handset neither stops the scan nor sounds the continuous tone.
+    Stock = the same radio image with the three original brset 4,$11 instructions put back."""
+
+    SITES = (0x0EC0, 0x0EF1, 0x0FC7)
+
+    @classmethod
+    def setUpClass(cls):
+        with tempfile.TemporaryDirectory() as d:
+            cls.fork = bytes(fork_radio(d))
+        cls.sym = build.assemble(True)[1].syms
+        master = open(build.MASTER, 'rb').read()
+        stock = bytearray(cls.fork)
+        for a in cls.SITES:
+            stock[a:a + 3] = master[a:a + 3]
+        cls.stock = bytes(stock)
+
+    def test_sites_are_nops(self):
+        master = open(build.MASTER, 'rb').read()
+        for a in self.SITES:
+            self.assertEqual(master[a], 0x08)               # brset 4,$11,...
+            self.assertEqual(master[a + 1], 0x11)
+            self.assertEqual(self.fork[a:a + 3], bytes([0x9D] * 3))
+
+    def cpu(self, img, **mem):
+        c = sim6805.CPU(img)
+        for name in ('head_send', 'select_channel', 'select_channel_A'):
+            c.stub(self.sym[name], lambda cpu: None)
+        for a, v in mem.items():
+            c.mem[int(a[1:], 16)] = v
+        return c
+
+    def test_no_continuous_tone(self):
+        # Scan stopped ($1F.3) on a quiet channel ($45 = max noise), off-hook ($11.4),
+        # the 32 s off-hook timer already started ($1F.6) and run out ($65).
+        state = dict(m11=0x50, m1f=0x4C, m45=0xFF, m65=0xFF, m1b=0, m1c=0, m14=0)
+        c = self.cpu(self.stock, **state)
+        c.call(self.sym['scan_task'])
+        self.assertTrue(c.mem[0x1B] & 1)                    # factory: tone on
+        c = self.cpu(self.fork, **state)
+        c.call(self.sym['scan_task'])
+        self.assertFalse(c.mem[0x1B] & 1)                   # fork: no tone
+        self.assertTrue(c.mem[0x1F] & 0x80)                 # normal 3.4 s resume hold instead
+        self.assertEqual(c.mem[0x61], 0x7F)
+
+    def test_off_hook_keeps_scanning(self):
+        # Scanning (not stopped) with the handset off-hook.
+        state = dict(m11=0x50, m1f=0x00, m1c=0, m14=0, m2e=1, m50=1, m4f=0)
+        c = self.cpu(self.stock, **state)
+        c.call(self.sym['scan_task'])
+        self.assertTrue(c.mem[0x1F] & 0x02)                 # factory: parks (priority/home)
+        c = self.cpu(self.fork, **state)
+        c.call(self.sym['scan_task'])
+        self.assertFalse(c.mem[0x1F] & 0x02)                # fork: carries on scanning
+
+
 if __name__ == '__main__':
     unittest.main()

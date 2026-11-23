@@ -2455,7 +2455,13 @@ L_0eae:                          .at $0eae
         brset   2,$14,L_0e96
         brset   3,$1f,L_0ee8
         brset   1,$1f,L_0f2a
+        .if NOHOOK
+        nop                                     ; NOHOOK: off-hook no longer stops the scan (was brset 4,$11,L_0f12)
+        nop
+        nop
+        .else
         brset   4,$11,L_0f12
+        .endif
 
 L_0ec3:                          .at $0ec3
         brclr   4,$1f,L_0ecf
@@ -2484,7 +2490,13 @@ L_0ee8:                          .at $0ee8
         brset   2,$1f,L_0efc
         brclr   7,$60,L_0efc
         brset   0,$11,L_0efc
+        .if NOHOOK
+        nop                                     ; NOHOOK: priority revisits carry on off-hook (was brset 4,$11,L_0efc)
+        nop
+        nop
+        .else
         brset   4,$11,L_0efc
+        .endif
         brset   7,$1f,L_0efc
         jsr     scan_list_read0
         bne     L_0eff
@@ -2630,7 +2642,13 @@ L_0fb1:                          .at $0fb1
         brclr   2,$82,L_0fed
 
 L_0fc7:                          .at $0fc7
+        .if NOHOOK
+        nop                                     ; NOHOOK: no off-hook resume hold / continuous tone (was brset 4,$11,L_0ff5)
+        nop
+        nop
+        .else
         brset   4,$11,L_0ff5
+        .endif
         brset   0,$1b,L_0fd3
         brclr   7,$1f,L_0fde
         brclr   7,$61,L_0fdb

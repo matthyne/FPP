@@ -19,6 +19,7 @@ FM92R only (remote head, no selcall). Background: `../FIRMWARE.md`
 * [Variants and how to build](#variants-and-how-to-build)
 * [Feature: start-up "00" and Morse ident (INTRO)](#feature-start-up-00-and-morse-ident-intro)
 * [Feature: Rx frequency on the control head (FREQ)](#feature-rx-frequency-on-the-control-head-freq)
+* [Feature: scan ignores the handset hook (NOHOOK)](#feature-scan-ignores-the-handset-hook-nohook)
 * [RAM, timers and tables](#ram-timers-and-tables)
 * [Bench-test checklist](#bench-test-checklist)
 * [Files](#files)
@@ -32,8 +33,8 @@ One source, assembled with feature flags (`-D NAME=0/1`, set by `build.py`):
 | Master (`build/`) | Flags | Web FPP Firmware menu | `mkradio.py --variant` | What it does |
 |---|---|---|---|---|
 | (factory `FM92R.BIN`) | none | Factory (Original FPP) | – | stock |
-| `FM92R-intro.BIN` | INTRO | Start-up ident (FM92R) | `intro` | "00" + Morse callsign at switch-on |
-| `FM92R-fork.BIN` | INTRO + FREQ | Ident + Rx freq. (FM92R) | `enhanced` (default) | the above + Rx frequency on the head |
+| `FM92R-intro.BIN` | INTRO + NOHOOK | Start-up ident (FM92R) | `intro` | "00" + Morse callsign at switch-on; scan ignores the hook |
+| `FM92R-fork.BIN` | INTRO + FREQ + NOHOOK | Ident + Rx freq. (FM92R) | `enhanced` (default) | the above + Rx frequency on the head |
 
 ```sh
 cd firmware/fork
@@ -160,6 +161,26 @@ number for 2 s, and repeats. 147.450 MHz on channel 3:
 * **Hooks.** These are listed at the top of `fork.asm`: warm start, `head_display_off`,
   `show_channel`, `display_digits`, and the end of the main loop.
 
+## Feature: scan ignores the handset hook (NOHOOK)
+
+In both variants. In the factory firmware, the handset going off-hook (`$11.4` = PA7 high AND head `$46` held) while
+scanning stops the scan on the priority or home channel. If that channel then stays quiet with the handset still off,
+the radio sounds a **continuous tone** after about 32 s, until the handset goes back on-hook, a signal arrives, PTT is
+pressed, or scan is switched off (FIRMWARE.md §7.3). A handset left lying on the bench sets this off. It was
+reported on the first radio running the fork.
+
+NOHOOK replaces the three `brset 4,$11,…` tests in `scan_task` with 3 NOPs each:
+
+| Address | Factory | With NOHOOK |
+|---|---|---|
+| `$0EC0` | off-hook while scanning → park on priority/home channel | keeps scanning |
+| `$0EF1` | off-hook → no priority-channel revisit while stopped | priority revisits carry on |
+| `$0FC7` | off-hook on a stopped, quiet channel → 32 s, then continuous tone | the normal 3.4 s hang time, then scanning resumes |
+
+`$11.4` still does everything else it did (CTCSS encode gate and the CTCSS monitor, §7.2), and PTT is
+unchanged. No RAM, no new code. Tests: `NoHookScan` in `test_fork.py` runs `scan_task` in the simulator with the
+original instructions put back (tone on, scan parked) and with NOHOOK (neither).
+
 ## RAM, timers and tables
 
 | What | Where | Used by |
@@ -272,3 +293,4 @@ firmware (`stackdepth.py`, checked by `build.py`).
 | `ca3f4b5` | What the factory firmware sends to the head at switch-on (FIRMWARE.md §6.1); start-up regression test. |
 | `4b694e9` | FREQ: 0.5 s blank before and after the frequency. |
 | (2026-11-23) | First hardware report: an image burned and worked on an FM92R. Still experimental. |
+| (2026-11-23) | NOHOOK in both variants: scan ignores the handset hook (no off-hook scan stop, no continuous tone). |

@@ -3,7 +3,7 @@
 
     python3 build.py            # -> build/FM92R-intro.BIN, build/FM92R-fork.BIN (+ .lst, .sym)
 
-1. Assembles FM92R.asm with FORK=0 FREQ=0 INTRO=0 and checks it is
+1. Assembles FM92R.asm with FORK=0 FREQ=0 INTRO=0 NOHOOK=0 and checks it is
    byte-identical to fm900/MASTERS/FM92R.BIN (so everything outside the `.if`
    blocks is still the original firmware). Stops if not.
 2. Assembles each variant (VARIANTS), fixes the EPROM checksum (0x1F64) and
@@ -28,11 +28,11 @@ MASTER = os.path.join(ROOT, 'fm900', 'MASTERS', 'FM92R.BIN')
 SRC = os.path.join(HERE, 'FM92R.asm')
 
 
-STOCK = {'FORK': 0, 'FREQ': 0, 'INTRO': 0}
+STOCK = {'FORK': 0, 'FREQ': 0, 'INTRO': 0, 'NOHOOK': 0}
 # name -> feature flags. FM92R-fork is the "enhanced" firmware.
 VARIANTS = {
-    'FM92R-intro': {'FORK': 1, 'FREQ': 0, 'INTRO': 1},
-    'FM92R-fork': {'FORK': 1, 'FREQ': 1, 'INTRO': 1},
+    'FM92R-intro': {'FORK': 1, 'FREQ': 0, 'INTRO': 1, 'NOHOOK': 1},
+    'FM92R-fork': {'FORK': 1, 'FREQ': 1, 'INTRO': 1, 'NOHOOK': 1},
 }
 
 

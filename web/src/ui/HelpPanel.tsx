@@ -56,6 +56,9 @@ export function HelpPanel() {
             then the channel number again, in a loop. 147.450 MHz shows <code>(blank) 14 47 "7 " " 4" 45 50 (blank)</code> (the point
             is shown as a space). It stops while transmitting, scanning or
             showing selcall digits, and whenever the channel changes it starts again.</li>
+          <li><b>Both:</b> scanning ignores the handset hook. With the factory firmware, lifting the handset stops the scan, and
+            leaving it off on a quiet channel sounds a continuous tone after about 30 s until it is hung up; with these the scan
+            just carries on, and there is no tone.</li>
         </ul>
         <ul>
           <li>The modified firmware is only for the FM92R without selcall (hardware code digit 4 = 4 or 8, digit 6 not 3–5).</li>

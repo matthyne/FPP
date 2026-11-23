@@ -423,7 +423,7 @@ The channel's tone code is slot byte 6 bits 0–5 (1–38, 0 = none), copied to 
   * PTT is pressed (`tx_synth_settled`);
   * scan is switched off (`scan_stop`).
 
-  This is factory behaviour (the fork doesn't touch `$11`, `$14`, `$1B`, `$1F` or `$65`). So a handset left off its hanger, or a head that keeps reporting `$46`, gives a continuous tone in scan mode.
+  This is factory behaviour (the fork doesn't touch `$11`, `$14`, `$1B`, `$1F` or `$65`). So a handset left off its hanger, or a head that keeps reporting `$46`, gives a continuous tone in scan mode. The fork's NOHOOK feature (in both experimental variants) removes the off-hook tests from `scan_task` (`fork/README.md`).
 
 ### 7.4 Transmit
 

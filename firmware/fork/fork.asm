@@ -8,7 +8,10 @@
 ; Features, selected by build.py with -D (each 0 or 1):
 ;   INTRO  start-up: "00" on the head and a Morse ident (callsign from a table)
 ;   FREQ   Rx frequency on the head after the channel number
-; Variants: FM92R-intro.BIN = INTRO; FM92R-fork.BIN ("enhanced") = INTRO + FREQ.
+;   NOHOOK scan ignores the handset hook: an off-hook handset neither stops the
+;          scan nor sounds the continuous off-hook tone (FIRMWARE.md 7.3)
+; Variants: FM92R-intro.BIN = INTRO + NOHOOK; FM92R-fork.BIN ("enhanced") =
+; INTRO + FREQ + NOHOOK.
 ;
 ; Hooks (in `.if` blocks in FM92R.asm, each the same size as the original):
 ;   $0270 wait_startup    clr $10 ; lda #$aa ; jsr head_send
@@ -17,6 +20,7 @@
 ;   $0C14 show_channel    lda $2e ; brclr 6,$13,L -> jsr fq_showch ; bra L_0c1b (FREQ)
 ;   $0C24 display_digits  sta $41 ; and #$0f      -> jsr fq_disp ; nop     (FREQ)
 ;   $0DCC main loop end   jmp main_loop           -> jmp fq_main           (FREQ)
+;   $0EC0, $0EF1, $0FC7 scan_task  brset 4,$11,L -> 3 x nop                 (NOHOOK)
 ;
 ; Head display messages: $80 + right character, $82 + left character
 ; (display_digits sends the low nibble with $80; show_channel puts the tens
