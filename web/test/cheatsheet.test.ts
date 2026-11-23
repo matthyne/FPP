@@ -95,7 +95,7 @@ describe('cheat sheet PDF', () => {
     expect(s).toContain('(AUX) Tj');
     const over = { ...fm92, keys: [5, 6, 3, 4] };
     s = latin1(cheatSheet(over, analyze(over)));
-    for (const f of ['Scan on/off', 'Monitor on/off', 'Channel tens \\(next 10\\)', 'Channel units']) expect(s).toContain(`(${f}) Tj`);
+    for (const f of ['Scan', 'Monitor', 'Channel tens \\(next 10\\)', 'Channel units']) expect(s).toContain(`(${f}) Tj`);
     const fm91 = job('80CHCB');
     expect(headButtons(fm91, analyze(fm91).defaultKeys)).toBeNull();
     expect(latin1(cheatSheet(fm91, analyze(fm91)))).not.toContain('Head buttons');

@@ -83,7 +83,7 @@ export const HEAD_BUTTONS = ['UP', 'DOWN', 'AUX', 'SEND'];
 
 export const KEY_LABELS: Record<string, string> = {
   none: 'Not used', up: 'Channel up', down: 'Channel down', tens: 'Channel tens (next 10)',
-  units: 'Channel units', scan: 'Scan on/off', monitor: 'Monitor on/off', selcall: 'Send selcall', dial: 'Selcall dial mode',
+  units: 'Channel units', scan: 'Scan', monitor: 'Monitor', selcall: 'Send selcall', dial: 'Selcall dial mode',
 };
 
 /** [button, function] for the FM92 head (the override, else the Original FPP defaults); null if not an FM92 or unknown. */
