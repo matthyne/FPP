@@ -186,6 +186,8 @@ input.code { font-size: 20px; letter-spacing: 3px; padding: 6px 10px; width: aut
 
 /* toolbar */
 .toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+.toolbar .plans { margin-left: auto; }
+.toolbar .plans + .count { margin-left: 6px; }
 .toolbar .count { margin-left: auto; color: var(--muted); font-family: var(--mono); font-size: 12.5px; }
 .selbar { background: var(--sel); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; position: sticky; top: 44px; z-index: 4; }
 .selbar > span { font-weight: 600; margin-right: 4px; }

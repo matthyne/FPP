@@ -20,8 +20,8 @@ export function PlansDialog({ hw, existing, close, apply }: {
 
   return (
     <div class="modal-bg" onClick={(e) => { if (e.target === e.currentTarget) close(); }} onKeyDown={(e) => { if (e.key === 'Escape') close(); }}>
-      <div class="modal" role="dialog" aria-label="Channel plans">
-        <h2>Channel plans</h2>
+      <div class="modal" role="dialog" aria-label="Channel Plans">
+        <h2>Channel Plans</h2>
         <div class="plans">
           {PLANS.map((p) => (
             <label class={`plan ${p.id === id ? 'active' : ''}`}>
