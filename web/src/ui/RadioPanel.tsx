@@ -46,7 +46,7 @@ export function RadioPanel({ p, a, update }: { p: Project; a: Analysis; update: 
         <div class="grid2">
           <label class="field">
             <span class="lab">Job name <small>(file name, up to {JOB_NAME_MAX} chars)</small></span>
-            <input value={p.name} maxLength={JOB_NAME_MAX} onInput={(e) => set({ name: (e.target as HTMLInputElement).value.toUpperCase() })} />
+            <input value={p.name} maxLength={JOB_NAME_MAX} onInput={(e) => set({ name: (e.target as HTMLInputElement).value })} />
           </label>
           <label class="field">
             <span class="lab">Build date <small>(stamped at 0x1FE2; blank = today)</small></span>

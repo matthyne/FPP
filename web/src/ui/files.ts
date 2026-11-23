@@ -50,12 +50,12 @@ export function save(p: Project): void {
 /** Longest job name. It is only used for file names and the cheat sheet, never in the image or the .JOB/.CHL contents. */
 export const JOB_NAME_MAX = 32;
 
-/** The job name as a file name (letters, digits, _ and -; up to JOB_NAME_MAX characters). */
+/** The job name as a file name (letters in either case, digits, _ and -; up to JOB_NAME_MAX characters). */
 export function safeName(s: string): string {
-  return (s.trim() || 'NEWJOB').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, JOB_NAME_MAX).toUpperCase();
+  return (s.trim() || 'NEWJOB').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, JOB_NAME_MAX);
 }
 
 /** DOS 8-character file name for the Original FPP's .JOB/.CHL pair (its JOBS folder needs 8.3 names). */
 export function dosName(s: string): string {
-  return safeName(s).slice(0, 8);
+  return safeName(s).slice(0, 8).toUpperCase();
 }
