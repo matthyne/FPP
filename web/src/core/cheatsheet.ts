@@ -2,7 +2,7 @@
 // Rx, Tx and name for every record, in record order, in 1–3 columns sized to fit the page.
 import { Analysis } from './analyze';
 import { Segment, splitCallsigns } from './callsign';
-import { describeHw, headButtons } from './codes';
+import { headButtons } from './codes';
 import { F_SCAN1, F_SCAN2, F_SCAN3 } from './fm900';
 import { Colour, Font, PdfPage, textWidth } from './pdf';
 import { Project, isBlank, rowToChannel } from './project';
@@ -123,48 +123,47 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   const page = new PdfPage();
   const W = page.width - 2 * MARGIN;
   const { entries, skipped } = sheetEntries(p);
-  const hw = describeHw(p.hw);
   const model = p.hw[1] === '1' ? 'FM91' : p.hw[1] === '2' ? 'FM92' : p.hw[1] === '3' ? 'FM93' : 'FM9?';
 
-  // Head buttons box, top right (FM92 only); the header text wraps to the left of it.
+  // Legend boxes, side by side at the top right: head buttons (FM92) and scan-group colours.
+  // Rows: [badge text, badge groups (null = plain), description]. Header text goes to the left.
   const buttons = headButtons(p, a?.defaultKeys);
-  const BOX_W = 150, boxX = MARGIN + W - BOX_W, boxRow = 12.5;
-  const leftW = buttons || entries.some((e) => e.scan.length) ? W - BOX_W - 14 : W;
-  let boxBottom = MARGIN;
-  // Legend rows: [badge text, badge groups (null = plain), description], under section titles.
-  const sections: [string, [string, number[] | null, string][]][] = [];
-  if (buttons) sections.push(['Head buttons', buttons.map(([b, f]) => [b, null, f])]);
+  const boxRow = 12.5, BOX_GAP = 8;
+  const boxes: [string, [string, number[] | null, string][]][] = [];
+  if (buttons) boxes.push(['Head buttons', buttons.map(([b, f]) => [b, null, f])]);
   const used = [...new Set(entries.flatMap((e) => e.scan))].sort();
   if (used.length) {
     const rows: [string, number[] | null, string][] = used.map((g) => [`${g}`, [g], `Scan group ${g}`]);
     const multi = [...new Set(entries.filter((e) => e.scan.length > 1).map((e) => e.scan.join('+')))];
     for (const m of multi) rows.push([m, m.split('+').map(Number), `In groups ${m.replace(/\+/g, ' and ')}`]);
     rows.push(['', [], 'Not scanned']);
-    sections.push(['Channel number colour', rows]);
+    boxes.push(['Channel number colour', rows]);
   }
-  if (sections.length) {
-    let by = MARGIN;
-    const h = sections.reduce((t, [, rows]) => t + 16 + rows.length * boxRow, 0) + 3;
-    page.rect(boxX, MARGIN, BOX_W, h, 0.93);
-    for (const [title, rows] of sections) {
-      page.text(boxX + 7, by + 11, title, 'Helvetica-Bold', 8, 0.3);
-      rows.forEach(([label, scan, desc], i) => {
-        const ry = by + 16 + i * boxRow;
-        badge(page, boxX + 6, ry + 1, 34, boxRow - 2, scan ?? [], label, 'Helvetica-Bold', 7.5, ry + 9);
-        page.text(boxX + 46, ry + 9, fit(desc, 'Helvetica', 8.5, BOX_W - 50), 'Helvetica', 8.5);
-      });
-      by += 16 + rows.length * boxRow;
-    }
-    boxBottom = MARGIN + h;
+  let boxBottom = MARGIN;
+  let bx = MARGIN + W;                                // right edge of the next box (laid out right to left)
+  for (const [title, rows] of [...boxes].reverse()) {
+    const bw = Math.max(textWidth(title, 'Helvetica-Bold', 8) + 14,
+      ...rows.map(([, , d]) => 46 + textWidth(d, 'Helvetica', 8.5) + 8));
+    bx -= bw;
+    const h = 16 + rows.length * boxRow + 3;
+    page.rect(bx, MARGIN, bw, h, 0.93);
+    page.text(bx + 7, MARGIN + 11, title, 'Helvetica-Bold', 8, 0.3);
+    rows.forEach(([label, scan, desc], i) => {
+      const ry = MARGIN + 16 + i * boxRow;
+      badge(page, bx + 6, ry + 1, 34, boxRow - 2, scan ?? [], label, 'Helvetica-Bold', 7.5, ry + 9);
+      page.text(bx + 46, ry + 9, desc, 'Helvetica', 8.5);
+    });
+    boxBottom = Math.max(boxBottom, MARGIN + h);
+    bx -= BOX_GAP;
   }
+  const leftW = boxes.length ? bx - MARGIN - 6 : W;
 
-  // Header
+  // Header: job name, then model and the build details, wrapped to fit left of the boxes.
   let y = MARGIN + 14;
-  page.text(MARGIN, y, fit(`${p.name.trim() || 'NEWJOB'}: Philips ${model} channels`, 'Helvetica-Bold', 16, leftW), 'Helvetica-Bold', 16);
+  page.text(MARGIN, y, fit(p.name.trim() || 'NEWJOB', 'Helvetica-Bold', 16, leftW), 'Helvetica-Bold', 16);
   y += 3;
-  const info = [hw[2], hw[3], hw[5], `HW ${p.hw}`, `SW ${p.sw}`];
+  const info = [`Philips ${model} channels`];
   if (a?.builder) info.push(`Master ${a.builder.masterName()}`);
-  if (a?.img) info.push(`Checksum ${a.img[0x1F64].toString(16).toUpperCase().padStart(2, '0')}`);
   info.push(`Build date ${p.date || today()}`, `${entries.length} channel${entries.length === 1 ? '' : 's'}`);
   if (p.firmware && p.firmware !== 'standard') info.push(`Firmware: ${FW[p.firmware] ?? p.firmware}`);
   if (p.firmware && p.firmware !== 'standard' && p.callsign?.trim()) info.push(`Callsign ${p.callsign.trim().toUpperCase()}`);

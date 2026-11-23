@@ -47,7 +47,7 @@ describe('cheat sheet PDF', () => {
         expect(s).toContain(`(${e.tx}) Tj`);
         expect(s).toContain(`(${e.num}) Tj`);
       }
-      expect(s).toContain(`HW ${p.hw}`);
+      expect(s).toContain(`(${p.name}) Tj`);
     });
   }
 
