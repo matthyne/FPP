@@ -12,7 +12,7 @@ import type { ImportSource } from './ImportDialog';
 import { RadioPanel } from './RadioPanel';
 import { ReadPanel } from './ReadPanel';
 import { ScanKeysPanel } from './ScanKeysPanel';
-import { download, loadSaved, pickFiles, readBytes, safeName, save } from './files';
+import { dosName, download, loadSaved, pickFiles, readBytes, safeName, save } from './files';
 import { Icon } from './icons';
 import { THEMES, Theme, applyTheme, loadTheme } from './theme';
 import radioPhoto from '../assets/fm900.webp';
@@ -259,12 +259,14 @@ export function App() {
         <div class="modal-bg" onClick={(e) => { if (e.target === e.currentTarget) setJobDialog(false); }}>
           <div class="modal" role="dialog" aria-label="Export JOB/CHL">
             <h2>Export for the Original FPP</h2>
-            <p class="hint">The Original FPP needs both files, with the same name, in its <code>JOBS</code> folder.</p>
+            <p class="hint">The Original FPP needs both files, with the same name, in its <code>JOBS</code> folder.
+              {dosName(project.name) !== safeName(project.name) && <> DOS file names are at most 8 characters, so this job is
+                saved as <code>{dosName(project.name)}</code>.</>}</p>
             <div class="actions">
-              <button onClick={() => download(`${safeName(project.name)}.JOB`, writeJob(project.hw, project.sw, project.comments))}>
-                Download {safeName(project.name)}.JOB</button>
-              <button onClick={() => download(`${safeName(project.name)}.CHL`, writeChl(fromProject(project)))}>
-                Download {safeName(project.name)}.CHL</button>
+              <button onClick={() => download(`${dosName(project.name)}.JOB`, writeJob(project.hw, project.sw, project.comments))}>
+                Download {dosName(project.name)}.JOB</button>
+              <button onClick={() => download(`${dosName(project.name)}.CHL`, writeChl(fromProject(project)))}>
+                Download {dosName(project.name)}.CHL</button>
               <button class="primary" onClick={() => setJobDialog(false)}>Done</button>
             </div>
           </div>

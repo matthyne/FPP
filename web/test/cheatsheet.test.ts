@@ -80,6 +80,13 @@ describe('cheat sheet PDF', () => {
     expect(s).toContain('1 row with errors not shown');
   });
 
+  it('long job names (up to 32 characters) go on the sheet and in the title', () => {
+    const p = { ...job('2MHAM/2MHAM'), name: 'VK2-REPEATERS-AND-SIMPLEX-2026-A' };   // 32 characters
+    const s = latin1(cheatSheet(p, analyze(p)));
+    expect(s).toContain('(Job VK2-REPEATERS-AND-SIMPLEX-2026-A   ');
+    expect(s).toContain('Channel Sheet \\(VK2-REPEATERS-AND-SIMPLEX-2026-A\\)');
+  });
+
   it('footer carries the Web FPP version from package.json', () => {
     expect(VERSION).toBe(JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8')).version);
     expect(latin1(cheatSheet(job('80CHCB')))).toContain(`Web FPP \\(FM900 CPS\\) ${VERSION_LABEL.replace(/[()]/g, '\\$&')}`);

@@ -1,3 +1,4 @@
+import { JOB_NAME_MAX } from './files';
 import { Analysis } from '../core/analyze';
 import { BAND_MHZ, Digit, EXAMPLES, HW_DIGITS, SW_DIGITS } from '../core/codes';
 import { Project } from '../core/project';
@@ -44,8 +45,8 @@ export function RadioPanel({ p, a, update }: { p: Project; a: Analysis; update: 
         <h2>Job</h2>
         <div class="grid2">
           <label class="field">
-            <span class="lab">Job name <small>(file name, 8 chars)</small></span>
-            <input value={p.name} maxLength={8} onInput={(e) => set({ name: (e.target as HTMLInputElement).value.toUpperCase() })} />
+            <span class="lab">Job name <small>(file name, up to {JOB_NAME_MAX} chars)</small></span>
+            <input value={p.name} maxLength={JOB_NAME_MAX} onInput={(e) => set({ name: (e.target as HTMLInputElement).value.toUpperCase() })} />
           </label>
           <label class="field">
             <span class="lab">Build date <small>(stamped at 0x1FE2; blank = today)</small></span>
