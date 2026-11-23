@@ -170,7 +170,7 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
     const x2 = x + CH_EM * fs, x3 = x2 + FREQ_EM * fs, x4 = x3 + FREQ_EM * fs;
     page.rect(x, y, colW, L.lineH, 0.82);
     const hy = y + base;
-    page.text(x + PAD * fs, hy, 'Ch', 'Helvetica-Bold', fs);
+    page.text(x + (badgeW - textWidth('Ch', 'Helvetica-Bold', fs)) / 2, hy, 'Ch', 'Helvetica-Bold', fs);
     page.text(x2, hy, 'Rx MHz', 'Helvetica-Bold', fs);
     page.text(x3, hy, 'Tx MHz', 'Helvetica-Bold', fs);
     if (L.nameW > 0) page.text(x4, hy, 'Name', 'Helvetica-Bold', fs);
@@ -178,10 +178,10 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
       const ry = y + (i + 1) * L.lineH;
       if (i % 2) page.rect(x, ry, colW, L.lineH, 0.93);
       const by = ry + base;
-      // Channel number reversed out: white, right-aligned on a dark badge.
+      // Channel number reversed out: white, centred on a dark badge.
       const inset = L.lineH * 0.08;
       page.rect(x, ry + inset, badgeW, L.lineH - 2 * inset, 0.15);
-      page.text(x + badgeW - PAD * fs - textWidth(e.num, 'Helvetica-Bold', fs), by, e.num, 'Helvetica-Bold', fs, 1);
+      page.text(x + (badgeW - textWidth(e.num, 'Helvetica-Bold', fs)) / 2, by, e.num, 'Helvetica-Bold', fs, 1);
       page.text(x2, by, e.rx, 'Helvetica-Bold', fs);
       page.text(x3, by, e.tx, 'Helvetica', fs, e.tx === e.rx ? 0.45 : 0);
       if (L.nameW > 0 && e.name) {
