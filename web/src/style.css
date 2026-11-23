@@ -164,7 +164,7 @@ input.invalid { border-color: var(--bad); }
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .field .lab { font-size: 12.5px; color: var(--muted); font-weight: 500; }
 .field .lab b { color: var(--accent); font-weight: 600; margin-right: 2px; }
-/* label with a leading icon (Build tab: calendar = Build date, heart-pulse = Firmware (amber when experimental), chip = EPROM; same icons as the status bar) */
+/* label with a leading icon (Build tab: calendar = Build date, heart-pulse = Firmware (amber when experimental), chip = EPROM, bullhorn = Start-up Morse callsign; same icons as the status bar) */
 .field .lab.labicon { display: inline-flex; align-items: center; gap: 4px; }
 .field .lab.labicon.exp .mdi { color: var(--warn); }
 .check { display: flex; gap: 8px; align-items: center; margin: 8px 0 12px; font-weight: 500; }
