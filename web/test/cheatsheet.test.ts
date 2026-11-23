@@ -44,7 +44,7 @@ describe('cheat sheet PDF', () => {
       for (const e of entries) {
         expect(s).toContain(`(${e.rx}) Tj`);
         expect(s).toContain(`(${e.tx}) Tj`);
-        expect(s).toMatch(new RegExp(`\\( *${e.num}\\) Tj`));
+        expect(s).toContain(`(${e.num}) Tj`);
       }
       expect(s).toContain(`HW ${p.hw}`);
     });
@@ -56,14 +56,14 @@ describe('cheat sheet PDF', () => {
       expect(L.cols * L.perCol).toBeGreaterThanOrEqual(n);
       expect((L.perCol + 1) * L.lineH).toBeLessThanOrEqual(700 + 1e-9);
       expect(L.fontSize).toBeGreaterThanOrEqual(7);
-      expect(L.nameChars).toBeGreaterThanOrEqual(8);
+      expect(L.nameW).toBeGreaterThanOrEqual(7 * L.fontSize - 1e-9);
     }
   });
 
   it('names, receive-only, simplex and error rows', () => {
     const p = job('80CHCB');
     p.rows = [
-      { num: '1', rx: '146.5', tx: '', flags: 0, ctcss: '', name: 'Café (simplex) – a very long name that will not fit in the column at all' },
+      { num: '1', rx: '146.5', tx: '', flags: 0, ctcss: '', name: 'Café (simplex) – a very long name that will not fit in the column at all, not even on a single-column sheet with lots of room' },
       { num: '2', rx: '147.0', tx: 'X', flags: 0, ctcss: '', name: 'µ€😀' },
       { num: '', rx: '', tx: '', flags: 0, ctcss: '' },
       { num: 'x', rx: '1', tx: '', flags: 0, ctcss: '' },

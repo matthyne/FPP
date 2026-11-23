@@ -2,7 +2,7 @@
 // Rx, Tx and name for every record, in record order, in 1–3 columns sized to fit the page.
 import { Analysis } from './analyze';
 import { describeHw } from './codes';
-import { PdfPage, glyphs } from './pdf';
+import { Font, PdfPage, textWidth } from './pdf';
 import { Project, isBlank, rowToChannel } from './project';
 import { VERSION_LABEL } from '../version';
 
@@ -34,17 +34,22 @@ function today(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** Cut to `max` glyphs, with an ellipsis if anything was dropped. */
-function fit(s: string, max: number): string {
-  if (max <= 0) return '';
-  return glyphs(s) <= max ? s : [...s].slice(0, Math.max(0, max - 1)).join('') + '…';
+/** Cut `s` so it is at most `maxW` points wide, with an ellipsis if anything was dropped. */
+function fit(s: string, font: Font, size: number, maxW: number): string {
+  if (textWidth(s, font, size) <= maxW) return s;
+  const g = [...s];
+  while (g.length && textWidth(g.join('') + '…', font, size) > maxW) g.pop();
+  return g.length ? g.join('').trimEnd() + '…' : '';
 }
 
-export interface SheetLayout { cols: number; perCol: number; lineH: number; fontSize: number; nameChars: number }
+/** Column geometry, in points. `nameW` = room left for the name. */
+export interface SheetLayout { cols: number; perCol: number; lineH: number; fontSize: number; nameW: number }
 
 const MARGIN = 36;
 const GAP = 14;              // between columns
-const CH_CHARS = 4, FREQ_CHARS = 9, MIN_NAME = 12;
+// Column widths in em (Helvetica digits are all 0.556 em, so frequencies still line up):
+// badge = 3 digits + 0.3 em padding each side, then a 0.6 em gap; a frequency (4.17 em) + 1 em gap.
+const PAD = 0.3, CH_EM = 3 * 0.556 + 2 * PAD + 0.6, FREQ_EM = 5.2, MIN_NAME_EM = 7;
 
 /** Choose columns and font size so `n` records fit in a `height`-point tall, `width` wide area. */
 export function sheetLayout(n: number, width: number, height: number): SheetLayout {
@@ -55,10 +60,10 @@ export function sheetLayout(n: number, width: number, height: number): SheetLayo
     if (lineH >= 10 || cols === 3) break;
   }
   const colW = (width - GAP * (cols - 1)) / cols;
-  // Courier is 0.6 em per glyph: shrink if needed so a name still gets MIN_NAME characters.
-  const fontSize = Math.min(10, lineH * 0.8, colW / (0.6 * (CH_CHARS + 2 * FREQ_CHARS + MIN_NAME)));
-  const nameChars = Math.floor(colW / (0.6 * fontSize)) - CH_CHARS - 2 * FREQ_CHARS;
-  return { cols, perCol, lineH, fontSize, nameChars };
+  // Shrink if needed so a name still gets MIN_NAME_EM (about 13 characters).
+  const fontSize = Math.min(10, lineH * 0.8, colW / (CH_EM + 2 * FREQ_EM + MIN_NAME_EM));
+  const nameW = colW - (CH_EM + 2 * FREQ_EM) * fontSize;
+  return { cols, perCol, lineH, fontSize, nameW };
 }
 
 export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder'>): Uint8Array {
@@ -86,7 +91,7 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder'>): U
   const comments = p.comments.map((c) => c.trim()).filter(Boolean);
   if (comments.length) {
     y += 12;
-    page.text(MARGIN, y, fit(comments.join(' / '), 110), 'Helvetica', 9, 0.3);
+    page.text(MARGIN, y, fit(comments.join(' / '), 'Helvetica', 9, W), 'Helvetica', 9, 0.3);
   }
   y += 8;
   page.line(MARGIN, y, MARGIN + W, y, 1);
@@ -100,30 +105,31 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder'>): U
   // Table
   const L = sheetLayout(entries.length, W, footY - 12 - y);
   const colW = (W - GAP * (L.cols - 1)) / L.cols;
-  const cw = 0.6 * L.fontSize;
+  const fs = L.fontSize;
   const base = L.lineH * 0.72;                       // baseline within a row
   for (let c = 0; c < L.cols; c++) {
     const x = MARGIN + c * (colW + GAP);
     const part = entries.slice(c * L.perCol, (c + 1) * L.perCol);
     if (!part.length && c) break;
-    const x2 = x + CH_CHARS * cw, x3 = x2 + FREQ_CHARS * cw, x4 = x3 + FREQ_CHARS * cw;
+    const badgeW = (CH_EM - 0.6) * fs;
+    const x2 = x + CH_EM * fs, x3 = x2 + FREQ_EM * fs, x4 = x3 + FREQ_EM * fs;
     page.rect(x, y, colW, L.lineH, 0.82);
     const hy = y + base;
-    page.text(x + 0.25 * cw, hy, 'Ch', 'Courier-Bold', L.fontSize);
-    page.text(x2, hy, 'Rx MHz', 'Courier-Bold', L.fontSize);
-    page.text(x3, hy, 'Tx MHz', 'Courier-Bold', L.fontSize);
-    if (L.nameChars > 0) page.text(x4, hy, 'Name', 'Courier-Bold', L.fontSize);
+    page.text(x + PAD * fs, hy, 'Ch', 'Helvetica-Bold', fs);
+    page.text(x2, hy, 'Rx MHz', 'Helvetica-Bold', fs);
+    page.text(x3, hy, 'Tx MHz', 'Helvetica-Bold', fs);
+    if (L.nameW > 0) page.text(x4, hy, 'Name', 'Helvetica-Bold', fs);
     part.forEach((e, i) => {
       const ry = y + (i + 1) * L.lineH;
       if (i % 2) page.rect(x, ry, colW, L.lineH, 0.93);
       const by = ry + base;
-      // Channel number reversed out: white on a dark badge, 3 digits + a quarter-glyph pad each side.
+      // Channel number reversed out: white, right-aligned on a dark badge.
       const inset = L.lineH * 0.08;
-      page.rect(x, ry + inset, (CH_CHARS - 0.5) * cw, L.lineH - 2 * inset, 0.15);
-      page.text(x + 0.25 * cw, by, e.num.padStart(CH_CHARS - 1), 'Courier-Bold', L.fontSize, 1);
-      page.text(x2, by, e.rx, 'Courier-Bold', L.fontSize);
-      page.text(x3, by, e.tx, 'Courier', L.fontSize, e.tx === e.rx ? 0.45 : 0);
-      if (L.nameChars > 0 && e.name) page.text(x4, by, fit(e.name, L.nameChars), 'Courier-Bold', L.fontSize);
+      page.rect(x, ry + inset, badgeW, L.lineH - 2 * inset, 0.15);
+      page.text(x + badgeW - PAD * fs - textWidth(e.num, 'Helvetica-Bold', fs), by, e.num, 'Helvetica-Bold', fs, 1);
+      page.text(x2, by, e.rx, 'Helvetica-Bold', fs);
+      page.text(x3, by, e.tx, 'Helvetica', fs, e.tx === e.rx ? 0.45 : 0);
+      if (L.nameW > 0 && e.name) page.text(x4, by, fit(e.name, 'Helvetica-Bold', fs, L.nameW), 'Helvetica-Bold', fs);
     });
     page.line(x, y + (part.length + 1) * L.lineH, x + colW, y + (part.length + 1) * L.lineH, 0.5, 0.5);
   }
