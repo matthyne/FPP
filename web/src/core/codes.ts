@@ -2,10 +2,8 @@
 
 import { KEY_FUNCS } from './fm900';
 import { Project, loadProjectJson } from './project';
-import ham2mJson from './examples/2m-channelised.json';
 import ham2mSydJson from './examples/2m-sydney.json';
 
-const ham2m = loadProjectJson(JSON.stringify(ham2mJson));
 const ham2mSyd = loadProjectJson(JSON.stringify(ham2mSydJson));
 
 export interface Digit {
@@ -65,8 +63,7 @@ export const SW_DIGITS: Digit[] = [
 // An example sets the codes; one with a project also loads its channels and key settings.
 export interface Example { name: string; hw: string; sw: string; project?: Project }
 export const EXAMPLES: Example[] = [
-  { name: '2 m ham channelised, FM92R A-band', hw: ham2m.hw, sw: ham2m.sw, project: ham2m },
-  { name: '2 m ham Sydney repeaters + test channels, FM92R A-band', hw: ham2mSyd.hw, sw: ham2mSyd.sw, project: ham2mSyd },
+  { name: '2 Meters Channelised + Repeaters (VK2)', hw: ham2mSyd.hw, sw: ham2mSyd.sw, project: ham2mSyd },
   { name: 'VHF B-band, FM92R', hw: '92340000', sw: '110300200000000' },
   { name: 'UHF CB, FM92R W1-band', hw: '92740000', sw: '110401200000000' },
   { name: 'UHF CB, FM91, 12.5 kHz', hw: '91785000', sw: '110000000000000' },

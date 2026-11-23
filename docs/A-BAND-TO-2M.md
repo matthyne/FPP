@@ -130,7 +130,7 @@ On FM92 VHF only two power stages exist: 25 W and "low". FM900.EXE stores "L" as
 
 **Web FPP (easiest).**
 
-1. On the **Radio** tab, choose *Start from an example → "2 m ham channelised, FM92R A-band"*. It loads 96 channels: the 2 m simplex, repeater and high-band repeater channels.
+1. On the **Radio** tab, choose *Start from an example → "2 Meters Channelised + Repeaters (VK2)"*. It loads an FM92R A-band project with 51 channels: 2 m simplex, the Sydney-area repeater and high-band repeater pairs, and two band-edge test channels (144.000 and 148.000).
 2. Fix the hardware code for your set, e.g. `92430…` for an FM92L, or another IF or spacing.
 3. Edit the channels, then **Build** and download the `.bin`.
 
