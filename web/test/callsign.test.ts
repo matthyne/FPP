@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasCallsign, qrzUrl, splitCallsigns } from '../src/core/callsign';
+import { hasCallsign, repeaterBookUrl, splitCallsigns } from '../src/core/callsign';
 import { cheatSheet, fitName } from '../src/core/cheatsheet';
 import { newProject } from '../src/core/project';
 
@@ -20,9 +20,9 @@ describe('callsigns in names', () => {
     }
   });
 
-  it('QRZ links', () => {
-    expect(qrzUrl('VK2RXX')).toBe('https://www.qrz.com/db/VK2RXX');
-    expect(qrzUrl('vk3byy/m')).toBe('https://www.qrz.com/db/VK3BYY');
+  it('RepeaterBook links', () => {
+    expect(repeaterBookUrl('VK2RXX')).toBe('https://www.repeaterbook.com/repeaters/callResult.php?call=VK2RXX');
+    expect(repeaterBookUrl('vk3byy/m')).toBe('https://www.repeaterbook.com/repeaters/callResult.php?call=VK3BYY');
   });
 
   it('split is lossless', () => {

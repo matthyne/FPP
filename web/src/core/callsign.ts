@@ -21,9 +21,11 @@ export function splitCallsigns(s: string): Segment[] {
   return out;
 }
 
-/** QRZ.com lookup page for a callsign (portable/mobile suffixes such as /P are dropped). */
-export function qrzUrl(call: string): string {
-  return `https://www.qrz.com/db/${encodeURIComponent(call.split('/')[0].toUpperCase())}`;
+/** RepeaterBook callsign search for a callsign (portable/mobile suffixes such as /P are dropped).
+ *  It lists every repeater with that callsign (US and Rest of World), each linking to its details page.
+ *  The details pages themselves are keyed by RepeaterBook's own ID, not the callsign, so they can't be linked directly. */
+export function repeaterBookUrl(call: string): string {
+  return `https://www.repeaterbook.com/repeaters/callResult.php?call=${encodeURIComponent(call.split('/')[0].toUpperCase())}`;
 }
 
 export const hasCallsign = (s: string): boolean => splitCallsigns(s).some((g) => g.call);

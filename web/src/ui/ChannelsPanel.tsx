@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Analysis } from '../core/analyze';
-import { qrzUrl, splitCallsigns } from '../core/callsign';
+import { repeaterBookUrl, splitCallsigns } from '../core/callsign';
 import {
   CTCSS, F_CR, F_ECON, F_HIGH, F_LOW, F_MED, F_PRI1, F_PRI2, F_PRI3, F_SCAN1, F_SCAN2, F_SCAN3,
   F_SCANSEL, F_SELCALL, F_SELPWR, F_VOTE, normFreq,
@@ -346,7 +346,7 @@ function OffsetDialog({ close, apply }: { close: () => void; apply: (khz: number
 
 /** Name cell: while not being edited, callsigns in the text are highlighted by an overlay
  *  drawn exactly over the input (whose own text is made transparent); editing shows the plain input.
- *  The overlay ignores the mouse except on the callsigns, which are QRZ.com links (new tab), so a
+ *  The overlay ignores the mouse except on the callsigns, which are RepeaterBook callsign-search links (new tab), so a
  *  click anywhere else in the box still lands in the input and edits it. */
 function NameInput({ row, value, onInput, onKeyDown }: { row: number; value: string; onInput: (v: string) => void;
   onKeyDown: (e: KeyboardEvent) => void }) {
@@ -356,9 +356,9 @@ function NameInput({ row, value, onInput, onKeyDown }: { row: number; value: str
     <div class={`namewrap${calls ? ' hascall' : ''}`}>
       {calls && <div class="namehl" aria-hidden="true">
         {segs.map((g) => (g.call
-          ? <a class="call" href={qrzUrl(g.text)} target="_blank" rel="noopener noreferrer" tabIndex={-1}
+          ? <a class="call" href={repeaterBookUrl(g.text)} target="_blank" rel="noopener noreferrer" tabIndex={-1}
             onMouseDown={(e) => e.preventDefault() /* keep focus off the link, or focus-within would hide the overlay mid-click */}
-            title={`Look up ${g.text.toUpperCase()} on QRZ.com (opens a new tab). Click elsewhere in the box to edit.`}>{g.text}</a>
+            title={`Look up ${g.text.toUpperCase()} on RepeaterBook (opens a new tab). Click elsewhere in the box to edit.`}>{g.text}</a>
           : g.text))}
       </div>}
       <input class="name" data-row={row} data-col="name" value={value} placeholder="—" aria-label="Name (not stored in the radio)"
