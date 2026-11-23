@@ -13,7 +13,7 @@
  ],
  "date": "",
  "rows": [
-  {"num": "1", "rx": "146.4000", "tx": "", "flags": 257, "ctcss": "", "name": "Simplex Channel 0"},
+  {"num": "1", "rx": "144.0000", "tx": "", "flags": 1, "ctcss": "", "name": "Band Edge Low"},
   {"num": "2", "rx": "146.4250", "tx": "", "flags": 257, "ctcss": "", "name": "Simplex Channel 1"},
   {"num": "3", "rx": "146.4500", "tx": "", "flags": 257, "ctcss": "", "name": "Simplex Channel 2"},
   {"num": "4", "rx": "146.4750", "tx": "", "flags": 257, "ctcss": "", "name": "Simplex Channel 3"},
@@ -62,7 +62,6 @@
   {"num": "47", "rx": "147.5500", "tx": "", "flags": 1, "ctcss": "", "name": "Upper Simplex Secondary 7"},
   {"num": "48", "rx": "147.5750", "tx": "", "flags": 1, "ctcss": "", "name": "Upper Simplex Secondary 8"},
   {"num": "49", "rx": "147.6000", "tx": "", "flags": 1, "ctcss": "", "name": "Upper Simplex Secondary 9"},
-  {"num": "98", "rx": "144.0000", "tx": "", "flags": 1, "ctcss": "", "name": "Band Edge Low"},
   {"num": "99", "rx": "148.0000", "tx": "", "flags": 1, "ctcss": "", "name": "Band Edge High"}
  ],
  "eprom": "27256"
