@@ -117,9 +117,9 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder'>): U
       if (i % 2) page.rect(x, ry, colW, L.lineH, 0.93);
       const by = ry + base;
       page.text(x, by, e.num.padStart(CH_CHARS - 1), 'Courier-Bold', L.fontSize);
-      page.text(x2, by, e.rx, 'Courier', L.fontSize);
+      page.text(x2, by, e.rx, 'Courier-Bold', L.fontSize);
       page.text(x3, by, e.tx, 'Courier', L.fontSize, e.tx === e.rx ? 0.45 : 0);
-      if (L.nameChars > 0 && e.name) page.text(x4, by, fit(e.name, L.nameChars), 'Courier', L.fontSize);
+      if (L.nameChars > 0 && e.name) page.text(x4, by, fit(e.name, L.nameChars), 'Courier-Bold', L.fontSize);
     });
     page.line(x, y + (part.length + 1) * L.lineH, x + colW, y + (part.length + 1) * L.lineH, 0.5, 0.5);
   }
