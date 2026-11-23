@@ -132,7 +132,7 @@ Options:
 | Read image | Opens a `.BIN`. Enter the radio's HW code and it decodes the image into channels, which you can load into the project. 16, 32 and 64 KB images are accepted: if every bank is the same it says so, otherwise a **Bank** menu picks one (default: the top bank, which is what a board with the extra address lines tied high reads). An image built with the modified firmware is recognised, with the same experimental note, and loading it selects the same firmware and callsign. |
 
 * **Open** takes `.JOB` + `.CHL` (select both), `.csv`/`.txt`, `.json` projects and `.BIN` images. Drag and drop works too.
-* **Import CSV / paste** (Channels tab, or opening a `.csv`) reads:
+* **Import** (Channels tab button: a CSV file or pasted text; or opening a `.csv`) reads:
   * CHIRP CSV, which is also what RepeaterBook exports. Tone mode `Tone` uses rToneFreq and `TSQL` uses cToneFreq. Duplex `+`/`-`/`split`/`off` sets Tx.
   * RadioReference CSV downloads, or a frequency table copied straight from a RadioReference page (tab separated). Tones like `100.0 PL` are read; `CSQ` means none.
   * The README format, including the VOTE/ECON/SELCALL/C/R columns.

@@ -16,7 +16,7 @@ export function HelpPanel() {
             The digit menus explain each one.</li>
           <li><b>Channels</b>: enter Rx and Tx frequencies. Leave Tx blank for simplex; type <code>X</code> for receive-only.
             Enter and the arrow keys move between rows. Use <i>Fill range</i> for a run of channels, <i>Channel Plans</i> for UHF CB, and
-            <i>Import CSV / paste</i> for lists from CHIRP, RepeaterBook, RadioReference or a spreadsheet.</li>
+            <i>Import</i> (a CSV file or pasted text) for lists from CHIRP, RepeaterBook, RadioReference or a spreadsheet.</li>
           <li><b>Scan &amp; Keys</b>: set up the scan blocks and, on the FM92, the head's function keys.</li>
           <li><b>Build</b>: download the <code>.BIN</code> and burn it to a 2764 / 27C64. For a 27128, 27256 or 27512, pick it in the <b>EPROM</b> menu: the 8 KB image is repeated in every bank.</li>
         </ol>
