@@ -13,7 +13,7 @@
  ],
  "date": "",
  "rows": [
-  {"num": "1", "rx": "168.0000", "tx": "", "flags": 257, "ctcss": "", "name": "Test Channel"},
+  {"num": "1", "rx": "146.4000", "tx": "", "flags": 257, "ctcss": "", "name": "Test Channel"},
   {"num": "2", "rx": "146.4250", "tx": "", "flags": 257, "ctcss": "", "name": "Simplex Channel 1"},
   {"num": "3", "rx": "146.4500", "tx": "", "flags": 257, "ctcss": "", "name": "Simplex Channel 2"},
   {"num": "4", "rx": "146.4750", "tx": "", "flags": 257, "ctcss": "", "name": "Simplex Channel 3"},
