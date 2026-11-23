@@ -13,6 +13,7 @@ import { RadioPanel } from './RadioPanel';
 import { ReadPanel } from './ReadPanel';
 import { ScanKeysPanel } from './ScanKeysPanel';
 import { download, loadSaved, pickFiles, readBytes, safeName, save } from './files';
+import { Icon } from './icons';
 import { THEMES, Theme, applyTheme, loadTheme } from './theme';
 import radioPhoto from '../assets/fm900.webp';
 import { VERSION_LABEL } from '../version';
@@ -184,12 +185,18 @@ export function App() {
           <span class="brand-text">Web FPP (FM900 CPS) <small>Philips FM91 / FM92 EPROM builder</small></span>
         </div>
         <div class="file-actions">
-          <button onClick={newProj}>New</button>
-          <button onClick={async () => openFiles(await pickFiles('.json,.job,.chl,.csv,.txt,.bin,.JOB,.CHL,.BIN'))}>Open…</button>
-          <button onClick={saveJson} title="Save the whole project as JSON">Save</button>
+          <button class="icon" onClick={newProj} title="New project (keeps the current radio codes)" aria-label="New project">
+            <Icon name="new" /></button>
+          <button class="icon" onClick={async () => openFiles(await pickFiles('.json,.job,.chl,.csv,.txt,.bin,.JOB,.CHL,.BIN'))}
+            title="Open a project (.json), Original FPP job (.JOB + .CHL), channel list (.csv) or EPROM image (.BIN). You can also drop files on the page."
+            aria-label="Open"><Icon name="open" /></button>
+          <button class="icon" onClick={saveJson} title="Save the whole project as a .json file" aria-label="Save project">
+            <Icon name="save" /></button>
           <button onClick={exportJob} title="Write .JOB + .CHL for the Original FPP">Export JOB/CHL</button>
-          <button onClick={exportCsv}>Export CSV</button>
-          <button onClick={exportSheet} title="One-page A4 PDF: channel, Rx, Tx and name, with the radio details">Cheat sheet (PDF)</button>
+          <button onClick={exportCsv} title="Export the channel list as CSV (with the name column)">Export CSV</button>
+          <button class="icon" onClick={exportSheet} aria-label="Download channel cheat sheet (PDF)"
+            title="Channel cheat sheet: a one-page A4 PDF of channel, Rx, Tx and name, with the head buttons and scan groups, to print and keep with the radio">
+            <Icon name="pdf" /></button>
           <span class="sep" />
           <button onClick={doUndo} disabled={!undo.current.length} title="Undo (Ctrl+Z)">Undo</button>
           <button onClick={doRedo} disabled={!redo.current.length} title="Redo (Ctrl+Y)">Redo</button>

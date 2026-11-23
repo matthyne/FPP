@@ -20,8 +20,8 @@ export function HelpPanel() {
           <li><b>Scan &amp; Keys</b>: set up the scan blocks and, on the FM92, the head's function keys.</li>
           <li><b>Build</b>: download the <code>.BIN</code> and burn it to a 2764 / 27C64. For a 27128, 27256 or 27512, pick it in the <b>EPROM</b> menu: the 8 KB image is repeated in every bank.</li>
         </ol>
-        <p>Your work is saved in this browser automatically. Use <b>Save</b> for a project file you can open anywhere, and
-          <b> Export JOB/CHL</b> for files the Original FPP can open. <b>Cheat sheet (PDF)</b> downloads a one-page A4 list of
+        <p>Your work is saved in this browser automatically. Use <b>Save</b> (the disk icon) for a project file you can open anywhere, and
+          <b> Export JOB/CHL</b> for files the Original FPP can open. The <b>PDF</b> icon (channel cheat sheet) downloads a one-page A4 list of
           channel numbers, Rx and Tx frequencies and names, headed with the radio's details, to print and keep with the radio.</p>
 
         <h3>Files it opens</h3>
