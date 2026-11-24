@@ -156,7 +156,8 @@ export function App() {
   const [sheetDialog, setSheetDialog] = useState(false);
   // Cheat-sheet tick boxes, remembered in this browser.
   const [sheetOpts, setSheetOptsState] = useState<SheetOpts>(() => {
-    try { return JSON.parse(localStorage.getItem('fm900-web:sheet') ?? '{}'); } catch { return {}; }
+    const defaults: SheetOpts = { landscape: true, shift: true };       // both ticked unless the user has changed them
+    try { return { ...defaults, ...JSON.parse(localStorage.getItem('fm900-web:sheet') ?? '{}') }; } catch { return defaults; }
   });
   const setSheetOpts = (o: SheetOpts) => {
     setSheetOptsState(o);
