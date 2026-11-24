@@ -201,9 +201,9 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
     page.text(MARGIN, y, fit(comments.join(' / '), 'Helvetica', 9, leftW), 'Helvetica', 9, 0.3);
   }
   y = Math.max(y, boxBottom - 4);
-  y += 8;
+  y += 12;                                            // space between the header (text and boxes) and the rule
   page.line(MARGIN, y, MARGIN + W, y, 1);
-  y += 6;
+  y += 14;                                            // space under the header rule, before the channel table
 
   // Footer
   const footY = page.height - MARGIN + 10;
