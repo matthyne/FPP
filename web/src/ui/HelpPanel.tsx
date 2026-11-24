@@ -21,7 +21,7 @@ export function HelpPanel() {
           <li><b>Build</b>: download the <code>.BIN</code> and burn it to a 2764 / 27C64. For a 27128, 27256 or 27512, pick it in the <b>EPROM</b> menu: the 8 KB image is repeated in every bank.</li>
         </ol>
         <p>Your work is saved in this browser automatically. Use <b>Save</b> (the disk icon) for a project file you can open anywhere, and
-          <b> Export JOB/CHL</b> for files the Original FPP can open. The <b>PDF</b> icon (channel cheat sheet) downloads a one-page A4 list of
+          <b> Export</b> for a CSV channel list or the .JOB + .CHL files the Original FPP can open. The <b>PDF</b> icon (channel cheat sheet) downloads a one-page A4 list of
           channel numbers, Rx and Tx frequencies and names, headed with the radio's details, to print and keep with the radio.</p>
 
         <h3>Files it opens</h3>
@@ -72,7 +72,7 @@ export function HelpPanel() {
           the VOTE, C/R and SELCALL flags, receive-only channels, and the E, T, U and W2 bands have been checked on thousands of random
           test cases, but not against the Original FPP itself. Before burning one of these, cross-check it in DOSBox:</p>
         <ol>
-          <li>Export JOB/CHL here and copy both into <code>fm900/JOBS</code>.</li>
+          <li>Use <b>Export</b> to download the .JOB and .CHL here, and copy both into <code>fm900/JOBS</code>.</li>
           <li>In the Original FPP, open the job and press F10 so it writes the <code>.BIN</code>.</li>
           <li>Set the same build date here and compare. Only bytes 0x1FE0–0x1FE4 (version and date) may differ.</li>
         </ol>

@@ -130,11 +130,16 @@ export function App() {
     }
   }
 
-  const [jobDialog, setJobDialog] = useState(false);
+  const [exportDialog, setExportDialog] = useState(false);
+  // .JOB and .CHL are separate buttons: browsers may block a second download started by the same click.
   const exportJob = () => {
+    download(`${dosName(project.name)}.JOB`, writeJob(project.hw, project.sw, project.comments));
+    notify(`Saved ${dosName(project.name)}.JOB`);
+  };
+  const exportChl = () => {
     try {
-      fromProject(project);
-      setJobDialog(true);
+      download(`${dosName(project.name)}.CHL`, writeChl(fromProject(project)));
+      notify(`Saved ${dosName(project.name)}.CHL`);
     } catch (e) {
       fail(e);
     }
@@ -143,6 +148,7 @@ export function App() {
     try {
       const names = project.rows.filter((r) => !isBlank(r)).map((r) => r.name ?? '');
       download(`${safeName(project.name)}.csv`, formatChannels(fromProject(project), names), 'text/csv');
+      notify(`Saved ${safeName(project.name)}.csv`);
     } catch (e) {
       fail(e);
     }
@@ -193,8 +199,7 @@ export function App() {
             aria-label="Open"><Icon name="open" /></button>
           <button class="icon" onClick={saveJson} title="Save the whole project as a .json file" aria-label="Save project">
             <Icon name="save" /></button>
-          <button onClick={exportJob} title="Write .JOB + .CHL for the Original FPP">Export JOB/CHL</button>
-          <button onClick={exportCsv} title="Export the channel list as CSV (with the name column)">Export CSV</button>
+          <button onClick={() => setExportDialog(true)} title="Export the channels as CSV, or as .JOB + .CHL for the Original FPP">Export</button>
           <button class="icon" onClick={exportSheet} aria-label="Download channel cheat sheet (PDF)"
             title="Channel cheat sheet: a one-page A4 PDF of channel, Rx, Tx and name, with the head buttons and scan groups, to print and keep with the radio">
             <Icon name="pdf" /></button>
@@ -255,19 +260,31 @@ export function App() {
         <span class="ver" title="WebFPP version (quote this when reporting a problem)">WebFPP {VERSION_LABEL}</span>
       </footer>
 
-      {jobDialog && (
-        <div class="modal-bg" onClick={(e) => { if (e.target === e.currentTarget) setJobDialog(false); }}>
-          <div class="modal" role="dialog" aria-label="Export JOB/CHL">
-            <h2>Export for the Original FPP</h2>
-            <p class="hint">The Original FPP needs both files, with the same name, in its <code>JOBS</code> folder.
-              {dosName(project.name) !== safeName(project.name) && <> DOS file names are at most 8 characters, so this job is
-                saved as <code>{dosName(project.name)}</code>.</>}</p>
+      {exportDialog && (
+        <div class="modal-bg" onClick={(e) => { if (e.target === e.currentTarget) setExportDialog(false); }}>
+          <div class="modal exportdlg" role="dialog" aria-label="Export">
+            <h2>Export</h2>
+            <div class="exportopt">
+              <div>
+                <b>CSV channel list</b>
+                <p class="hint">Rx, Tx, power, CTCSS, flags and the channel names, for a spreadsheet or to import again.</p>
+              </div>
+              <button onClick={exportCsv}>Download {safeName(project.name)}.csv</button>
+            </div>
+            <div class="exportopt">
+              <div>
+                <b>Original FPP job (.JOB + .CHL)</b>
+                <p class="hint">Both files, with the same name, go in the Original FPP's <code>JOBS</code> folder.
+                  {dosName(project.name) !== safeName(project.name) && <> DOS file names are at most 8 characters, so this job is
+                    saved as <code>{dosName(project.name)}</code>.</>}</p>
+              </div>
+              <div class="exportbtns">
+                <button onClick={exportJob}>Download {dosName(project.name)}.JOB</button>
+                <button onClick={exportChl}>Download {dosName(project.name)}.CHL</button>
+              </div>
+            </div>
             <div class="actions">
-              <button onClick={() => download(`${dosName(project.name)}.JOB`, writeJob(project.hw, project.sw, project.comments))}>
-                Download {dosName(project.name)}.JOB</button>
-              <button onClick={() => download(`${dosName(project.name)}.CHL`, writeChl(fromProject(project)))}>
-                Download {dosName(project.name)}.CHL</button>
-              <button class="primary" onClick={() => setJobDialog(false)}>Done</button>
+              <button class="primary" onClick={() => setExportDialog(false)}>Done</button>
             </div>
           </div>
         </div>
