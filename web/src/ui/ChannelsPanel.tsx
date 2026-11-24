@@ -109,10 +109,18 @@ export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport
   const bulkFlags = (fn: (f: number) => number) =>
     setRows((rows) => rows.map((r, i) => (sel.has(i) ? { ...r, flags: fn(r.flags) } : r)));
   const renumber = () => {
-    const changes = p.rows.filter((r, i) => r.num.trim() !== String(i + 1)).length;
-    if (!changes) return notify('The rows are already numbered 1, 2, 3… in order');
-    if (!window.confirm(`Renumber the rows 1, 2, 3… in their current order? This changes ${changes} channel number${changes === 1 ? '' : 's'}`
-      + ', and rows that share a number (duplicates, VOTE rings) get separate numbers. (Undo is available.)')) return;
+    const moved = p.rows.map((r, i) => [r.num.trim() || '(blank)', String(i + 1)]).filter(([from, to]) => from !== to);
+    if (!moved.length) return notify('The channels are already numbered 1, 2, 3… in row order');
+    const counts = new Map<string, number>();
+    for (const r of p.rows) if (r.num.trim()) counts.set(r.num.trim(), (counts.get(r.num.trim()) ?? 0) + 1);
+    const shared = [...counts.values()].filter((n) => n > 1).length;
+    const examples = moved.slice(0, 5).map(([from, to]) => `   channel ${from} → ${to}`).join('\n');
+    if (!window.confirm(
+      'Renumber the channels to match their row order? The first row becomes channel 1, the second channel 2, and so on.\n\n'
+      + `${moved.length} of ${p.rows.length} channels will get a new number${moved.length > 5 ? ', for example' : ''}:\n${examples}${moved.length > 5 ? '\n   …' : ''}`
+      + (shared ? `\n\n${shared} channel number${shared === 1 ? ' is' : 's are'} shared by several rows (duplicates or VOTE rings). `
+        + 'Each of those rows gets its own number, so the rings are split up.' : '')
+      + '\n\nThe frequencies and settings stay with each row. You can undo this.')) return;
     setRows((rows) => rows.map((r, i) => ({ ...r, num: String(i + 1) })));
   };
   const sortByNum = () => {
