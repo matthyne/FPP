@@ -7,6 +7,7 @@ import { FM900Error, readChl, readJob, writeChl, writeJob } from '../core/fm900'
 import { Firmware, Project, Row, channelToRow, fromProject, isBlank, loadProjectJson, newProject } from '../core/project';
 import { BuildPanel } from './BuildPanel';
 import { ChannelsPanel } from './ChannelsPanel';
+import { DemoPanel } from './DemoPanel';
 import { HelpPanel } from './HelpPanel';
 import type { ImportSource } from './ImportDialog';
 import { RadioPanel } from './RadioPanel';
@@ -19,10 +20,10 @@ import radioPhoto from '../assets/fm900.webp';
 import { VERSION_LABEL } from '../version';
 import { eprom } from '../core/eprom';
 
-export type Tab = 'radio' | 'channels' | 'scan' | 'build' | 'read' | 'help';
+export type Tab = 'radio' | 'channels' | 'scan' | 'build' | 'demo' | 'read' | 'help';
 const TABS: [Tab, string][] = [
   ['radio', 'Radio'], ['channels', 'Channels'], ['scan', 'Scan & Keys'],
-  ['build', 'Build'], ['read', 'Read image'], ['help', 'Help'],
+  ['build', 'Build'], ['demo', 'Demo'], ['read', 'Read image'], ['help', 'Help'],
 ];
 
 export type Update = (fn: (p: Project) => Project) => void;
@@ -247,6 +248,7 @@ export function App() {
           pendingImport={pendingImport} clearImport={() => setPendingImport(null)} />}
         {tab === 'scan' && <ScanKeysPanel p={project} a={a} update={update} />}
         {tab === 'build' && <BuildPanel p={project} a={a} update={update} notify={notify} />}
+        {tab === 'demo' && <DemoPanel p={project} a={a} />}
         {tab === 'read' && <ReadPanel p={project} img={readImg} setImg={setReadImg} load={loadRows} />}
         {tab === 'help' && <HelpPanel />}
       </main>

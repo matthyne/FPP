@@ -19,6 +19,9 @@ export function HelpPanel() {
             <i>Import</i> (a CSV file or pasted text) for lists from CHIRP, RepeaterBook, RadioReference or a spreadsheet.</li>
           <li><b>Scan &amp; Keys</b>: set up the scan blocks and, on the FM92, the head's function keys.</li>
           <li><b>Build</b>: download the <code>.BIN</code> and burn it to a 2764 / 27C64. For a 27128, 27256 or 27512, pick it in the <b>EPROM</b> menu: the 8 KB image is repeated in every bank.</li>
+          <li><b>Demo</b> (optional): try the result on a simulated FM92 control head: switch it on, step through the channels
+            with the programmed keys, scan and monitor. With an experimental firmware selected it shows the start-up "00"
+            (with the Morse ident as sound) and the Rx frequency readout, from the image you would burn.</li>
         </ol>
         <p>Your work is saved in this browser automatically. Use <b>Save</b> (the disk icon) for a project file you can open anywhere, and
           <b> Export</b> for a CSV channel list or the .JOB + .CHL files the Original FPP can open. The <b>PDF</b> icon (channel cheat sheet) downloads a one-page A4 list of
