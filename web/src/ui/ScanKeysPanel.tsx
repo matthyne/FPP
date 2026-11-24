@@ -1,5 +1,5 @@
 import { Analysis } from '../core/analyze';
-import { HEAD_BUTTONS } from '../core/codes';
+import { BLUE_KEYS, HEAD_BUTTONS } from '../core/codes';
 import { F_PRI1, F_PRI2, F_PRI3, F_SCAN1, F_SCAN2, F_SCAN3, KEY_FUNCS } from '../core/fm900';
 import { Project, Row, isBlank } from '../core/project';
 import type { Update } from './App';
@@ -94,7 +94,7 @@ export function ScanKeysPanel({ p, a, update }: { p: Project; a: Analysis; updat
             <div class="keys">
               {[1, 2, 4, 7].map((k, j) => (
                 <label class="field">
-                  <span class="lab"><span class="kbtn">{HEAD_BUTTONS[j]}</span> button <small>(key {k})</small> {a.defaultKeys && <small>(default: {KEY_FUNCS[a.defaultKeys[j]] ?? a.defaultKeys[j]})</small>}</span>
+                  <span class="lab"><span class={`kbtn${BLUE_KEYS.has(HEAD_BUTTONS[j]) ? ' blue' : ''}`}>{HEAD_BUTTONS[j]}</span> button <small>(key {k})</small> {a.defaultKeys && <small>(default: {KEY_FUNCS[a.defaultKeys[j]] ?? a.defaultKeys[j]})</small>}</span>
                   <select disabled={p.keys === null} value={keys[j]}
                     onChange={(e) => update((q) => ({ ...q, keys: (q.keys ?? keys).map((x, m) => (m === j ? +(e.target as HTMLSelectElement).value : x)) }))}>
                     {KEY_FUNCS.map((f, v) => <option value={v}>{v} · {f} — {KEY_HELP[f]}</option>)}

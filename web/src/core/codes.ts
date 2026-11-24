@@ -77,6 +77,10 @@ export function describeHw(hw: string): string[] {
 // VK2DOT FM92E guide (UP/DOWN, AUX, SEND); which code each sends is inferred from FM900.EXE's
 // defaults: up/down on 1/2, scan/monitor/dial on 4 (AUX), send selcall on 7 (SEND).
 export const HEAD_BUTTONS = ['UP', 'DOWN', 'AUX', 'SEND'];
+/** Head keys drawn blue, like the FM92 head's own AUX and SEND keys (UP/DOWN stay black). */
+export const BLUE_KEYS = new Set(['AUX', 'SEND']);
+/** That blue: a dark navy (#1F3D85), kept clearly apart from scan group 1's brighter blue (cheatsheet SCAN_COLOURS[0], #2169DB). */
+export const KEY_BLUE: [number, number, number] = [0.122, 0.239, 0.522];
 
 export const KEY_LABELS: Record<string, string> = {
   none: 'Not used', up: 'Channel up', down: 'Channel down', tens: 'Channel tens (next 10)',

@@ -121,6 +121,8 @@ small { color: var(--muted); font-weight: normal; }
 .kbtn { display: inline-block; font: 700 10px/1 var(--sans); letter-spacing: 0.04em; color: #fff; background: #000;
   border-radius: 4px; padding: 4px 0; min-width: 40px; text-align: center; box-shadow: 0 0 0 1px var(--border), 0 1px 0 var(--border);
   vertical-align: middle; }
+/* AUX and SEND are blue on the real FM92 head (codes.ts BLUE_KEYS / KEY_BLUE #1F3D85, darker than scan group 1's blue) */
+.kbtn.blue { background: #1f3d85; }
 .pill { font: 600 11px/1 var(--sans); background: var(--surface-2); border: 1px solid var(--border); border-radius: 99px; padding: 3px 7px; color: var(--muted); }
 .pill.bad { color: var(--bad); border-color: var(--bad); }
 /* Build tab drawn as a solid button (black on light themes, inverted on dark ones) to stand out from the other tabs */

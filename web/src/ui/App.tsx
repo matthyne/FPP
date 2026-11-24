@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { analyze } from '../core/analyze';
 import { cheatSheet, sheetEntries } from '../core/cheatsheet';
-import { headButtons } from '../core/codes';
+import { BLUE_KEYS, headButtons } from '../core/codes';
 import { formatChannels } from '../core/channels';
 import { FM900Error, readChl, readJob, writeChl, writeJob } from '../core/fm900';
 import { Firmware, Project, Row, channelToRow, fromProject, isBlank, loadProjectJson, newProject } from '../core/project';
@@ -204,8 +204,8 @@ export function App() {
             title="Channel cheat sheet: a one-page A4 PDF of channel, Rx, Tx and name, with the head buttons and scan groups, to print and keep with the radio">
             <Icon name="pdf" /></button>
           <span class="sep" />
-          <button onClick={doUndo} disabled={!undo.current.length} title="Undo (Ctrl+Z)">Undo</button>
-          <button onClick={doRedo} disabled={!redo.current.length} title="Redo (Ctrl+Y)">Redo</button>
+          <button class="icon" onClick={doUndo} disabled={!undo.current.length} title="Undo (Ctrl+Z)" aria-label="Undo"><Icon name="undo" /></button>
+          <button class="icon" onClick={doRedo} disabled={!redo.current.length} title="Redo (Ctrl+Y or Ctrl+Shift+Z)" aria-label="Redo"><Icon name="redo" /></button>
           <span class="sep" />
           <select class="theme" value={theme} aria-label="Colour theme" title="Colour theme"
             onChange={(e) => setTheme((e.target as HTMLSelectElement).value as Theme)}>
@@ -225,7 +225,7 @@ export function App() {
         ))}
         {buttons && (
           <div class="headkeys" aria-label="FM92 head buttons" title={`FM92 head buttons (${project.keys ? 'your key override' : 'Original FPP defaults'}). Change them on the Scan & Keys tab.`}>
-            {buttons.map(([b, f]) => <span class="hk"><span class="kbtn">{b}</span>{f}</span>)}
+            {buttons.map(([b, f]) => <span class="hk"><span class={`kbtn${BLUE_KEYS.has(b) ? ' blue' : ''}`}>{b}</span>{f}</span>)}
           </div>
         )}
       </nav>

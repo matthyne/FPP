@@ -54,6 +54,92 @@ export function textWidth(s: string, font: Font, size: number): number {
   return (w * size) / 1000;
 }
 
+/** SVG path data (M L H V C S Q T A Z, absolute or relative) -> PDF path operators in the same coordinates.
+ *  Quadratics and arcs become cubics. Used to draw the Material Design Icons (24x24, nonzero fill). */
+export function svgPathOps(d: string): string {
+  const tok = d.match(/[MmLlHhVvCcSsQqTtAaZz]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g) ?? [];
+  const f = (v: number) => (Math.round(v * 1000) / 1000).toString();
+  const out: string[] = [];
+  let i = 0, cmd = '', x = 0, y = 0, sx = 0, sy = 0, cx = 0, cy = 0, qx = 0, qy = 0, prev = '';
+  const num = () => parseFloat(tok[i++]);
+  const curve = (x1: number, y1: number, x2: number, y2: number, ex: number, ey: number) => {
+    out.push(`${f(x1)} ${f(y1)} ${f(x2)} ${f(y2)} ${f(ex)} ${f(ey)} c`);
+    cx = x2; cy = y2; x = ex; y = ey;
+  };
+  while (i < tok.length) {
+    if (/[a-z]/i.test(tok[i])) cmd = tok[i++];
+    else if (!cmd) { i++; continue; }
+    const rel = cmd === cmd.toLowerCase() && cmd !== 'z' ? 1 : 0;
+    const ox = rel ? x : 0, oy = rel ? y : 0;
+    const C = cmd.toUpperCase();
+    if (C === 'Z') { out.push('h'); x = sx; y = sy; prev = 'Z'; cmd = ''; continue; }
+    if (C === 'M') {
+      x = ox + num(); y = oy + num(); sx = x; sy = y;
+      out.push(`${f(x)} ${f(y)} m`);
+      cmd = rel ? 'l' : 'L';                         // further pairs are line-tos
+    } else if (C === 'L') { x = ox + num(); y = oy + num(); out.push(`${f(x)} ${f(y)} l`); }
+    else if (C === 'H') { x = ox + num(); out.push(`${f(x)} ${f(y)} l`); }
+    else if (C === 'V') { y = oy + num(); out.push(`${f(x)} ${f(y)} l`); }
+    else if (C === 'C') {
+      const a = [num(), num(), num(), num(), num(), num()];
+      curve(ox + a[0], oy + a[1], ox + a[2], oy + a[3], ox + a[4], oy + a[5]);
+    } else if (C === 'S') {
+      const a = [num(), num(), num(), num()];
+      const [x1, y1] = prev === 'C' || prev === 'S' ? [2 * x - cx, 2 * y - cy] : [x, y];
+      curve(x1, y1, ox + a[0], oy + a[1], ox + a[2], oy + a[3]);
+    } else if (C === 'Q' || C === 'T') {
+      let px: number, py: number;
+      if (C === 'Q') { px = ox + num(); py = oy + num(); }
+      else [px, py] = prev === 'Q' || prev === 'T' ? [2 * x - qx, 2 * y - qy] : [x, y];
+      const ex = ox + num(), ey = oy + num();
+      curve(x + (2 / 3) * (px - x), y + (2 / 3) * (py - y), ex + (2 / 3) * (px - ex), ey + (2 / 3) * (py - ey), ex, ey);
+      qx = px; qy = py;
+    } else if (C === 'A') {
+      const rx0 = num(), ry0 = num(), rot = num(), large = num(), sweep = num(), ex = ox + num(), ey = oy + num();
+      for (const seg of arcToCubics(x, y, rx0, ry0, rot, large !== 0, sweep !== 0, ex, ey)) curve(...seg);
+      x = ex; y = ey;
+    }
+    prev = C;
+  }
+  return out.join(' ');
+}
+
+/** SVG elliptical arc (endpoint form) -> cubic Bezier segments [x1, y1, x2, y2, x, y] (SVG 1.1 F.6.5). */
+function arcToCubics(x1: number, y1: number, rx: number, ry: number, rotDeg: number, large: boolean, sweep: boolean,
+  x2: number, y2: number): [number, number, number, number, number, number][] {
+  if (x1 === x2 && y1 === y2) return [];
+  if (!rx || !ry) return [[x1, y1, x2, y2, x2, y2]];
+  rx = Math.abs(rx); ry = Math.abs(ry);
+  const phi = (rotDeg * Math.PI) / 180, cos = Math.cos(phi), sin = Math.sin(phi);
+  const dx = (x1 - x2) / 2, dy = (y1 - y2) / 2;
+  const x1p = cos * dx + sin * dy, y1p = -sin * dx + cos * dy;
+  const lam = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
+  if (lam > 1) { rx *= Math.sqrt(lam); ry *= Math.sqrt(lam); }
+  const num = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p;
+  const den = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
+  const k = (large === sweep ? -1 : 1) * Math.sqrt(Math.max(0, num / den));
+  const cxp = (k * rx * y1p) / ry, cyp = (-k * ry * x1p) / rx;
+  const cx = cos * cxp - sin * cyp + (x1 + x2) / 2, cy = sin * cxp + cos * cyp + (y1 + y2) / 2;
+  const ang = (ux: number, uy: number, vx: number, vy: number) => Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+  const t1 = ang(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry);
+  let dt = ang((x1p - cxp) / rx, (y1p - cyp) / ry, (-x1p - cxp) / rx, (-y1p - cyp) / ry);
+  if (!sweep && dt > 0) dt -= 2 * Math.PI;
+  if (sweep && dt < 0) dt += 2 * Math.PI;
+  const n = Math.ceil(Math.abs(dt) / (Math.PI / 2) - 1e-9);
+  const out: [number, number, number, number, number, number][] = [];
+  const pt = (t: number): [number, number] => [cx + rx * Math.cos(t) * cos - ry * Math.sin(t) * sin,
+    cy + rx * Math.cos(t) * sin + ry * Math.sin(t) * cos];
+  const der = (t: number): [number, number] => [-rx * Math.sin(t) * cos - ry * Math.cos(t) * sin,
+    -rx * Math.sin(t) * sin + ry * Math.cos(t) * cos];
+  for (let j = 0; j < n; j++) {
+    const a = t1 + (dt * j) / n, b = t1 + (dt * (j + 1)) / n;
+    const al = (4 / 3) * Math.tan((b - a) / 4);
+    const [px, py] = pt(a), [qx, qy] = pt(b), [dax, day] = der(a), [dbx, dby] = der(b);
+    out.push([px + al * dax, py + al * day, qx - al * dbx, qy - al * dby, qx, qy]);
+  }
+  return out;
+}
+
 const n = (x: number) => (Math.round(x * 100) / 100).toString();
 
 /** A grey level (0 = black, 1 = white) or an [r, g, b] colour, each 0–1. */
@@ -77,6 +163,12 @@ export class PdfPage {
   poly(pts: [number, number][], colour: Colour): void {
     const path = pts.map(([x, y], i) => `${n(x)} ${n(this.height - y)} ${i ? 'l' : 'm'}`).join(' ');
     this.ops.push(`${fillOp(colour)} ${path} h f`);
+  }
+
+  /** A 24x24 SVG path icon (e.g. core/icons.ts) filled at (x, y) = top-left corner, `size` points square. */
+  icon(d: string, x: number, y: number, size: number, colour: Colour = 0): void {
+    const k = size / 24;
+    this.ops.push(`q ${k.toFixed(5)} 0 0 ${(-k).toFixed(5)} ${n(x)} ${n(this.height - y)} cm ${fillOp(colour)} ${svgPathOps(d)} f Q`);
   }
 
   /** Filled rectangle, (x, y) = top-left corner. */

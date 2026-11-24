@@ -2,7 +2,9 @@
 // Rx, Tx and name for every record, in record order, in 1–3 columns sized to fit the page.
 import { Analysis } from './analyze';
 import { Segment, splitCallsigns } from './callsign';
-import { headButtons } from './codes';
+import { BLUE_KEYS, KEY_BLUE, headButtons } from './codes';
+import { eprom } from './eprom';
+import { ICONS, IconName } from './icons';
 import { F_PRI1, F_PRI2, F_PRI3, F_SCAN1, F_SCAN2, F_SCAN3 } from './fm900';
 import { Colour, Font, PdfPage, textWidth } from './pdf';
 import { Project, isBlank, rowToChannel } from './project';
@@ -40,8 +42,8 @@ export const SCAN_COLOURS: Colour[] = [[0.13, 0.42, 0.86], [0.90, 0.45, 0.02], [
 /** A channel badge: one horizontal band per scan group, top to bottom (solid when 0 or 1 group), with the text centred
  *  in white. A priority channel gets a white folded corner (triangle) at the top right. */
 function badge(page: PdfPage, x: number, y: number, w: number, h: number, scan: number[], text: string, font: Font, size: number,
-  base: number, priority = false): void {
-  if (!scan.length) page.rect(x, y, w, h, BADGE_PLAIN);
+  base: number, priority = false, fill?: Colour): void {
+  if (!scan.length) page.rect(x, y, w, h, fill ?? BADGE_PLAIN);
   else scan.forEach((g, k) => page.rect(x, y + (k * h) / scan.length, w, h / scan.length, SCAN_COLOURS[g - 1]));
   if (priority) {
     const c = h * 0.6;
@@ -50,10 +52,32 @@ function badge(page: PdfPage, x: number, y: number, w: number, h: number, scan: 
   page.text(x + (w - textWidth(text, font, size)) / 2, base, text, font, size, 1);
 }
 
-const FW: Record<string, string> = {
-  intro: 'start-up ident (modified, experimental)',
-  enhanced: 'start-up ident + Rx frequency (modified, experimental)',
-};
+/** Firmware (image) description, as on the Build tab's Firmware menu. */
+const FW: Record<string, string> = { standard: 'Factory', intro: 'Start-up ident', enhanced: 'Ident + Rx freq.' };
+/** Experimental images: the image description is drawn in this amber (= the UI's light-theme --warn, #975a06). */
+const EXP_COLOUR: Colour = [0.592, 0.353, 0.024];
+
+/** One header item: an optional status-bar icon and its text. */
+interface InfoItem { icon?: IconName; text: string; colour?: Colour }
+
+/** Lay header items left to right from (x0, after y), wrapping within maxW. Returns the last baseline. */
+function infoLine(page: PdfPage, items: InfoItem[], x0: number, y: number, maxW: number, size = 9): number {
+  const iconW = size + 2.5, GAP = 11;
+  let cx = x0;
+  y += 12;
+  for (const it of items) {
+    const text = fit(it.text, 'Helvetica', size, maxW - (it.icon ? iconW : 0));
+    const w = (it.icon ? iconW : 0) + textWidth(text, 'Helvetica', size);
+    if (cx > x0 && cx + w > x0 + maxW) { cx = x0; y += 12; }
+    if (it.icon) {
+      page.icon(ICONS[it.icon], cx, y - size * 0.86, size, it.colour ?? 0.25);
+      cx += iconW;
+    }
+    page.text(cx, y, text, 'Helvetica', size, it.colour ?? 0);
+    cx += textWidth(text, 'Helvetica', size) + GAP;
+  }
+  return y;
+}
 
 function today(): string {
   const d = new Date();
@@ -115,19 +139,6 @@ export function sheetLayout(n: number, width: number, height: number): SheetLayo
   return { cols, perCol, lineH, fontSize, nameW };
 }
 
-/** Lay out `items` joined by a separator, wrapping onto new lines so no line is wider than `maxW`. */
-function flow(items: string[], font: Font, size: number, maxW: number): string[] {
-  const sep = '   ·   ';
-  const lines: string[] = [];
-  let cur = '';
-  for (const it of items) {
-    const next = cur ? cur + sep + it : it;
-    if (cur && textWidth(next, font, size) > maxW) { lines.push(cur); cur = it; } else cur = next;
-  }
-  if (cur) lines.push(cur);
-  return lines.map((l) => fit(l, font, size, maxW));
-}
-
 export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'defaultKeys'>): Uint8Array {
   const page = new PdfPage();
   const W = page.width - 2 * MARGIN;
@@ -138,9 +149,9 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   // Rows: [badge text, badge groups (null = plain), description, priority corner]. Header text goes to the left.
   const buttons = headButtons(p, a?.defaultKeys);
   const boxRow = 12.5, BOX_GAP = 8;
-  type LegendRow = [string, number[] | null, string, boolean?];
+  type LegendRow = [string, number[] | null, string, boolean?, Colour?];   // 5th = badge fill (blue head keys)
   const boxes: [string, LegendRow[]][] = [];
-  if (buttons) boxes.push(['Head buttons', buttons.map(([b, f]) => [b, null, f])]);
+  if (buttons) boxes.push(['Head buttons', buttons.map(([b, f]): LegendRow => [b, null, f, false, BLUE_KEYS.has(b) ? KEY_BLUE : undefined])]);
   const used = [...new Set(entries.flatMap((e) => e.scan))].sort();
   if (used.length) {
     const rows: LegendRow[] = used.map((g) => [`${g}`, [g], `Scan group ${g}`]);
@@ -160,9 +171,9 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
     const h = 16 + rows.length * boxRow + 3;
     page.rect(bx, MARGIN, bw, h, 0.93);
     page.text(bx + 7, MARGIN + 11, title, 'Helvetica-Bold', 8, 0.3);
-    rows.forEach(([label, scan, desc, pri], i) => {
+    rows.forEach(([label, scan, desc, pri, fill], i) => {
       const ry = MARGIN + 16 + i * boxRow;
-      badge(page, bx + 6, ry + 1, 34, boxRow - 2, scan ?? [], label, 'Helvetica-Bold', 7.5, ry + 9, pri);
+      badge(page, bx + 6, ry + 1, 34, boxRow - 2, scan ?? [], label, 'Helvetica-Bold', 7.5, ry + 9, pri, fill);
       page.text(bx + 46, ry + 9, desc, 'Helvetica', 8.5);
     });
     boxBottom = Math.max(boxBottom, MARGIN + h);
@@ -174,15 +185,16 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   let y = MARGIN + 14;
   page.text(MARGIN, y, fit(`${model} Channel Sheet`, 'Helvetica-Bold', 16, leftW), 'Helvetica-Bold', 16);
   y += 3;
-  const info = [`Job ${p.name.trim() || 'NEWJOB'}`];
-  if (a?.builder) info.push(`Master ${a.builder.masterName()}`);
-  info.push(`Build date ${p.date || today()}`, `${entries.length} channel${entries.length === 1 ? '' : 's'}`);
-  if (p.firmware && p.firmware !== 'standard') info.push(`Firmware: ${FW[p.firmware] ?? p.firmware}`);
-  if (p.firmware && p.firmware !== 'standard' && p.callsign?.trim()) info.push(`Callsign ${p.callsign.trim().toUpperCase()}`);
-  for (const line of flow(info, 'Helvetica', 9, leftW)) {
-    y += 12;
-    page.text(MARGIN, y, line, 'Helvetica', 9);
-  }
+  // Same items and icons as WebFPP's status bar, plus the job, callsign and date. The image is described as on the
+  // Firmware menu (not "Experimental"), in amber when it is a modified image.
+  const fw = p.firmware ?? 'standard', exp = fw !== 'standard';
+  const info: InfoItem[] = [{ text: `Job ${p.name.trim() || 'NEWJOB'}` }, { icon: 'radio', text: model },
+    { icon: 'heartPulse', text: FW[fw] ?? fw, colour: exp ? EXP_COLOUR : undefined }];
+  if (exp && p.callsign?.trim()) info.push({ icon: 'bullhorn', text: p.callsign.trim().toUpperCase() });
+  info.push({ icon: 'antenna', text: `${entries.length}/${p.hw[1] === '1' ? 120 : 99} ch` });
+  if (a?.builder) info.push({ icon: 'step', text: `${a.builder.step / 100} kHz` });
+  info.push({ icon: 'chip', text: eprom(p.eprom).part }, { icon: 'calendar', text: p.date || today() });
+  y = infoLine(page, info, MARGIN, y, leftW);
   const comments = p.comments.map((c) => c.trim()).filter(Boolean);
   if (comments.length) {
     y += 12;

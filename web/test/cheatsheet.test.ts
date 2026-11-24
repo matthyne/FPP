@@ -5,7 +5,8 @@ import { analyze } from '../src/core/analyze';
 import { cheatSheet, sheetEntries, sheetLayout } from '../src/core/cheatsheet';
 import { headButtons } from '../src/core/codes';
 import { F_PRI2, F_SCAN1, F_SCAN2, F_SCAN3, readChl, readJob } from '../src/core/fm900';
-import { pdfString } from '../src/core/pdf';
+import { pdfString, svgPathOps } from '../src/core/pdf';
+import { ICONS } from '../src/core/icons';
 import { Project, toProject } from '../src/core/project';
 import { VERSION, VERSION_LABEL } from '../src/version';
 
@@ -83,8 +84,37 @@ describe('cheat sheet PDF', () => {
   it('long job names (up to 32 characters) go on the sheet and in the title', () => {
     const p = { ...job('2MHAM/2MHAM'), name: 'VK2-REPEATERS-AND-SIMPLEX-2026-A' };   // 32 characters
     const s = latin1(cheatSheet(p, analyze(p)));
-    expect(s).toContain('(Job VK2-REPEATERS-AND-SIMPLEX-2026-A   ');
+    expect(s).toContain('(Job VK2-REPEATERS-AND-SIMPLEX-2026-A) Tj');
     expect(s).toContain('Channel Sheet \\(VK2-REPEATERS-AND-SIMPLEX-2026-A\\)');
+  });
+
+  it('header: status-bar items with icons; image description amber only for experimental images', () => {
+    const fac = job('2MHAM/2MHAM');
+    const sf = checkPdf(cheatSheet(fac, analyze(fac)));
+    expect(sf).toContain('(Factory) Tj');
+    expect(sf).toMatch(/\(\d+\/99 ch\) Tj/);
+    expect(sf).toContain('(2764) Tj');
+    expect(sf).not.toContain('0.59 0.35 0.02 rg');
+    expect(sf.match(/ cm /g)!.length).toBeGreaterThanOrEqual(6);         // radio, heart, antenna, step, chip, calendar
+    const exp = { ...fac, firmware: 'enhanced' as const, callsign: 'vk2fn' };
+    const se = checkPdf(cheatSheet(exp, analyze(exp)));
+    expect(se).toContain('0.59 0.35 0.02 rg /F1 9 Tf');                   // amber text...
+    expect(se).toMatch(/0\.59 0\.35 0\.02 rg[^\n]*\(Ident \+ Rx freq\.\) Tj/);
+    expect(se).toContain('(VK2FN) Tj');
+    expect(se).not.toContain('Experimental');
+  });
+
+  it('AUX and SEND head-button badges are navy, not scan group 1 blue', () => {
+    const p = job('2MHAM/2MHAM');
+    const s = latin1(cheatSheet(p, analyze(p)));
+    expect(s.match(/0\.12 0\.24 0\.52 rg/g)).toHaveLength(2);
+  });
+
+  it('SVG icon paths become PDF path operators (lines, curves, arcs)', () => {
+    expect(svgPathOps('M1,2L3,4H5V6Z')).toBe('1 2 m 3 4 l 5 4 l 5 6 l h');
+    expect(svgPathOps('m1 1 l2 0 v2 z')).toBe('1 1 m 3 1 l 3 3 l h');
+    expect(svgPathOps('M0,0A2,2 0 0,1 4,0')).toMatch(/^0 0 m( [-\d.]+){6} c( [-\d.]+){6} c$/);   // half circle = 2 cubics
+    for (const d of Object.values(ICONS)) expect(svgPathOps(d)).toMatch(/^[-\d. mlch]+$/);
   });
 
   it('footer carries the WebFPP version from package.json', () => {

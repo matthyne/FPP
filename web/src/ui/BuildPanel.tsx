@@ -160,11 +160,11 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
         </div>
         <div class="buildactions">
           <label class="field">
-            <span class="lab labicon"><Icon name="calendar" size={14} />Build date</span>
+            <span class="lab labicon" title="Build date: stamped into the EPROM image (0x1FE2–0x1FE4), as the Original FPP does"><Icon name="calendar" size={14} />Build date</span>
             <input type="date" value={p.date} onInput={(e) => update((q) => ({ ...q, date: (e.target as HTMLInputElement).value }))} />
           </label>
           <label class="field">
-            <span class={`lab labicon ${fw !== 'standard' ? 'exp' : ''}`}>
+            <span class={`lab labicon ${fw !== 'standard' ? 'exp' : ''}`} title={fw !== 'standard' ? 'Firmware: experimental modified FM92R firmware (not factory)' : 'Firmware: the factory master, as the Original FPP builds it'}>
               <Icon name="heartPulse" size={14} />Firmware</span>
             <select value={fw} onChange={(e) => {
               const v = (e.target as HTMLSelectElement).value as Firmware;
@@ -178,13 +178,13 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
           {fw === 'standard' && noEnh && b && <p class="hint">Modified firmware: {noEnh}.</p>}
           {fw !== 'standard' && (
             <label class="field">
-              <span class="lab labicon"><Icon name="bullhorn" size={14} />Start-up Morse callsign <small>(blank = none)</small></span>
+              <span class="lab labicon" title="Callsign the radio sends in Morse on its beep tone at switch-on (experimental firmware only)"><Icon name="bullhorn" size={14} />Start-up Morse callsign <small>(blank = none)</small></span>
               <input class={`mono ${morseOk ? '' : 'invalid'}`} value={p.callsign ?? ''} maxLength={12} placeholder="e.g. VK2FN"
                 onInput={(e) => update((q) => ({ ...q, callsign: (e.target as HTMLInputElement).value.toUpperCase() || undefined }))} />
             </label>
           )}
           <label class="field">
-            <span class="lab labicon"><Icon name="chip" size={14} />EPROM</span>
+            <span class="lab labicon" title="EPROM chip the image will be burned into: the 8 KB image is repeated to fill larger parts"><Icon name="chip" size={14} />EPROM</span>
             <select value={chip.part} onChange={(e) => {
               const v = (e.target as HTMLSelectElement).value as EpromPart;
               update((q) => ({ ...q, eprom: v === '2764' ? undefined : v }));
