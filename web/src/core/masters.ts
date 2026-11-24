@@ -1,5 +1,5 @@
 // Master images, embedded at build time: the factory masters from ../../fm900/MASTERS
-// and the enhanced FM92R fork master from ../../firmware/fork (see scripts/gen-masters.mjs).
+// and the enhanced FM92R fork master from ../../firmware/extended (see scripts/gen-masters.mjs).
 import { FORKS_B64, MASTERS_B64 } from './masters.gen';
 
 const cache = new Map<string, Uint8Array>();

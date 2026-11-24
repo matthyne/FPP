@@ -197,7 +197,7 @@ While "off", the radio is not unpowered. The CPU sits in `STOP` with its RAM hel
    * `eprom_checksum` sums 0x0100–0x1FFF; the result must be `$FF`. Otherwise it resets, so a corrupt EPROM never runs. This is the 0x1F64 byte FM900.EXE computes.
    * Initialise the timer and peripherals, enable interrupts, wait about 10 ms.
    * Announce start-up to the head (FM92R), select the channel, and enter the main loop.
-   * **What the head is sent at switch-on** (factory FM92R, traced in the code and run in the 6805 simulator, `fork/test_fork.py` `Startup`):
+   * **What the head is sent at switch-on** (factory FM92R, traced in the code and run in the 6805 simulator, `extended/test_fork.py` `Startup`):
      1. `$AA` (start-up), about 10 ms after the warm start (`wait_startup` waits 25 ticks);
      2. `$A0`, then the channel number, from `tx_stop` → `select_channel` → `update_display` → `show_channel`: `$80` + units, `$82` + tens (a space below 10). For channel 3 that is `$80 '3'`, `$82 ' '`;
      3. `$E7 02 60 06` (head configuration from 0x1F10–0x1F12) on the first main-loop pass, then the keep-alive polls (§6.3).
@@ -423,7 +423,7 @@ The channel's tone code is slot byte 6 bits 0–5 (1–38, 0 = none), copied to 
   * PTT is pressed (`tx_synth_settled`);
   * scan is switched off (`scan_stop`).
 
-  This is factory behaviour (the fork doesn't touch `$11`, `$14`, `$1B`, `$1F` or `$65`). So a handset left off its hanger, or a head that keeps reporting `$46`, gives a continuous tone in scan mode. The fork's NOHOOK feature (in both experimental variants) removes the off-hook tests from `scan_task` (`fork/README.md`).
+  This is factory behaviour (the extended firmware doesn't touch `$11`, `$14`, `$1B`, `$1F` or `$65`). So a handset left off its hanger, or a head that keeps reporting `$46`, gives a continuous tone in scan mode. The extended firmware's NOHOOK feature (in both experimental variants) removes the off-hook tests from `scan_task` (`extended/README.md`).
 
 ### 7.4 Transmit
 
@@ -663,30 +663,30 @@ You'd have to confirm on the board that the CPU's PB7 pin is accessible and not 
 
 | § | Upgrade | Status |
 |---|---|---|
-| 13.0 | Start-up `00` + Morse callsign; Rx frequency on the head (FM92R) | **Implemented, in the experimental images only.** These are WebFPP's "Start-up ident" and "Ident + Rx freq." firmware, or `fork/mkradio.py`. The Factory image doesn't have them. Experimental: an image has been burned and worked on an FM92R (2026-11), but it is not guaranteed. |
+| 13.0 | Start-up `00` + Morse callsign; Rx frequency on the head (FM92R) | **Implemented, in the experimental images only.** These are WebFPP's "Start-up ident" and "Ident + Rx freq." firmware, or `extended/mkradio.py`. The Factory image doesn't have them. Experimental: an image has been burned and worked on an FM92R (2026-11), but it is not guaranteed. |
 | 13.1 | Duplex / talk-around key | **Not implemented.** Design only. |
 | 13.2 | Bank switching from a function key | **Not implemented.** Design only. |
 | 13.3 | PC / tablet control over the head link | **Not implemented.** Design only (needs no firmware change). |
 | 13.4 | Other gaps | **Not implemented.** |
 
-### 13.0 Implemented in the experimental images (FM92R fork)
+### 13.0 Implemented in the experimental images (FM92R extended firmware)
 
-> **Status: implemented, experimental.** Only images built from the fork have these features: WebFPP's Firmware menu ("Start-up ident" or "Ident + Rx freq.") or `fork/mkradio.py`. The **Factory** image (Original FPP) doesn't. Nothing here has been tested on a radio yet.
+> **Status: implemented, experimental.** Only images built from the extended firmware have these features: WebFPP's Firmware menu ("Start-up ident" or "Ident + Rx freq.") or `extended/mkradio.py`. The **Factory** image (Original FPP) doesn't. Nothing here has been tested on a radio yet.
 
 * **Start-up ident** (both experimental images). At switch-on the head shows `00` while the radio sends a Morse callsign (set when building) on its beep tone. `$29.7` enables the ~600 Hz tone that `uart_bit` makes on `$29.4`; the key beep uses the same tone. Then the channel is shown as usual.
 * **Rx frequency display** ("Ident + Rx freq." only). After 2 s on the channel number, the display is blanked for 0.5 s, then the head shows the channel's Rx frequency two characters at a time (147.450 → `14 47 7␣ ␣4 45`, 0.24 s each; the last decimal is left off when it is 0), blanks for 0.5 s again, then shows the channel again, in a loop.
 
-Details, build commands and the bench-test checklist: `fork/README.md`.
+Details, build commands and the bench-test checklist: `extended/README.md`.
 
 ### Designs not implemented (13.1–13.4)
 
 > **Status: not implemented.** 13.1–13.4 are designs only. No image, factory or experimental, contains them.
 
-The easiest way to implement one is as a new feature in the fork (`fork/`, see `fork/README.md`). The fork is a re-assemblable source of the master: new code goes in the free area, and `build.py` checks that the stock build still equals the master. For a small one-off change, a patch tool in the style of `patch_startup_msg.py` also works:
+The easiest way to implement one is as a new feature in the extended firmware (`extended/`, see `extended/README.md`). The extended firmware is a re-assemblable source of the master: new code goes in the free area, and `build.py` checks that the stock build still equals the master. For a small one-off change, a patch tool in the style of `patch_startup_msg.py` also works:
 
 * verify the original bytes;
 * write a patched copy of the master;
-* put new code in the empty EPROM area 0x15AF–0x1B3F. The signature-sample bytes 0x15CC, 0x19CC and 0x1ACC only need avoiding if 0x1F65 is not recomputed afterwards; fm900gen, FM900.EXE and the fork's `build.py` always recompute it;
+* put new code in the empty EPROM area 0x15AF–0x1B3F. The signature-sample bytes 0x15CC, 0x19CC and 0x1ACC only need avoiding if 0x1F65 is not recomputed afterwards; fm900gen, FM900.EXE and the extended firmware's `build.py` always recompute it;
 * use the patched master with `fm900gen.py --master-file`.
 
 Either way, the result is untested on hardware until burned.
@@ -899,7 +899,7 @@ All count down to below zero (bit 7 = expired). Rates in §4.1.
 |---|---|---|
 | `$55` | odd tick (~0.83 ms) | synthesiser settle after a load: `$11` (~14 ms), then `tx_synth_settled` / `rx_synth_settled` |
 | `$56` | odd tick | squelch / scan dwell (`squelch_open_test`, `scan_task`) |
-| `$57`, `$58` | 27 ms | not used outside `soft_timers` (spare). The fork (`fork/`) uses `$57` (frequency display); `$58` is still spare (the start-up Morse times itself from the tick counter `$28`, bit 5 = 13.3 ms) |
+| `$57`, `$58` | 27 ms | not used outside `soft_timers` (spare). The extended firmware (`extended/`) uses `$57` (frequency display); `$58` is still spare (the start-up Morse times itself from the tick counter `$28`, bit 5 = 13.3 ms) |
 | `$59` | 27 ms | key hold / alert-tone toggle |
 | `$5A` | 27 ms | head `$46` auto-release, 1.5 s (§6.2) |
 | `$5B` | 27 ms | head PTT `$44` auto-release, 1.5 s (§6.2) |

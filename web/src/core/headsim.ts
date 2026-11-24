@@ -1,6 +1,6 @@
 // FM92 control-head demo: a behavioural model of what the head shows and how the keys act, for WebFPP's Demo tab.
 // DOM-free (tested in Node). It is NOT the 6805 firmware running: it follows the firmware's documented behaviour
-// (FIRMWARE.md and firmware/fork/FM92R.asm) closely enough to try a channel plan and key set-up before burning:
+// (FIRMWARE.md and firmware/extended/FM92R.asm) closely enough to try a channel plan and key set-up before burning:
 //
 //  * Channel keys (fn_channel_up/down/tens/units, 0x072D-0x07CF): up/down step one number, skipping numbers with
 //    no channel, wrapping highest <-> lowest; tens = next block of ten (23 -> 30); units = units digit +1 within its

@@ -1,6 +1,6 @@
-// FM92R fork firmware (../../firmware/fork): the start-up Morse callsign table
+// FM92R extended firmware (../../firmware/extended): the start-up Morse callsign table
 // and the per-channel Rx-frequency table its control-head display reads. A faithful
-// port of firmware/fork/mkradio.py (morse_bytes, fill_morse, fill_table,
+// port of firmware/extended/mkradio.py (morse_bytes, fill_morse, fill_table,
 // freq_nibbles, windows): change both together. mkradio.py stays the reference;
 // test/fork.test.ts checks the two give byte-identical images.
 import { decodeDivider } from './decode';
@@ -38,7 +38,7 @@ export function morseBytes(text: string): number[] {
   return out;
 }
 
-/** Ident speed of the fork firmware (fork.asm MO_UNIT: 5 x 13.3 ms = 66.5 ms per unit). */
+/** Ident speed of the extended firmware (fork.asm MO_UNIT: 5 x 13.3 ms = 66.5 ms per unit). */
 export const MORSE_WPM = 18;
 export const MORSE_UNIT_S = 0.0665;
 

@@ -84,7 +84,7 @@ export function HelpPanel() {
         <ul>
           <li><a href={REPO + 'FM900_FORMAT.md'}>FM900_FORMAT.md</a>: codes, job files and the EPROM layout</li>
           <li><a href={REPO + 'firmware/FIRMWARE.md'}>firmware/FIRMWARE.md</a>: the radio's 68HC05 firmware, EPROM types and connectors</li>
-          <li><a href={REPO + 'firmware/fork/README.md'}>firmware/fork/README.md</a>: the enhanced FM92R firmware</li>
+          <li><a href={REPO + 'firmware/extended/README.md'}>firmware/extended/README.md</a>: the enhanced FM92R firmware</li>
         </ul>
       </section>
     </div>

@@ -1,4 +1,4 @@
-"""Tests for the FM92R fork tool chain.   cd firmware/fork && python3 -m unittest test_fork"""
+"""Tests for the FM92R fork tool chain.   cd firmware/extended && python3 -m unittest test_fork"""
 import datetime, os, sys, tempfile, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))

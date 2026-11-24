@@ -1,4 +1,4 @@
-// Enhanced FM92R firmware: the TS frequency table matches firmware/fork/mkradio.py byte for byte,
+// Enhanced FM92R firmware: the TS frequency table matches firmware/extended/mkradio.py byte for byte,
 // and the project / read-back plumbing.
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync } from 'node:fs';
@@ -72,7 +72,7 @@ describe('enhanced firmware', () => {
       it.skipIf(!python)(`${job}: ${variant}${call ? ' + ' + call : ''} byte-identical to mkradio.py`, () => {
         const d = mkdtempSync(join(tmpdir(), 'fork-'));
         const out = join(d, 'radio.bin');
-        execFileSync('python3', [join(ROOT, 'firmware', 'fork', 'mkradio.py'), 'fromjob', join(JOBS, job, job + '.JOB'),
+        execFileSync('python3', [join(ROOT, 'firmware', 'extended', 'mkradio.py'), 'fromjob', join(JOBS, job, job + '.JOB'),
           '--date', DATE, '--variant', variant, '--callsign', call, '-o', out], { stdio: 'ignore' });
         const want = new Uint8Array(readFileSync(out));
         const a = analyze(project(job, variant, call || undefined));

@@ -81,7 +81,7 @@ export function HexView({ img, orig: refImg, fm91, from, to }: { img: Uint8Array
   );
 }
 
-/** Shown wherever a non-factory (fork) firmware image is built or read. */
+/** Shown wherever a non-factory (extended) firmware image is built or read. */
 export function ExperimentalBanner({ what }: { what: string }) {
   return (
     <div class="banner-exp" role="note">

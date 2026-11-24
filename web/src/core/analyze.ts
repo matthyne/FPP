@@ -19,7 +19,7 @@ export interface Analysis {
   masterImg: Uint8Array | null;  // the master the image was built from (for the diff view)
 }
 
-/** Why the fork firmware can't be used for this hardware code, or null if it can. */
+/** Why the extended firmware can't be used for this hardware code, or null if it can. */
 export function enhancedProblem(b: Builder): string | null {
   const m = b.masterName();
   if (m !== 'FM92R.BIN') {

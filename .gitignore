@@ -3,4 +3,4 @@ __pycache__/
 *.pyc
 *.BIN.patched
 firmware/FM92R_*.BIN
-firmware/fork/build/
+firmware/extended/build/

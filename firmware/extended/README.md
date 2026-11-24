@@ -1,4 +1,4 @@
-# FM92R firmware fork
+# FM92R extended firmware
 
 An editable, re-assemblable source of the FM92R master firmware
 (`fm900/MASTERS/FM92R.BIN`), with new features added. It is built into
@@ -37,7 +37,7 @@ One source, assembled with feature flags (`-D NAME=0/1`, set by `build.py`):
 | `FM92R-fork.BIN` | INTRO + FREQ + NOHOOK | Ident + Rx freq. (FM92R) | `enhanced` (default) | the above + Rx frequency on the head |
 
 ```sh
-cd firmware/fork
+cd firmware/extended
 python3 build.py              # -> build/FM92R-intro.BIN, build/FM92R-fork.BIN (+ .lst, .sym each)
 python3 -m unittest test_fork
 python3 mkradio.py build ch.csv --hw 9244.... --sw ... --callsign VK2FN -o radio.bin -v   # ident + Rx frequency
@@ -73,7 +73,7 @@ same in the browser:
   callsign back.
 
 Plain `fm900gen.py` gives stock firmware. `fm900gen.py --master-file
-build/FM92R-fork.BIN` gives the fork code with empty tables: "00" for 1 s with
+build/FM92R-fork.BIN` gives the extended firmware with empty tables: "00" for 1 s with
 no Morse, and channel numbers only.
 
 ## Feature: start-up "00" and Morse ident (INTRO)
@@ -174,7 +174,7 @@ In both variants. In the factory firmware, the handset going off-hook (`$11.4` =
 scanning stops the scan on the priority or home channel. If that channel then stays quiet with the handset still off,
 the radio sounds a **continuous tone** after about 32 s, until the handset goes back on-hook, a signal arrives, PTT is
 pressed, or scan is switched off (FIRMWARE.md §7.3). A handset left lying on the bench sets this off. It was
-reported on the first radio running the fork.
+reported on the first radio running the extended firmware.
 
 NOHOOK replaces the three `brset 4,$11,…` tests in `scan_task` with 3 NOPs each:
 
@@ -286,13 +286,13 @@ firmware (`stackdepth.py`, checked by `build.py`).
   error unless forced, so instruction sizes can't change between passes.
 * **Names.** Routine names come from `../FM92R.ann`, and the RAM meanings are
   in `../FIRMWARE.md` §16 and `../FM92R.ram.txt`. To rename something in the
-  fork, edit `FM92R.asm` directly. `mkasm.py` is not re-run.
+  extended firmware, edit `FM92R.asm` directly. `mkasm.py` is not re-run.
 
 ## Change history
 
 | Commit | Change |
 |---|---|
-| `d25d095`, `362db4a` | Fork created: `FM92R.asm` (re-assembles byte-identical), `asm6805.py`, `build.py`, tests. |
+| `d25d095`, `362db4a` | Fork created (renamed "extended firmware" and moved from `firmware/fork/` to `firmware/extended/` on 2026-11-24): `FM92R.asm` (re-assembles byte-identical), `asm6805.py`, `build.py`, tests. |
 | `8e4b883`, `339b421` | FREQ: Rx frequency on the head; `mkradio.py`; simulator; stack check. Found that `$82` is the left display digit; `patch_startup_msg.py` and FIRMWARE.md §11 had them swapped. |
 | `b93b311` | WebFPP: Firmware menu (Factory / Enhanced). |
 | `4eb17d1` | INTRO: start-up "00" + Morse callsign; two variants; WebFPP callsign field and three-way menu. |

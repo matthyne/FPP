@@ -14,7 +14,7 @@ export interface Row {
   name?: string;   // label for the user only: not stored in the .CHL or the EPROM
 }
 
-/** 'standard' = the factory master. FM92R only, the fork (firmware/fork): 'intro' = start-up
+/** 'standard' = the factory master. FM92R only, the extended firmware (firmware/extended): 'intro' = start-up
  *  "00" + Morse ident; 'enhanced' = the ident + Rx frequency on the head. */
 export type Firmware = 'standard' | 'intro' | 'enhanced';
 
@@ -29,7 +29,7 @@ export interface Project {
   date: string;            // YYYY-MM-DD, '' = today
   eprom?: EpromPart;       // chip the image is burned to (absent = 2764); the 8 KB image is mirrored into every bank
   firmware?: Firmware;     // absent = 'standard' (the factory master)
-  callsign?: string;       // fork firmware: Morse ident at start-up ('' / absent = none, "00" only)
+  callsign?: string;       // extended firmware: Morse ident at start-up ('' / absent = none, "00" only)
   rows: Row[];
 }
 

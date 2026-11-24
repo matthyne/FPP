@@ -8,7 +8,7 @@ Same channel-list / .JOB input as fm900gen.py build / fromjob. It builds the
 image with fm900gen from a fork master made by build.py:
   --variant enhanced (default)  build/FM92R-fork.BIN: start-up ident + Rx frequency display
   --variant intro               build/FM92R-intro.BIN: start-up ident only
-(--master overrides the file). It then fills the tables the fork reads
+(--master overrides the file). It then fills the tables the extended firmware reads
 (fork.asm: MO_TABLE = the start-up Morse callsign, FQ_TABLE = frequencies)
 and recomputes the checksums. Without --callsign the start-up shows "00" for
 1 s with no sound.
@@ -69,7 +69,7 @@ def fill_morse(img, text):
     """Write the start-up callsign into img (bytearray). Returns False if the master has no ident."""
     if img[MO_MAGIC:MO_MAGIC + 4] != b'MOR1':
         if text:
-            raise fm900gen.FM900Error('master has no start-up ident (not built from the fork)')
+            raise fm900gen.FM900Error('master has no start-up ident (not built from the extended firmware)')
         return False
     b = morse_bytes(text or '')
     img[MO_TAB:MO_TAB + MO_LEN] = b + bytes(MO_LEN - len(b))
@@ -112,7 +112,7 @@ def entry_nibbles(b):
 def fill_table(img, step, ifo):
     """Write the frequency table into img (bytearray) from its channel slots."""
     if img[FQ_MAGIC:FQ_MAGIC + 4] != b'FQT1':
-        raise fm900gen.FM900Error('master has no frequency table (not built from the fork, '
+        raise fm900gen.FM900Error('master has no frequency table (not built from the extended firmware, '
                                   'or fork.asm and mkradio.py disagree on FQ_MAGIC)')
     for k in range(4):
         img[FQ0 + k * NCH: FQ0 + (k + 1) * NCH] = bytes(NCH)
@@ -165,7 +165,7 @@ def main(argv=None):
             chans = fm900gen.read_chl(a.chl or os.path.splitext(a.job)[0] + '.CHL')
         b = fm900gen.Builder(hw, sw, None, fm900gen.parse_date(a.date), keys=fm900gen.parse_keys(a.keys))
         if b.master_name() != 'FM92R.BIN':
-            raise fm900gen.FM900Error('hardware code %s selects %s; the fork is FM92R only '
+            raise fm900gen.FM900Error('hardware code %s selects %s; the extended firmware is FM92R only '
                                       '(remote control, no selcall)' % (hw, b.master_name()))
         mpath = a.master or VARIANT_MASTERS[a.variant]
         if not os.path.exists(mpath):
