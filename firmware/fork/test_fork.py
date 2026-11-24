@@ -331,14 +331,18 @@ class FreqFirmware(unittest.TestCase):
         self.assertIsNone(self.task(c, expire=False))      # not yet
         self.assertEqual(self.task(c), '  ')                # blank, 0.5 s
         self.assertEqual(c.mem[0x57], 18)
-        seq = [self.task(c) for _ in range(6)]
+        seq, timers = [], []
+        for _ in range(6):
+            seq.append(self.task(c))
+            timers.append(c.mem[0x57])
         self.assertEqual(seq, ['14', '47', '7 ', ' 4', '45', '50'])
+        self.assertEqual(timers, [8] * 6)                   # each window 0.24 s
         self.assertEqual(self.task(c), '  ')                # blank, 0.5 s
         self.assertEqual(c.mem[0x57], 18)
         self.assertEqual(self.task(c), ' 3')                # channel again for 2 s
         self.assertEqual(c.mem[0x57], 74)
         self.assertEqual([self.task(c) for _ in range(2)], ['  ', '14'])   # and round again
-        self.assertEqual(c.mem[0x57], 18)                   # 0.5 s
+        self.assertEqual(c.mem[0x57], 8)                    # window: 0.24 s
 
     def test_two_digit_channel(self):
         c = self.cpu(12)

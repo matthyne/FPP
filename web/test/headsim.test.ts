@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HeadConfig, HeadSim, T_CHAN, T_LAMP, T_STEP } from '../src/core/headsim';
+import { HeadConfig, HeadSim, T_BLANK, T_CHAN, T_LAMP, T_STEP } from '../src/core/headsim';
 
 const cfg = (over: Partial<HeadConfig> = {}): HeadConfig => ({
   channels: [1, 2, 3, 9, 10, 23, 25, 30, 41],
@@ -86,14 +86,17 @@ describe('FM92 head demo', () => {
     expect(h.tx).toBe(false);
   });
 
-  it('enhanced image: channel 2 s, blank, frequency windows 0.5 s each, blank, channel again', () => {
+  it('enhanced image: channel 2 s, blank 0.5 s, frequency windows 0.24 s each, blank 0.5 s, channel again', () => {
     const h = started(cfg({ firmware: 'enhanced', freqWindows: (ch) => (ch === 1 ? ['14', '47', '7 ', ' 4', '45', '50'] : null) }));
-    const seen = [h.display];
-    for (let t = 0; t < T_CHAN + 9 * T_STEP; t += 50) {
-      h.tick(50);
-      if (h.display !== seen[seen.length - 1]) seen.push(h.display);
+    const seen = [h.display], at = [0];
+    let t = 0;
+    for (; t < T_CHAN + 2 * T_BLANK + 6 * T_STEP + 100; t += 10) {
+      h.tick(10);
+      if (h.display !== seen[seen.length - 1]) { seen.push(h.display); at.push(t + 10); }
     }
     expect(seen).toEqual([' 1', '  ', '14', '47', '7 ', ' 4', '45', '50', '  ', ' 1']);
+    const durs = at.slice(1).map((x, i) => x - at[i]);
+    expect(durs).toEqual([T_CHAN, T_BLANK, ...Array(6).fill(T_STEP), T_BLANK]);
     // transmitting puts the channel back at once
     h.tick(T_CHAN + T_STEP);
     expect(h.display).toBe('  ');

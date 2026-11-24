@@ -101,7 +101,7 @@ function FirmwareInfo({ fw, callsign, sample }: { fw: Firmware; callsign: string
           ? <> while the radio sends <b class="mono">{callsign}</b> in Morse on its beep tone at {MORSE_WPM} wpm (about {secs} s)</>
           : <> for 1 s (no callsign set, so no Morse)</>}, then the channel. Keys pressed meanwhile are ignored.</li>
         {fw === 'enhanced' && <li><b>Rx frequency on the head.</b> After 2 s on the channel number, the head shows the channel's
-          Rx frequency two characters at a time, 0.5 s each, with a 0.5 s blank before and after, then the channel number again,
+          Rx frequency two characters at a time, 0.24 s each, with a 0.5 s blank before and after, then the channel number again,
           in a loop{sample && <> (channel {sample.ch}: <span class="mono">(blank) {sample.w.map((w) => `“${w}”`).join(' ')} (blank)</span>)</>}.
           The channel number stays while transmitting; the cycle stops while scanning or showing selcall digits, and restarts on a
           channel change.</li>}

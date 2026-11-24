@@ -120,7 +120,8 @@ callsign, `00` stays for 1 s and there is no sound.
 
 After the channel number has been shown for 2 s, the display is blanked for
 0.5 s. Then the head shows the channel's Rx frequency two characters at a time,
-sliding one character every 0.5 s, blanks for 0.5 s again, shows the channel
+sliding one character every 0.24 s (`T_STEP`, 9 ticks; the blanks use `T_BLANK`,
+19 ticks = 0.5 s), blanks for 0.5 s again, shows the channel
 number for 2 s, and repeats. 147.450 MHz on channel 3:
 
     " 3" (2 s)   "  "   14   47   "7 "   " 4"   45   50   "  "   " 3" (2 s)   "  "   14 ...
@@ -153,7 +154,8 @@ number for 2 s, and repeats. 147.450 MHz on channel 3:
   reply (two missed replies switch the radio off, FIRMWARE.md §6.3). The head
   can still send at any time (keys, PTT repeats) while the radio is sending;
   that is the same with stock firmware, but there is now more traffic: 4 bytes
-  every 0.5 s.
+  every 0.24 s while the frequency is shown (each 4-byte window takes about
+  37 ms on the 1200 baud link).
 * **Where the frequency comes from.** The firmware has no way to work out the
   frequency (the step and IF depend on the hardware code), so `mkradio.py`
   decodes each slot's Rx divider (f = N × step − IF, what the radio really
@@ -298,3 +300,4 @@ firmware (`stackdepth.py`, checked by `build.py`).
 | (2026-11-23) | First hardware report: an image burned and worked on an FM92R. Still experimental. |
 | (2026-11-23) | NOHOOK in both variants: scan ignores the handset hook (no off-hook scan stop, no continuous tone). |
 | (2026-11-23) | INTRO: Morse ident 15 → 18 wpm, timed from the tick counter `$28`; soft timer `$58` is spare again. |
+| (2026-11-24) | FREQ: frequency windows every 0.24 s (`T_STEP` 18 → 8), blanks kept at 0.5 s (new `T_BLANK`). |

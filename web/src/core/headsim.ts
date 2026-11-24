@@ -12,7 +12,7 @@
 //  * Display: two digits, tens blanked when 0 (show_channel). Power on: the head's own "88" until the radio
 //    sends digits, then (experimental images) "00" during the Morse ident, then the channel.
 //  * Experimental "Ident + Rx freq." image: after 2 s on the channel number, 0.5 s blank, the Rx frequency in
-//    2-character windows (0.5 s each), 0.5 s blank, the channel again (fork.asm FREQ). Not while transmitting or
+//    2-character windows (0.24 s each), 0.5 s blank, the channel again (fork.asm FREQ). Not while transmitting or
 //    scanning; any channel change restarts it.
 
 export type HeadFirmware = 'standard' | 'intro' | 'enhanced';
@@ -29,7 +29,8 @@ export interface HeadConfig {
 
 export type HeadEvent = 'beep' | 'reject' | 'ident';
 
-export const T_CHAN = 2000, T_STEP = 500, T_LAMP = 300;
+// fork.asm: T_CHAN 75 ticks, T_STEP 9 ticks, T_BLANK 19 ticks of 26.6 ms.
+export const T_CHAN = 2000, T_STEP = 240, T_BLANK = 500, T_LAMP = 300;
 
 export class HeadSim {
   on = false;
@@ -114,8 +115,10 @@ export class HeadSim {
       } else this.t = 0;
     } else if (this.phase === 'freq') {
       if (!this.cycling()) return this.showChannel();
-      while (this.t >= T_STEP && this.phase === 'freq') {
-        this.t -= T_STEP;
+      // the blanks (first and last) last T_BLANK, the frequency windows T_STEP
+      const dur = () => (this.idx === 0 || this.idx === this.seq.length - 1 ? T_BLANK : T_STEP);
+      while (this.phase === 'freq' && this.t >= dur()) {
+        this.t -= dur();
         if (++this.idx >= this.seq.length) this.showChannel();
         else this.display = this.seq[this.idx];
       }

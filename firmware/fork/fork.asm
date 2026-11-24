@@ -40,7 +40,8 @@ MO_TMP          equ     $b6
 
 FQ_TIMER        equ     $57     ; spare 27 ms soft timer (FIRMWARE.md §16.2)
 T_CHAN          equ     74      ; 75 x 26.6 ms = 2.0 s
-T_STEP          equ     18      ; 19 x 26.6 ms = 0.51 s
+T_STEP          equ     8       ; 9 x 26.6 ms = 0.24 s (each frequency window)
+T_BLANK         equ     18      ; 19 x 26.6 ms = 0.51 s (blank before and after the frequency)
 
 MO_MAGIC        equ     $1978   ; "MOR1": the tools check this before writing the callsign
 MO_TAB          equ     $197c   ; 48 bytes, up to FQ_MAGIC
@@ -164,7 +165,7 @@ mo_w1:  txa
 ; Feature FREQ: Rx frequency on the control head
 ;
 ; After the channel number has been on the head for 2 s, blank the display
-; for 0.5 s, show the channel's Rx frequency two characters at a time, 0.5 s
+; for 0.5 s, show the channel's Rx frequency two characters at a time, 0.24 s
 ; each, sliding one character per step, blank for 0.5 s, then the channel
 ; number again for 2 s, and repeat, until something else is put on the display
 ; (channel change, scan, selcall, display off).
@@ -259,7 +260,7 @@ fq_rx:  brclr   7,FQ_TIMER,fq_ret       ; time for the next step?
         lda     #T_STEP
         sta     FQ_TIMER
         ; Sequence: channel (2 s), blank, windows 1..n, blank, channel ...
-        ; (each step 0.5 s). FQ_FLAGS bit 2 = the blank is shown; FQ_IDX tells
+        ; (windows 0.24 s, blanks 0.5 s). FQ_FLAGS bit 2 = the blank is shown; FQ_IDX tells
         ; which blank: 0 = before the frequency, >0 = after it.
         brclr   2,FQ_FLAGS,fq_r1
         bclr    2,FQ_FLAGS
@@ -288,6 +289,8 @@ fq_win: inc     FQ_IDX
 
 fq_blank:                               ; both characters blank for 0.5 s
         bset    2,FQ_FLAGS
+        lda     #T_BLANK
+        sta     FQ_TIMER
         lda     #$ff                    ; $F = space
         jmp     fq_send
 

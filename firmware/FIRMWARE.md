@@ -674,7 +674,7 @@ You'd have to confirm on the board that the CPU's PB7 pin is accessible and not 
 > **Status: implemented, experimental.** Only images built from the fork have these features: WebFPP's Firmware menu ("Start-up ident" or "Ident + Rx freq.") or `fork/mkradio.py`. The **Factory** image (Original FPP) doesn't. Nothing here has been tested on a radio yet.
 
 * **Start-up ident** (both experimental images). At switch-on the head shows `00` while the radio sends a Morse callsign (set when building) on its beep tone. `$29.7` enables the ~600 Hz tone that `uart_bit` makes on `$29.4`; the key beep uses the same tone. Then the channel is shown as usual.
-* **Rx frequency display** ("Ident + Rx freq." only). After 2 s on the channel number, the display is blanked for 0.5 s, then the head shows the channel's Rx frequency two characters at a time (147.450 → `14 47 7␣ ␣4 45 50`, 0.5 s each), blanks for 0.5 s again, then shows the channel again, in a loop.
+* **Rx frequency display** ("Ident + Rx freq." only). After 2 s on the channel number, the display is blanked for 0.5 s, then the head shows the channel's Rx frequency two characters at a time (147.450 → `14 47 7␣ ␣4 45 50`, 0.24 s each), blanks for 0.5 s again, then shows the channel again, in a loop.
 
 Details, build commands and the bench-test checklist: `fork/README.md`.
 
