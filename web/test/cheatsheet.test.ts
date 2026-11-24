@@ -118,6 +118,19 @@ describe('cheat sheet PDF', () => {
     for (const d of Object.values(ICONS)) expect(svgPathOps(d)).toMatch(/^[-\d. mlch]+$/);
   });
 
+  it('duplex channels get a ⇅ arrow between Tx and Name; simplex and receive-only do not', () => {
+    const p = job('2MHAM/2MHAM');
+    p.rows = [
+      { num: '1', rx: '146.5', tx: '', flags: 0, ctcss: '', name: 'Simplex' },
+      { num: '2', rx: '146.7', tx: '146.1', flags: 0, ctcss: '', name: 'Repeater' },
+      { num: '3', rx: '147.0', tx: 'X', flags: 0, ctcss: '', name: 'Listen' },
+    ];
+    expect(sheetEntries(p).entries.map((e) => e.duplex)).toEqual([false, true, false]);
+    const arrow = svgPathOps(ICONS.duplex);
+    const s = checkPdf(cheatSheet(p));
+    expect(s.split(arrow).length - 1).toBe(1);
+  });
+
   it('footer carries the WebFPP version from package.json', () => {
     expect(VERSION).toBe(JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8')).version);
     expect(latin1(cheatSheet(job('80CHCB')))).toContain(`WebFPP ${VERSION_LABEL.replace(/[()]/g, '\\$&')}`);

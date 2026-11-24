@@ -11,7 +11,7 @@ import { Project, isBlank, rowToChannel } from './project';
 import { VERSION_LABEL } from '../version';
 
 /** `scan` = the scan groups (1-based) the channel is in, `pri` = the groups it is the priority channel of; FM91 has 3 groups, FM92 2. */
-export interface SheetEntry { num: string; rx: string; tx: string; name: string; scan: number[]; pri: number[] }
+export interface SheetEntry { num: string; rx: string; tx: string; name: string; scan: number[]; pri: number[]; duplex: boolean }
 
 /** Valid, non-blank rows in record order. Rows with errors are skipped (`skipped` counts them). */
 export function sheetEntries(p: Project): { entries: SheetEntry[]; skipped: number } {
@@ -26,7 +26,8 @@ export function sheetEntries(p: Project): { entries: SheetEntry[]; skipped: numb
       const c = rowToChannel(r);
       entries.push({ num: String(c.num), rx: c.rx, tx: c.tx.startsWith('X') ? 'Rx only' : c.tx, name: (r.name ?? '').trim(),
         scan: groups.flatMap((f, g) => (r.flags & f ? [g + 1] : [])),
-        pri: pris.flatMap((f, g) => (r.flags & f ? [g + 1] : [])) });
+        pri: pris.flatMap((f, g) => (r.flags & f ? [g + 1] : [])),
+        duplex: !c.tx.startsWith('X') && parseFloat(c.tx) !== parseFloat(c.rx) });
     } catch {
       skipped++;
     }
@@ -122,7 +123,8 @@ const MARGIN = 36;
 const GAP = 14;              // between columns
 // Column widths in em (Helvetica digits are all 0.556 em, so frequencies still line up):
 // badge = 3 digits + 0.3 em padding each side, then a 0.6 em gap; a frequency (4.17 em) + 1 em gap.
-const PAD = 0.3, CH_EM = 3 * 0.556 + 2 * PAD + 0.6, FREQ_EM = 5.2, MIN_NAME_EM = 7;
+// MARK_EM = extra room between Tx and Name for the duplex arrow (⇅, drawn centred in the gap).
+const PAD = 0.3, CH_EM = 3 * 0.556 + 2 * PAD + 0.6, FREQ_EM = 5.2, MARK_EM = 1.1, MIN_NAME_EM = 7;
 
 /** Choose columns and font size so `n` records fit in a `height`-point tall, `width` wide area. */
 export function sheetLayout(n: number, width: number, height: number): SheetLayout {
@@ -134,8 +136,8 @@ export function sheetLayout(n: number, width: number, height: number): SheetLayo
   }
   const colW = (width - GAP * (cols - 1)) / cols;
   // Shrink if needed so a name still gets MIN_NAME_EM (about 13 characters).
-  const fontSize = Math.min(10, lineH * 0.8, colW / (CH_EM + 2 * FREQ_EM + MIN_NAME_EM));
-  const nameW = colW - (CH_EM + 2 * FREQ_EM) * fontSize;
+  const fontSize = Math.min(10, lineH * 0.8, colW / (CH_EM + 2 * FREQ_EM + MARK_EM + MIN_NAME_EM));
+  const nameW = colW - (CH_EM + 2 * FREQ_EM + MARK_EM) * fontSize;
   return { cols, perCol, lineH, fontSize, nameW };
 }
 
@@ -220,7 +222,7 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
     const part = entries.slice(c * L.perCol, (c + 1) * L.perCol);
     if (!part.length && c) break;
     const badgeW = (CH_EM - 0.6) * fs;
-    const x2 = x + CH_EM * fs, x3 = x2 + FREQ_EM * fs, x4 = x3 + FREQ_EM * fs;
+    const x2 = x + CH_EM * fs, x3 = x2 + FREQ_EM * fs, x4 = x3 + (FREQ_EM + MARK_EM) * fs;
     page.rect(x, y, colW, L.lineH, 0.82);
     const hy = y + base;
     page.text(x + (badgeW - textWidth('Ch', 'Helvetica-Bold', fs)) / 2, hy, 'Ch', 'Helvetica-Bold', fs);
@@ -236,6 +238,10 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
       badge(page, x, ry + inset, badgeW, L.lineH - 2 * inset, e.scan, e.num, 'Helvetica-Bold', fs, by, e.pri.length > 0);
       page.text(x2, by, e.rx, 'Helvetica-Bold', fs);
       page.text(x3, by, e.tx, 'Helvetica', fs, e.tx === e.rx ? 0.45 : 0);
+      if (e.duplex) {                                // ⇅ centred between the end of the Tx frequency and the name
+        const s = fs, gx = x3 + textWidth(e.tx, 'Helvetica', fs);
+        page.icon(ICONS.duplex, gx + (x4 - gx - s) / 2, by - s * 0.86, s, 0);
+      }
       if (L.nameW > 0 && e.name) {
         let nx = x4;                                   // regular text, callsigns in bold
         for (const g of fitName(e.name, fs, L.nameW)) {
