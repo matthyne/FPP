@@ -35,6 +35,10 @@ MO_TAB = 0x197C
 MO_LEN = 48                 # bytes, including the 0 terminator
 FQ_MAGIC = 0x19AC
 FQ0 = 0x19B0
+FQ_SPEED = 0x1977           # frequency window length - 1 in 26.6 ms ticks (fork.asm FQ_SPEED)
+TICK_MS = 26.6              # the soft-timer tick
+STEP_TICKS = (4, 38)        # allowed window lengths: 0.11 s (the head link needs ~37 ms per window) .. 1.01 s
+STEP_DEFAULT = 9            # 0.24 s
 NCH = 100                   # each FQn array is indexed by channel number 0-99
 SLOTS = 0x1BE8              # FM92 channel table, 99 x 8 bytes, slot 0 = channel 1
 
@@ -74,6 +78,21 @@ def fill_morse(img, text):
     b = morse_bytes(text or '')
     img[MO_TAB:MO_TAB + MO_LEN] = b + bytes(MO_LEN - len(b))
     return True
+
+
+def step_ticks(ms):
+    """Window length in ms -> whole 26.6 ms ticks, clamped to STEP_TICKS."""
+    return max(STEP_TICKS[0], min(STEP_TICKS[1], int(round(ms / TICK_MS))))
+
+
+def fill_step(img, ticks):
+    """Set the frequency display speed: each 2-character window shows for `ticks` x 26.6 ms."""
+    if img[FQ_MAGIC:FQ_MAGIC + 4] != b'FQT1':
+        raise fm900gen.FM900Error('master has no frequency display (not built from the extended firmware, '
+                                  'or an old build without the speed setting)')
+    if not STEP_TICKS[0] <= ticks <= STEP_TICKS[1]:
+        raise ValueError('frequency step %d ticks out of range %d..%d' % (ticks, *STEP_TICKS))
+    img[FQ_SPEED] = ticks - 1
 
 
 def freq_nibbles(f100):
@@ -142,6 +161,10 @@ def main(argv=None):
         p.add_argument('--date')
         p.add_argument('--keys')
         p.add_argument('-o', '--output', required=True)
+        p.add_argument('--step-ms', type=float, default=STEP_DEFAULT * TICK_MS,
+                       help='frequency display: how long each 2-character window shows, %d-%d ms (default %d; '
+                            'rounded to 26.6 ms ticks)' % (round(STEP_TICKS[0] * TICK_MS), round(STEP_TICKS[1] * TICK_MS),
+                                                           round(STEP_DEFAULT * TICK_MS)))
         p.add_argument('-v', '--verbose', action='store_true', help='list each channel\'s display sequence')
 
     p = sub.add_parser('build')
@@ -176,6 +199,8 @@ def main(argv=None):
             print('WARNING: %s! Radio may not operate correctly.' % w, file=sys.stderr)
         fill_morse(img, a.callsign)
         shown = fill_table(img, b.step, b.ifo) if img[FQ_MAGIC:FQ_MAGIC + 4] == b'FQT1' else {}
+        if shown or img[FQ_MAGIC:FQ_MAGIC + 4] == b'FQT1':
+            fill_step(img, step_ticks(a.step_ms))
         fm900gen.checksum(img)
     except (fm900gen.FM900Error, ValueError) as e:
         print('error: %s' % e, file=sys.stderr)
@@ -187,7 +212,8 @@ def main(argv=None):
             print('  %2d  %s' % (ch, ', '.join(windows(entry_nibbles(table_entry(img, ch))))))
     print('wrote %s: %s firmware, start-up ident %s, %s' % (
         a.output, a.variant if not a.master else a.master, a.callsign.upper() or 'none ("00" only)',
-        'frequency table for %d channels (step %.2f kHz, IF %+.1f MHz)' % (len(shown), b.step / 100, b.ifo / 100000)
+        'frequency table for %d channels (step %.2f kHz, IF %+.1f MHz), %.2f s per window' % (
+            len(shown), b.step / 100, b.ifo / 100000, (img[FQ_SPEED] + 1) * TICK_MS / 1000)
         if img[FQ_MAGIC:FQ_MAGIC + 4] == b'FQT1' else 'no frequency display'))
     return 0
 

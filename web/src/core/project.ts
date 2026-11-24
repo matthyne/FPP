@@ -30,6 +30,7 @@ export interface Project {
   eprom?: EpromPart;       // chip the image is burned to (absent = 2764); the 8 KB image is mirrored into every bank
   firmware?: Firmware;     // absent = 'standard' (the factory master)
   callsign?: string;       // extended firmware: Morse ident at start-up ('' / absent = none, "00" only)
+  freqStep?: number;       // Ident + Rx freq.: frequency window length in 26.6 ms ticks (fork.ts STEP_TICKS; absent = 9 = 0.24 s)
   rows: Row[];
 }
 

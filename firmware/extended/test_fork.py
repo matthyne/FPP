@@ -345,6 +345,25 @@ class FreqFirmware(unittest.TestCase):
         self.assertEqual([self.task(c) for _ in range(2)], ['  ', '14'])   # and round again
         self.assertEqual(c.mem[0x57], 8)                    # window: 0.24 s
 
+    def test_speed_byte(self):
+        """The window length comes from FQ_SPEED ($1977), set by mkradio.py --step-ms; the blanks stay 0.5 s."""
+        self.assertEqual(self.img[mkradio.FQ_SPEED], mkradio.STEP_DEFAULT - 1)
+        img = bytearray(self.img)
+        mkradio.fill_step(img, 30)                          # 30 ticks = 0.8 s
+        c = sim6805.CPU(bytes(img))
+        self.sent = []
+        c.stub(self.sym['head_send'], lambda cpu: self.sent.append(cpu.a))
+        c.mem[0x2E] = 3
+        c.call(self.sym['show_channel'])
+        self.shown()
+        self.assertEqual(self.task(c), '  ')
+        self.assertEqual(c.mem[0x57], 18)                   # blank: T_BLANK
+        self.assertEqual(self.task(c), '14')
+        self.assertEqual(c.mem[0x57], 29)                   # window: 30 ticks
+        with self.assertRaises(ValueError):
+            mkradio.fill_step(img, 3)
+        self.assertEqual(mkradio.step_ticks(240), 9)
+
     def test_two_digit_channel(self):
         c = self.cpu(12)
         c.call(self.sym['show_channel'])

@@ -24,6 +24,7 @@ export interface HeadConfig {
   keys: KeyFunc[];                          // UP, DOWN, AUX, SEND
   firmware: HeadFirmware;
   identMs: number;                          // experimental images: how long "00" + Morse ident takes
+  stepMs?: number;                          // enhanced: each frequency window (the image's speed setting; default T_STEP)
   freqWindows?: (ch: number) => string[] | null;   // enhanced: the frequency windows for a channel, null = none
 }
 
@@ -116,7 +117,7 @@ export class HeadSim {
     } else if (this.phase === 'freq') {
       if (!this.cycling()) return this.showChannel();
       // the blanks (first and last) last T_BLANK, the frequency windows T_STEP
-      const dur = () => (this.idx === 0 || this.idx === this.seq.length - 1 ? T_BLANK : T_STEP);
+      const dur = () => (this.idx === 0 || this.idx === this.seq.length - 1 ? T_BLANK : this.cfg.stepMs ?? T_STEP);
       while (this.phase === 'freq' && this.t >= dur()) {
         this.t -= dur();
         if (++this.idx >= this.seq.length) this.showChannel();

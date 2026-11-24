@@ -42,6 +42,8 @@ FQ_TIMER        equ     $57     ; spare 27 ms soft timer (FIRMWARE.md §16.2)
 T_CHAN          equ     74      ; 75 x 26.6 ms = 2.0 s
 T_STEP          equ     8       ; 9 x 26.6 ms = 0.24 s (each frequency window)
 T_BLANK         equ     18      ; 19 x 26.6 ms = 0.51 s (blank before and after the frequency)
+FQ_SPEED        equ     $1977   ; frequency window length - 1, in 26.6 ms ticks: T_STEP by default,
+                                ; set per radio by mkradio.py --step-ms / WebFPP's speed slider (3..37)
 
 MO_MAGIC        equ     $1978   ; "MOR1": the tools check this before writing the callsign
 MO_TAB          equ     $197c   ; 48 bytes, up to FQ_MAGIC
@@ -258,7 +260,7 @@ fq_ret: rts
 fq_rx:  brclr   7,FQ_TIMER,fq_ret       ; time for the next step?
         brset   5,$1c,fq_ret            ; keep-alive reply due: try again later
         brset   1,$1a,fq_ret            ; UART FIFO not empty: try again later
-        lda     #T_STEP
+        lda     FQ_SPEED                ; window length (T_STEP unless the tools changed it)
         sta     FQ_TIMER
         ; Sequence: channel (2 s), blank, windows 1..n, blank, channel ...
         ; (windows 0.24 s, blanks 0.5 s). FQ_FLAGS bit 2 = the blank is shown; FQ_IDX tells
@@ -333,6 +335,10 @@ fq_lo:  and     #$0f
 
 ; ---- tables at fixed addresses, after all the code (filled per radio by
 ; mkradio.py / WebFPP; their addresses are constants in those tools)
+        .if FREQ
+        .org    FQ_SPEED
+        db      T_STEP                  ; frequency window length (the speed setting)
+        .endif
         .if INTRO
         .org    MO_MAGIC
         db      "MOR1"

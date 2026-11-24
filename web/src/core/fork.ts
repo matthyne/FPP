@@ -100,6 +100,32 @@ export function freqNibbles(f100: number): number[] {
   return s;
 }
 
+// Frequency display speed (fork.asm FQ_SPEED; mkradio.py fill_step / step_ticks): the byte holds the window length
+// in 26.6 ms soft-timer ticks, minus 1.
+export const FQ_SPEED = 0x1977;
+export const TICK_MS = 26.6;
+export const STEP_TICKS: [number, number] = [4, 38];   // 0.11 s (the head link needs ~37 ms per window) .. 1.01 s
+export const STEP_DEFAULT = 9;                          // 0.24 s
+
+/** Window length in ms -> whole ticks, clamped (mkradio.py step_ticks). */
+export function stepTicks(ms: number): number {
+  return Math.max(STEP_TICKS[0], Math.min(STEP_TICKS[1], Math.round(ms / TICK_MS)));
+}
+
+/** Set the frequency display speed: each 2-character window shows for `ticks` x 26.6 ms (mkradio.py fill_step). */
+export function fillStep(img: Uint8Array, ticks: number): void {
+  if (!isForkImage(img)) throw new Error('master has no frequency display');
+  if (!(ticks >= STEP_TICKS[0] && ticks <= STEP_TICKS[1])) throw new Error(`frequency step ${ticks} ticks out of range`);
+  img[FQ_SPEED] = ticks - 1;
+}
+
+/** The speed setting of an extended-firmware image, in ticks (null if none or out of range). */
+export function readStep(img: Uint8Array): number | null {
+  if (!isForkImage(img)) return null;
+  const t = img[FQ_SPEED] + 1;
+  return t >= 1 && t <= 255 ? t : null;
+}
+
 /** What the head shows: 2-character windows sliding one character at a time. */
 export function windows(nibs: number[]): string[] {
   const ch = (n: number) => (n === 0xF ? ' ' : String(n));

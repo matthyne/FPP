@@ -1,6 +1,6 @@
 // Live analysis of a project for the UI: per-row problems plus a trial build.
 import { Builder, Channel, FM900Error, F_VOTE, checksum, freqUnits } from './fm900';
-import { fillMorse, fillTable, isForkImage } from './fork';
+import { STEP_DEFAULT, STEP_TICKS, fillMorse, fillStep, fillTable, isForkImage } from './fork';
 import { forkMaster, master } from './masters';
 import { Project, isBlank, parseDate, rowToChannel } from './project';
 
@@ -100,7 +100,10 @@ export function analyze(p: Project): Analysis {
       } catch (e) {
         throw new FM900Error(`start-up callsign: ${(e as Error).message}`);
       }
-      if (isForkImage(img)) fillTable(img, b.step, b.ifo);
+      if (isForkImage(img)) {
+        fillTable(img, b.step, b.ifo);
+        fillStep(img, Math.max(STEP_TICKS[0], Math.min(STEP_TICKS[1], Math.round(p.freqStep ?? STEP_DEFAULT))));
+      }
       checksum(img);
       a.img = img;
     } else {

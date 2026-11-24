@@ -120,12 +120,20 @@ callsign, `00` stays for 1 s and there is no sound.
 
 After the channel number has been shown for 2 s, the display is blanked for
 0.5 s. Then the head shows the channel's Rx frequency two characters at a time,
-sliding one character every 0.24 s (`T_STEP`, 9 ticks; the blanks use `T_BLANK`,
-19 ticks = 0.5 s), blanks for 0.5 s again, shows the channel
+sliding one character every 0.24 s by default (adjustable from 0.11 s to 1.01 s: see
+"Speed" below; the blanks use `T_BLANK`, 19 ticks = 0.5 s), blanks for 0.5 s again, shows the channel
 number for 2 s, and repeats. 147.450 MHz on channel 3:
 
     " 3" (2 s)   "  "   14   47   "7 "   " 4"   45   "  "   " 3" (2 s)   "  "   14 ...
 
+* **Speed.** Each window shows for the number of 26.6 ms ticks in the byte
+  `FQ_SPEED` at `$1977` (stored as ticks − 1), just before the Morse table.
+  The master holds the default, `T_STEP` = 8 (9 ticks = 0.24 s).
+  `mkradio.py --step-ms N` (and WebFPP's **Frequency display speed** slider)
+  writes it per radio: 4 to 38 ticks, i.e. 0.11 s to 1.01 s. The lower limit
+  leaves the head link free most of the time: a window is 4 bytes, about 37 ms
+  at 1200 baud, and the head's keep-alive replies must still get through. The
+  blanks stay 0.5 s.
 * **Blank.** Two spaces (`$80 ' '`, `$82 ' '`), not the `$E5` display-off
   message, which belongs to the intermittent-display option. Transmitting
   during a blank brings the channel number back at once, like during the
@@ -304,3 +312,4 @@ firmware (`stackdepth.py`, checked by `build.py`).
 | (2026-11-23) | INTRO: Morse ident 15 → 18 wpm, timed from the tick counter `$28`; soft timer `$58` is spare again. |
 | (2026-11-24) | FREQ: frequency windows every 0.24 s (`T_STEP` 18 → 8), blanks kept at 0.5 s (new `T_BLANK`). |
 | (2026-11-24) | Frequency table: a trailing 0 decimal is left off (147.450 → 147.45); `mkradio.py` and WebFPP's `fork.ts`. |
+| (2026-11-24) | Frequency display speed setting: window length read from `FQ_SPEED` (`$1977`, ticks − 1; default 8 = 0.24 s), set by `mkradio.py --step-ms` / WebFPP's Build-tab slider (0.11–1.01 s). |

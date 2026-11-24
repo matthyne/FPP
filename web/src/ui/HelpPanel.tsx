@@ -55,7 +55,7 @@ export function HelpPanel() {
             callsign</b> (e.g. VK2FN) on its key-beep tone at 18 wpm, then the channel. With no callsign it shows <code>00</code> for
             1 s. The ident takes a few seconds (VK2FN about 4.5 s); keys pressed meanwhile are ignored.</li>
           <li><b>Ident + Rx freq.:</b> the start-up ident, plus: after the channel number has been on the head for 2 s, the head shows
-            the channel's Rx frequency two characters at a time, 0.24 s each, with the display blanked for 0.5 s before and after it,
+            the channel's Rx frequency two characters at a time (0.24 s each by default: the <b>Frequency display speed</b> slider sets 0.11 s to 1.01 s), with the display blanked for 0.5 s before and after it,
             then the channel number again, in a loop. 147.450 MHz shows <code>(blank) 14 47 "7 " " 4" 45 (blank)</code>: a trailing 0 is left off (the point
             is shown as a space). It stops while transmitting, scanning or
             showing selcall digits, and whenever the channel changes it starts again.</li>

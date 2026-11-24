@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Analysis } from '../core/analyze';
 import { BLUE_KEYS, HEAD_BUTTONS, KEY_LABELS } from '../core/codes';
 import { F_SCAN1, F_SCAN2, KEY_FUNCS } from '../core/fm900';
-import { MORSE_UNIT_S, entryNibbles, identSeconds, morseBytes, tableEntry, windows } from '../core/fork';
+import { MORSE_UNIT_S, STEP_DEFAULT, TICK_MS, entryNibbles, identSeconds, morseBytes, tableEntry, windows } from '../core/fork';
 import { HeadConfig, HeadFirmware, HeadSim, KeyFunc, SEGMENTS } from '../core/headsim';
 import { Project } from '../core/project';
 import { Icon } from './icons';
@@ -113,13 +113,14 @@ export function DemoPanel({ p, a }: { p: Project; a: Analysis }) {
       scanLists: [a.chans.filter((c) => c.flags & F_SCAN1).map((c) => c.num), a.chans.filter((c) => c.flags & F_SCAN2).map((c) => c.num)],
       keys: keyCodes.map((k) => (KEY_FUNCS[k] ?? 'none') as KeyFunc),
       firmware: fw,
+      stepMs: (p.freqStep ?? STEP_DEFAULT) * TICK_MS,
       identMs: fw === 'standard' ? 0 : (() => { try { return identSeconds(callsign) * 1000; } catch { return 1000; } })(),
       freqWindows: fw === 'enhanced' ? (ch) => {
         const e = tableEntry(img, ch);
         return e[0] ? windows(entryNibbles(e)) : null;
       } : undefined,
     };
-  }, [fm92, a.img, a.chans, keyCodes?.join(','), fw, callsign]);
+  }, [fm92, a.img, a.chans, keyCodes?.join(','), fw, callsign, p.freqStep]);
 
   const sim = useMemo(() => (cfg ? new HeadSim(cfg) : null), [cfg]);
   const [, setFrame] = useState(0);

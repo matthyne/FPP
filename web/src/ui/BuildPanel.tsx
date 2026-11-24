@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import { Analysis, enhancedProblem } from '../core/analyze';
-import { MORSE_WPM, entryNibbles, identSeconds, morseBytes, tableEntry, windows } from '../core/fork';
+import { MORSE_WPM, STEP_DEFAULT, STEP_TICKS, TICK_MS, entryNibbles, identSeconds, morseBytes, tableEntry, windows } from '../core/fork';
 import { dump } from '../core/decode';
 import { verifyChecksum } from '../core/fm900';
 import { Firmware, Project } from '../core/project';
@@ -91,7 +91,7 @@ export function ExperimentalBanner({ what }: { what: string }) {
 }
 
 /** What the experimental image does, feature by feature (Build tab, in place of the factory summary). */
-function FirmwareInfo({ fw, callsign, sample }: { fw: Firmware; callsign: string; sample: { ch: number; w: string[] } | null }) {
+function FirmwareInfo({ fw, callsign, sample, stepS }: { fw: Firmware; callsign: string; sample: { ch: number; w: string[] } | null; stepS: string }) {
   const secs = identSeconds(callsign).toFixed(1);
   return (
     <div class="msg info fwinfo">
@@ -101,7 +101,7 @@ function FirmwareInfo({ fw, callsign, sample }: { fw: Firmware; callsign: string
           ? <> while the radio sends <b class="mono">{callsign}</b> in Morse on its beep tone at {MORSE_WPM} wpm (about {secs} s)</>
           : <> for 1 s (no callsign set, so no Morse)</>}, then the channel. Keys pressed meanwhile are ignored.</li>
         {fw === 'enhanced' && <li><b>Rx frequency on the head.</b> After 2 s on the channel number, the head shows the channel's
-          Rx frequency two characters at a time, 0.24 s each, with a 0.5 s blank before and after, then the channel number again,
+          Rx frequency two characters at a time, {stepS} s each (set with the speed slider), with a 0.5 s blank before and after, then the channel number again,
           in a loop{sample && <> (channel {sample.ch}: <span class="mono">(blank) {sample.w.map((w) => `“${w}”`).join(' ')} (blank)</span>)</>}.
           The channel number stays while transmitting; the cycle stops while scanning or showing selcall digits, and restarts on a
           channel change.</li>}
@@ -126,6 +126,8 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
   const chip = eprom(p.eprom);
   const fw: Firmware = p.firmware ?? 'standard';
   const noEnh = b ? enhancedProblem(b) : 'enter a valid hardware code first';
+  const step = Math.max(STEP_TICKS[0], Math.min(STEP_TICKS[1], p.freqStep ?? STEP_DEFAULT));
+  const stepS = (step * TICK_MS / 1000).toFixed(2);
   const morseOk = (() => { try { morseBytes(p.callsign ?? ''); return true; } catch { return false; } })();
   const sample = useMemo(() => {
     if (!a.img || p.firmware !== 'enhanced') return null;
@@ -156,7 +158,7 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
           {a.vcoWarnings.map((w) => <p class="msg warn" title={`Original FPP warning: ${w}`}>{vcoMessage(w)}</p>)}
           {p.sw.slice(11, 15) !== '0000' && <p class="msg warn">Selcall codes are set: the selcall tones are left at their defaults.</p>}
           {p.keys && <p class="msg info">Head function keys are overridden (not Original FPP behaviour).</p>}
-          {a.img && a.enhanced && <FirmwareInfo fw={fw} callsign={morseOk ? p.callsign?.trim().toUpperCase() ?? '' : ''} sample={sample} />}
+          {a.img && a.enhanced && <FirmwareInfo fw={fw} callsign={morseOk ? p.callsign?.trim().toUpperCase() ?? '' : ''} sample={sample} stepS={stepS} />}
         </div>
         <div class="buildactions">
           <label class="field">
@@ -176,6 +178,21 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
             </select>
           </label>
           {fw === 'standard' && noEnh && b && <p class="hint">Modified firmware: {noEnh}.</p>}
+          {fw === 'enhanced' && (
+            <label class="field">
+              <span class="lab labicon" title="How long each 2-character window of the Rx frequency readout stays on the head. The radio's timer counts in 26.6 ms steps; 0.11 s is the fastest the head link allows">
+                <Icon name="speed" size={14} />Frequency display speed <small>({stepS} s per step)</small></span>
+              <input type="range" class="speed" min={STEP_TICKS[0]} max={STEP_TICKS[1]} step={1} value={step}
+                aria-valuetext={`${stepS} seconds per step`}
+                onInput={(e) => {
+                  const v = Number((e.target as HTMLInputElement).value);
+                  update((q) => ({ ...q, freqStep: v === STEP_DEFAULT ? undefined : v }));
+                }} />
+              <span class="speedends"><small>fast {(STEP_TICKS[0] * TICK_MS / 1000).toFixed(2)} s</small>
+                <small>{step !== STEP_DEFAULT ? <button class="linkish" onClick={() => update((q) => ({ ...q, freqStep: undefined }))}>default {(STEP_DEFAULT * TICK_MS / 1000).toFixed(2)} s</button> : `default ${(STEP_DEFAULT * TICK_MS / 1000).toFixed(2)} s`}</small>
+                <small>slow {(STEP_TICKS[1] * TICK_MS / 1000).toFixed(2)} s</small></span>
+            </label>
+          )}
           {fw !== 'standard' && (
             <label class="field">
               <span class="lab labicon" title="Callsign the radio sends in Morse on its beep tone at switch-on (experimental firmware only)"><Icon name="bullhorn" size={14} />Start-up Morse callsign <small>(blank = none)</small></span>

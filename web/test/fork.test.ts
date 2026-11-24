@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { analyze } from '../src/core/analyze';
 import { readImage } from '../src/core/decode';
 import { readChl, readJob, verifyChecksum } from '../src/core/fm900';
-import { FQ0, MO_MAGIC, entryNibbles, freqNibbles, hasIntro, identSeconds, isForkImage, morseBytes, readMorse, tableEntry, windows } from '../src/core/fork';
+import { FQ0, FQ_SPEED, MO_MAGIC, TICK_MS, readStep, stepTicks, entryNibbles, freqNibbles, hasIntro, identSeconds, isForkImage, morseBytes, readMorse, tableEntry, windows } from '../src/core/fork';
 import { forkMaster, master } from '../src/core/masters';
 import { toProject } from '../src/core/project';
 
@@ -81,6 +81,24 @@ describe('enhanced firmware', () => {
       });
     }
   }
+
+  it.skipIf(!python)('frequency display speed: byte-identical to mkradio.py --step-ms, read back', () => {
+    for (const ticks of [4, 9, 19, 38]) {
+      const d = mkdtempSync(join(tmpdir(), 'fork-'));
+      const out = join(d, 'radio.bin');
+      execFileSync('python3', [join(ROOT, 'firmware', 'extended', 'mkradio.py'), 'fromjob', join(JOBS, '2MHAM', '2MHAM.JOB'),
+        '--date', DATE, '--step-ms', String(ticks * TICK_MS), '-o', out], { stdio: 'ignore' });
+      const want = new Uint8Array(readFileSync(out));
+      const p = { ...project('2MHAM', 'enhanced'), freqStep: ticks };
+      const img = analyze(p).img!;
+      expect(Buffer.from(img).equals(Buffer.from(want))).toBe(true);
+      expect(readStep(img)).toBe(ticks);
+      expect(img[FQ_SPEED]).toBe(ticks - 1);
+    }
+    expect(stepTicks(240)).toBe(9);
+    expect(stepTicks(10)).toBe(4);
+    expect(stepTicks(5000)).toBe(38);
+  });
 
   it('start-up callsign: encoding, read-back, variants', () => {
     expect(morseBytes('VK2FN')).toEqual([1, 1, 1, 3, 0x80, 3, 1, 3, 0x80, 1, 1, 3, 3, 3, 0x80, 1, 1, 3, 1, 0x80, 3, 1, 0x80, 0]);

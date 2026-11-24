@@ -3,7 +3,7 @@ import { formatChannels, powerLetter, scanText } from '../core/channels';
 import { dump, imageKeys, imageModel, readImage } from '../core/decode';
 import { CTCSS_HZ_BY_CODE, F_CR, F_ECON, F_SELCALL, F_VOTE, KEY_FUNCS, MASTER_VERSION, latin1, verifyChecksum } from '../core/fm900';
 import { Firmware, Project, Row, channelToRow } from '../core/project';
-import { hasIntro, isForkImage, readMorse } from '../core/fork';
+import { TICK_MS, hasIntro, isForkImage, readMorse, readStep } from '../core/fork';
 import { errMsg } from './App';
 import { ExperimentalBanner, HexView } from './BuildPanel';
 import { download, pickFiles, readBytes } from './files';
@@ -14,7 +14,7 @@ const hx = (n: number) => n.toString(16).toUpperCase().padStart(2, '0');
 export function ReadPanel({ p, img, setImg, load }: {
   p: Project; img: { name: string; data: Uint8Array } | null;
   setImg: (v: { name: string; data: Uint8Array } | null) => void;
-  load: (rows: Row[], hw: string, keys: number[] | null, firmware: Firmware, callsign: string) => void;
+  load: (rows: Row[], hw: string, keys: number[] | null, firmware: Firmware, callsign: string, freqStep: number | null) => void;
 }) {
   const [hw, setHw] = useState(p.hw);
   const [step, setStep] = useState(0);
@@ -63,6 +63,7 @@ export function ReadPanel({ p, img, setImg, load }: {
   const fm92 = hw[1] === '2';
   const firmware: Firmware = size && isForkImage(d) ? 'enhanced' : size && hasIntro(d) ? 'intro' : 'standard';
   const callsign = firmware === 'standard' ? '' : readMorse(d);
+  const freqStep = firmware === 'enhanced' ? readStep(d) : null;
   const chans = res?.ok?.channels ?? [];
 
   return (
@@ -77,6 +78,7 @@ export function ReadPanel({ p, img, setImg, load }: {
                 {split.part.part !== '2764' && <><dt>EPROM</dt><dd>{split.part.part}, {split.banks.length} banks{split.mirrored ? ', all identical' : ''}</dd></>}
                 <dt>Master</dt><dd class="mono">{mname ?? `unknown (ID "${id}", version ${d[0x1FE5]})`}{firmware === 'enhanced' ? ' + start-up ident + Rx frequency' : firmware === 'intro' ? ' + start-up ident' : ''}</dd>
                 {firmware !== 'standard' && <><dt>Callsign</dt><dd class="mono">{callsign || '(none)'}</dd></>}
+                {freqStep !== null && <><dt>Freq. display</dt><dd>{(freqStep * TICK_MS / 1000).toFixed(2)} s per step</dd></>}
                 <dt>Built</dt><dd class="mono">{hx(d[0x1FE2])}/{hx(d[0x1FE3])}/{hx(d[0x1FE4])} <small>DD/MM/YY</small>, programmer {hx(d[0x1FE0])} {hx(d[0x1FE1])}</dd>
                 <dt>Checksum</dt><dd class={verifyChecksum(d) ? '' : 'bad'}>{verifyChecksum(d) ? 'OK' : 'BAD'}</dd>
                 <dt>Channels</dt><dd>{d[0x1F3F]}–{d[0x1F3E]}</dd>
@@ -111,7 +113,7 @@ export function ReadPanel({ p, img, setImg, load }: {
               <button onClick={open}>Open another…</button>
               <button onClick={() => res?.ok && download(img.name.replace(/\.bin$/i, '') + '.csv', formatChannels(chans), 'text/csv')} disabled={!res?.ok}>Export CSV</button>
               <button class="primary" disabled={!res?.ok || !chans.length}
-                onClick={() => load(chans.map(channelToRow), hw, keepKeys && fm92 ? imageKeys(d) : null, firmware, callsign)}>Load into project</button>
+                onClick={() => load(chans.map(channelToRow), hw, keepKeys && fm92 ? imageKeys(d) : null, firmware, callsign, freqStep)}>Load into project</button>
             </div>
           </div>
         </div>
