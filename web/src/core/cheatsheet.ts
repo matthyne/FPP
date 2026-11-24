@@ -184,7 +184,7 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   // Header: "FMxx Channel Sheet", then the job name and build details, wrapped to fit left of the boxes.
   let y = MARGIN + 14;
   page.text(MARGIN, y, fit(`${model} Channel Sheet`, 'Helvetica-Bold', 16, leftW), 'Helvetica-Bold', 16);
-  y += 3;
+  y += 9;                                             // space under the title, before the info line
   // Same items and icons as WebFPP's status bar, plus the job, callsign and date. The image is described as on the
   // Firmware menu (not "Experimental"), in amber when it is a modified image.
   const fw = p.firmware ?? 'standard', exp = fw !== 'standard';
@@ -201,9 +201,9 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
     page.text(MARGIN, y, fit(comments.join(' / '), 'Helvetica', 9, leftW), 'Helvetica', 9, 0.3);
   }
   y = Math.max(y, boxBottom - 4);
-  y += 12;                                            // space between the header (text and boxes) and the rule
+  y += 8;
   page.line(MARGIN, y, MARGIN + W, y, 1);
-  y += 14;                                            // space under the header rule, before the channel table
+  y += 6;
 
   // Footer
   const footY = page.height - MARGIN + 10;
