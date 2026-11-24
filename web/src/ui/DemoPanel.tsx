@@ -57,6 +57,48 @@ class Beeper {
   }
 }
 
+/** The head artwork (SVG, 436 x 160 units), drawn after the FM900 remote head; the keys are HTML buttons on top. */
+function HeadArt({ on, tx, rx, display }: { on: boolean; tx: boolean; rx: boolean; display: string }) {
+  return (
+    <svg class="headart" viewBox="0 0 436 160" aria-hidden="true">
+      <defs>
+        <linearGradient id="hbody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3c3e" /><stop offset="1" stop-color="#232425" /></linearGradient>
+        <pattern id="hgrille" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="2.5" cy="2.5" r="1.25" fill="#141414" /></pattern>
+        <radialGradient id="hknob" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#4a4a4a" /><stop offset="1" stop-color="#0c0c0c" /></radialGradient>
+      </defs>
+      <rect x="1" y="1" width="434" height="158" rx="6" fill="url(#hbody)" stroke="#111" stroke-width="2" />
+      <rect x="6" y="6" width="424" height="148" rx="3" fill="none" stroke="#4a4b4e" stroke-width="0.8" />
+      {/* speaker grille */}
+      <rect x="20" y="12" width="110" height="98" rx="5" fill="#2b2b2c" stroke="#1a1a1a" />
+      <rect x="24" y="16" width="102" height="90" rx="3" fill="url(#hgrille)" />
+      <line x1="140" y1="10" x2="140" y2="150" stroke="#1a1a1b" stroke-width="1.2" />
+      {/* knobs */}
+      <circle cx="160" cy="40" r="15" fill="url(#hknob)" stroke="#000" /><line x1="160" y1="40" x2="152" y2="29" stroke="#ddd" stroke-width="1.6" />
+      <circle cx="160" cy="114" r="15" fill="url(#hknob)" stroke="#000" /><line x1="160" y1="114" x2="152" y2="103" stroke="#ddd" stroke-width="1.6" />
+      <text x="150" y="68" class="hlab">VOL</text><text x="160" y="85" class="hlab">MUTE</text>
+      <line x1="146" y1="77" x2="184" y2="77" stroke="#8a8b8e" stroke-width="0.6" />
+      <line x1="190" y1="10" x2="190" y2="150" stroke="#1a1a1b" stroke-width="1.2" />
+      {/* display window and digits */}
+      <rect x="198" y="22" width="110" height="56" rx="2" fill="#160404" stroke="#0a0a0a" stroke-width="2" />
+      <g transform="translate(216 28) scale(0.44)"><Digit ch={display[0]} x={0} /><Digit ch={display[1]} x={70} /></g>
+      {/* TX / RX / power lamps */}
+      <rect x="318" y="27" width="9" height="5" rx="1" class={tx ? 'led red lit' : 'led red'} />
+      <text x="317" y="41" class="hlab small">TX</text>
+      <rect x="318" y="51" width="9" height="5" rx="1" class={rx ? 'led amber lit' : 'led amber'} />
+      <text x="317" y="65" class="hlab small">RX</text>
+      <rect x="318" y="91" width="9" height="5" rx="1" class={on ? 'led green lit' : 'led green'} />
+      {/* arrow key wells (the keys themselves are HTML buttons) */}
+      <rect x="198" y="82" width="52" height="22" rx="2" fill="#1b1b1c" /><rect x="255" y="82" width="52" height="22" rx="2" fill="#1b1b1c" />
+      <text x="282" y="134" class="hmodel">FM 900</text>
+      <line x1="340" y1="10" x2="340" y2="150" stroke="#1a1a1b" stroke-width="1.2" />
+      {/* blue key wells and labels */}
+      {[24, 55, 86].map((y) => <rect x="352" y={y - 2} width="34" height="15" rx="2" fill="#1b1b1c" />)}
+      <text x="392" y="33" class="hlab">SEND</text><text x="392" y="64" class="hlab">AUX</text><text x="392" y="95" class="hlab">PWR</text>
+      <rect x="356" y="114" width="56" height="28" rx="2" fill="#151516" stroke="#0b0b0b" />
+    </svg>
+  );
+}
+
 export function DemoPanel({ p, a }: { p: Project; a: Analysis }) {
   const fm92 = p.hw[1] === '2';
   const keyCodes = p.keys ?? a.defaultKeys;
@@ -107,14 +149,16 @@ export function DemoPanel({ p, a }: { p: Project; a: Analysis }) {
 
   const ch = a.chans.find((c) => c.num === sim.ch);
   const row = p.rows.find((r) => r.num.trim() === String(sim.ch));
-  const key = (j: number) => {
+  // Head keys, placed over the drawn head (coordinates in the 436 x 160 artwork, as percentages).
+  // ▷ = UP (key code 1 position), ◁ = DOWN, then the blue keys SEND and AUX, and PWR. The SVG art is decoration.
+  const unlock = () => { if (sound) beeper.current.unlock(); };
+  const pos = (x: number, y: number, w: number, h: number) =>
+    ({ left: `${(x / 436) * 100}%`, top: `${(y / 160) * 100}%`, width: `${(w / 436) * 100}%`, height: `${(h / 160) * 100}%` });
+  const hkey = (j: number, x: number, y: number, w: number, h: number, cls: string, face: string) => {
     const f = cfg.keys[j];
     return (
-      <div class="demokey">
-        <button class={`hkey${BLUE_KEYS.has(HEAD_BUTTONS[j]) ? ' blue' : ''}`} onClick={() => { if (sound) beeper.current.unlock(); sim.press(j); }}
-          title={`${HEAD_BUTTONS[j]}: ${KEY_LABELS[f] ?? f}`}>{HEAD_BUTTONS[j]}</button>
-        <small>{KEY_LABELS[f] ?? f}</small>
-      </div>
+      <button class={`hk ${cls}`} style={pos(x, y, w, h)} onClick={() => { unlock(); sim.press(j); }}
+        title={`${HEAD_BUTTONS[j]}: ${KEY_LABELS[f] ?? f}`} aria-label={`${HEAD_BUTTONS[j]} (${KEY_LABELS[f] ?? f})`}>{face}</button>
     );
   };
 
@@ -129,29 +173,23 @@ export function DemoPanel({ p, a }: { p: Project; a: Analysis }) {
               : 'Pick an experimental firmware on the Build tab to see the start-up ident and Rx frequency readout.'}</p>
 
         <div class="headwrap">
-          <div class={`head ${sim.on ? 'on' : ''}`}>
-            <div class="headtop">
-              <div class="lcdwin" aria-label={`Display: ${sim.display.trim() || 'blank'}`} role="img">
-                <svg viewBox="-6 -4 132 108" width="132" height="108">
-                  <Digit ch={sim.on ? sim.display[0] : ' '} x={0} />
-                  <Digit ch={sim.on ? sim.display[1] : ' '} x={64} />
-                </svg>
-              </div>
-              <div class="lamps" aria-label="Demo indicators">
-                <span class={`lamp tx ${sim.tx ? 'lit' : ''}`}>TX</span>
-                <span class={`lamp mon ${sim.monitor ? 'lit' : ''}`}>MON</span>
-                <span class={`lamp scan ${sim.scan ? 'lit' : ''}`}>SCAN</span>
-              </div>
-              <button class={`hpower ${sim.on ? 'lit' : ''}`} onClick={() => { if (sound) beeper.current.unlock(); sim.power(); }} title={sim.on ? 'Switch off' : 'Switch on'}
-                aria-label="Power"><Icon name="power" size={22} /></button>
-            </div>
-            <div class="headkeysrow">{[0, 1, 2, 3].map(key)}</div>
+          <div class={`head2 ${sim.on ? 'on' : ''}`}>
+            <HeadArt on={sim.on} tx={sim.tx} rx={sim.monitor} display={sim.on ? sim.display : '  '} />
+            {hkey(1, 200, 84, 48, 18, 'arrow', '◁')}
+            {hkey(0, 257, 84, 48, 18, 'arrow', '▷')}
+            {hkey(3, 354, 24, 30, 11, 'blue', '')}
+            {hkey(2, 354, 55, 30, 11, 'blue', '')}
+            <button class="hk blue" style={pos(354, 86, 30, 11)} onClick={() => { unlock(); sim.power(); }}
+              title={sim.on ? 'PWR: switch off' : 'PWR: switch on'} aria-label="Power" />
           </div>
           <button class={`hptt ${sim.tx ? 'lit' : ''}`} disabled={!sim.on}
             onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); sim.ptt(true); }}
             onPointerUp={() => sim.ptt(false)} onPointerCancel={() => sim.ptt(false)}
-            title="Microphone PTT: hold to transmit"><Icon name="mic" size={20} /> PTT (hold)</button>
+            title="Microphone PTT: hold to transmit"><Icon name="mic" size={20} /> Mic PTT (hold)</button>
         </div>
+        <p class="keylegend">{[[0, '▷'], [1, '◁'], [2, 'AUX'], [3, 'SEND']].map(([j, face]) => (
+          <span><b class={`kbtn${BLUE_KEYS.has(HEAD_BUTTONS[j as number]) ? ' blue' : ''}`}>{face}</b>{KEY_LABELS[cfg.keys[j as number]] ?? cfg.keys[j as number]}</span>
+        ))}<span><b class="kbtn blue">PWR</b>On / off</span></p>
 
         <label class="demosound"><input type="checkbox" checked={sound} onChange={(e) => setSound((e.target as HTMLInputElement).checked)} />
           Sound (key beep{fw !== 'standard' && callsign ? ', Morse ident' : ''})</label>
@@ -164,9 +202,11 @@ export function DemoPanel({ p, a }: { p: Project; a: Analysis }) {
           </dl>
         )}
 
-        <p class="hint">A behavioural model, not the radio's firmware: no received signals (so a scan never stops on a
-          channel), selcall keys aren't simulated, and the TX / MON / SCAN lamps are demo indicators. Channel keys skip
-          numbers with no channel and wrap; they are refused (reject beep) while transmitting or scanning, as on the radio.</p>
+        <p class="hint">Drawn after the FM900 remote head (▷ / ◁ = up / down, blue SEND, AUX and PWR keys, TX and RX lamps,
+          green power lamp). The RX lamp lights while the monitor is on; the VOL and MUTE knobs are decoration. A
+          behavioural model, not the radio's firmware: no received signals (so a scan never stops on a channel) and
+          selcall keys aren't simulated. Channel keys skip numbers with no channel and wrap; they are refused (reject
+          beep) while transmitting or scanning, as on the radio.</p>
       </section>
     </div>
   );
