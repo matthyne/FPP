@@ -333,6 +333,12 @@ pre.dump { overflow: auto; max-height: 70vh; font-size: 12px; margin: 0; backgro
   .selbar { top: 42px; }
 }
 
+/* Information banner (Radio tab: where to find the HW/SW codes) */
+.banner-info { display: flex; align-items: center; gap: 10px; background: var(--info-soft); color: var(--text);
+  border-left: 4px solid var(--muted); border-radius: 6px; padding: 8px 12px; margin: 0; }
+.banner-info p { margin: 0; }
+.banner-info .mdi { color: var(--muted); }
+
 /* Experimental (non-factory) firmware notice: Build and Read tabs */
 .banner-exp {
   background: var(--warn-soft); color: var(--warn);

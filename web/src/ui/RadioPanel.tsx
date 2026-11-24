@@ -1,3 +1,4 @@
+import { Icon } from './icons';
 import { JOB_NAME_MAX } from './files';
 import { Analysis } from '../core/analyze';
 import { BAND_MHZ, Digit, EXAMPLES, HW_DIGITS, SW_DIGITS } from '../core/codes';
@@ -89,6 +90,12 @@ export function RadioPanel({ p, a, update }: { p: Project; a: Analysis; update: 
           <p class="msg warn">Selcall codes are set. The Original FPP would continue into its selcall editor; this tool leaves the selcall tones at their defaults.</p>
         )}
       </section>
+
+      <div class="fullrow banner-info" role="note">
+        <Icon name="info" size={18} />
+        <p>Get the <b>Hardware Code</b> and <b>Software Code</b> from the label inside the radio's cover, and enter them below
+          exactly as printed.</p>
+      </div>
 
       <section class="card wide">
         <div class="codehead">
