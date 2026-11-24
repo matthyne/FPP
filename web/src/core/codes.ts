@@ -79,8 +79,10 @@ export function describeHw(hw: string): string[] {
 export const HEAD_BUTTONS = ['UP', 'DOWN', 'AUX', 'SEND'];
 /** Head keys drawn blue, like the FM92 head's own AUX and SEND keys (UP/DOWN stay black). */
 export const BLUE_KEYS = new Set(['AUX', 'SEND']);
-/** That blue: a dark navy (#1F3D85), kept clearly apart from scan group 1's brighter blue (cheatsheet SCAN_COLOURS[0], #2169DB). */
-export const KEY_BLUE: [number, number, number] = [0.122, 0.239, 0.522];
+/** That blue: Home Assistant's logo blue #18BCF2 (Simple Icons, from the official HA logo assets), a light sky blue kept
+ *  clearly apart from scan group 1's deeper blue (cheatsheet SCAN_COLOURS[0], #2169DB). Lettering on it is black:
+ *  white would be only ~2.3:1 contrast. */
+export const KEY_BLUE: [number, number, number] = [0.094, 0.737, 0.949];
 
 export const KEY_LABELS: Record<string, string> = {
   none: 'Not used', up: 'Channel up', down: 'Channel down', tens: 'Channel tens (next 10)',

@@ -42,14 +42,14 @@ export const SCAN_COLOURS: Colour[] = [[0.13, 0.42, 0.86], [0.90, 0.45, 0.02], [
 /** A channel badge: one horizontal band per scan group, top to bottom (solid when 0 or 1 group), with the text centred
  *  in white. A priority channel gets a white folded corner (triangle) at the top right. */
 function badge(page: PdfPage, x: number, y: number, w: number, h: number, scan: number[], text: string, font: Font, size: number,
-  base: number, priority = false, fill?: Colour): void {
+  base: number, priority = false, fill?: Colour, ink: Colour = 1): void {
   if (!scan.length) page.rect(x, y, w, h, fill ?? BADGE_PLAIN);
   else scan.forEach((g, k) => page.rect(x, y + (k * h) / scan.length, w, h / scan.length, SCAN_COLOURS[g - 1]));
   if (priority) {
     const c = h * 0.6;
     page.poly([[x + w - c, y], [x + w, y], [x + w, y + c]], 1);
   }
-  page.text(x + (w - textWidth(text, font, size)) / 2, base, text, font, size, 1);
+  page.text(x + (w - textWidth(text, font, size)) / 2, base, text, font, size, ink);
 }
 
 /** Firmware (image) description, as on the Build tab's Firmware menu. */
@@ -173,7 +173,7 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
     page.text(bx + 7, MARGIN + 11, title, 'Helvetica-Bold', 8, 0.3);
     rows.forEach(([label, scan, desc, pri, fill], i) => {
       const ry = MARGIN + 16 + i * boxRow;
-      badge(page, bx + 6, ry + 1, 34, boxRow - 2, scan ?? [], label, 'Helvetica-Bold', 7.5, ry + 9, pri, fill);
+      badge(page, bx + 6, ry + 1, 34, boxRow - 2, scan ?? [], label, 'Helvetica-Bold', 7.5, ry + 9, pri, fill, fill ? 0 : 1);
       page.text(bx + 46, ry + 9, desc, 'Helvetica', 8.5);
     });
     boxBottom = Math.max(boxBottom, MARGIN + h);

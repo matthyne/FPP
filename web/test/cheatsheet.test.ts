@@ -104,10 +104,11 @@ describe('cheat sheet PDF', () => {
     expect(se).not.toContain('Experimental');
   });
 
-  it('AUX and SEND head-button badges are navy, not scan group 1 blue', () => {
+  it('AUX and SEND head-button badges are Home Assistant blue with black text, not scan group 1 blue', () => {
     const p = job('2MHAM/2MHAM');
     const s = latin1(cheatSheet(p, analyze(p)));
-    expect(s.match(/0\.12 0\.24 0\.52 rg/g)).toHaveLength(2);
+    expect(s.match(/0\.09 0\.74 0\.95 rg/g)).toHaveLength(2);
+    expect(s).toMatch(/0 g \/F2 7\.5 Tf [\d.]+ [\d.]+ Td \(AUX\) Tj/);
   });
 
   it('SVG icon paths become PDF path operators (lines, curves, arcs)', () => {
