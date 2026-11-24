@@ -183,7 +183,7 @@ export function App() {
       <header class="topbar">
         <div class="brand">
           <img class="logo" src={radioPhoto} alt="" width={110} height={40} />
-          <span class="brand-text">Web FPP (FM900 CPS) <small>Philips FM91 / FM92 EPROM builder</small></span>
+          <span class="brand-text">WebFPP <small>Philips FM91 / FM92 EPROM builder</small></span>
         </div>
         <div class="file-actions">
           <button class="icon" onClick={newProj} title="New project (keeps the current radio codes)" aria-label="New project">

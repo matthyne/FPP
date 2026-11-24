@@ -89,7 +89,7 @@ describe('cheat sheet PDF', () => {
 
   it('footer carries the Web FPP version from package.json', () => {
     expect(VERSION).toBe(JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8')).version);
-    expect(latin1(cheatSheet(job('80CHCB')))).toContain(`Web FPP \\(FM900 CPS\\) ${VERSION_LABEL.replace(/[()]/g, '\\$&')}`);
+    expect(latin1(cheatSheet(job('80CHCB')))).toContain(`WebFPP ${VERSION_LABEL.replace(/[()]/g, '\\$&')}`);
   });
 
   it('head buttons box: FM92 only, defaults or override', () => {

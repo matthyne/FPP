@@ -195,7 +195,7 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
 
   // Footer
   const footY = page.height - MARGIN + 10;
-  page.text(MARGIN, footY, `Web FPP (FM900 CPS) ${VERSION_LABEL}, ${today()}${skipped ? `. ${skipped} row${skipped === 1 ? '' : 's'} with errors not shown.` : ''}`,
+  page.text(MARGIN, footY, `WebFPP ${VERSION_LABEL}, ${today()}${skipped ? `. ${skipped} row${skipped === 1 ? '' : 's'} with errors not shown.` : ''}`,
     'Helvetica', 7, 0.4);
 
   // Table
