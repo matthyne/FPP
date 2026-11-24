@@ -6,7 +6,7 @@ import { BLUE_KEYS, KEY_BLUE, headButtons } from './codes';
 import { eprom } from './eprom';
 import { ICONS, IconName } from './icons';
 import { F_PRI1, F_PRI2, F_PRI3, F_SCAN1, F_SCAN2, F_SCAN3 } from './fm900';
-import { Colour, Font, PdfPage, textWidth } from './pdf';
+import { A4, A5, Colour, Font, PdfPage, textWidth } from './pdf';
 import { Project, isBlank, rowToChannel } from './project';
 import { VERSION_LABEL } from '../version';
 
@@ -63,13 +63,13 @@ interface InfoItem { icon?: IconName; text: string; colour?: Colour }
 
 /** Lay header items left to right from (x0, after y), wrapping within maxW. Returns the last baseline. */
 function infoLine(page: PdfPage, items: InfoItem[], x0: number, y: number, maxW: number, size = 9): number {
-  const iconW = size + 2.5, GAP = 11;
+  const iconW = size + 2.5, GAP = size * 1.2, LH = size * 1.33;
   let cx = x0;
-  y += 12;
+  y += LH;
   for (const it of items) {
     const text = fit(it.text, 'Helvetica', size, maxW - (it.icon ? iconW : 0));
     const w = (it.icon ? iconW : 0) + textWidth(text, 'Helvetica', size);
-    if (cx > x0 && cx + w > x0 + maxW) { cx = x0; y += 12; }
+    if (cx > x0 && cx + w > x0 + maxW) { cx = x0; y += LH; }
     if (it.icon) {
       page.icon(ICONS[it.icon], cx, y - size * 0.86, size, it.colour ?? 0.25);
       cx += iconW;
@@ -119,38 +119,59 @@ export function fitName(name: string, size: number, maxW: number): Segment[] {
 /** Column geometry, in points. `nameW` = room left for the name. */
 export interface SheetLayout { cols: number; perCol: number; lineH: number; fontSize: number; nameW: number }
 
-const MARGIN = 36;
+const MARGIN_A4 = 36;
 const GAP = 14;              // between columns
 // Column widths in em (Helvetica digits are all 0.556 em, so frequencies still line up):
 // badge = 3 digits + 0.3 em padding each side, then a 0.6 em gap; a frequency (4.17 em) + 1 em gap.
 // MARK_EM = extra room between Tx and Name for the duplex arrow (⇅, drawn centred in the gap).
 const PAD = 0.3, CH_EM = 3 * 0.556 + 2 * PAD + 0.6, FREQ_EM = 5.2, MARK_EM = 1.1, MIN_NAME_EM = 7;
 
-/** Choose columns and font size so `n` records fit in a `height`-point tall, `width` wide area. */
-export function sheetLayout(n: number, width: number, height: number): SheetLayout {
+/** Choose columns and font size so `n` records fit in a `height`-point tall, `width` wide area.
+ *  `freqEm` = width of a frequency column (FREQ_EM, or 0.556 em less when frequencies are shown with 3 decimals);
+ *  `minLineH` = the shortest row before another column is added (half A4: tighter, so ~55 channels stay in one column). */
+export function sheetLayout(n: number, width: number, height: number, freqEm = FREQ_EM, minLineH = 10): SheetLayout {
   let cols = 1, perCol = 1, lineH = 14;
   for (cols = 1; cols <= 3; cols++) {
     perCol = Math.max(1, Math.ceil(n / cols));
     lineH = Math.min(14, height / (perCol + 1));       // +1 = column heading
-    if (lineH >= 10 || cols === 3) break;
+    if (lineH >= minLineH || cols === 3) break;
   }
   const colW = (width - GAP * (cols - 1)) / cols;
   // Shrink if needed so a name still gets MIN_NAME_EM (about 13 characters).
-  const fontSize = Math.min(10, lineH * 0.8, colW / (CH_EM + 2 * FREQ_EM + MARK_EM + MIN_NAME_EM));
-  const nameW = colW - (CH_EM + 2 * FREQ_EM + MARK_EM) * fontSize;
+  const fontSize = Math.min(10, lineH * 0.8, colW / (CH_EM + 2 * freqEm + MARK_EM + MIN_NAME_EM));
+  const nameW = colW - (CH_EM + 2 * freqEm + MARK_EM) * fontSize;
   return { cols, perCol, lineH, fontSize, nameW };
 }
 
-export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'defaultKeys'>): Uint8Array {
-  const page = new PdfPage();
+/** Sheet size: 'a4' = full page; 'a5' = half A4 (148 x 210 mm), to stick on the side of the radio: narrower margins,
+ *  the header scaled to 75% and tighter rows. Both sizes show frequencies with 3 decimals when all are on the 25 kHz raster. */
+export type SheetSize = 'a4' | 'a5';
+
+/** True when `f` (MHz, 4 decimals) is a whole multiple of 25 kHz. */
+export const on25k = (f: string) => /^\d+\.\d{4}$/.test(f) && Math.round(parseFloat(f) * 10000) % 250 === 0;
+
+/** Frequencies as shown: 4 decimals, or 3 when `short` (every frequency on the sheet is on the 25 kHz raster). */
+export function freqText(f: string, short: boolean): string {
+  return short && on25k(f) ? f.slice(0, -1) : f;
+}
+
+export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'defaultKeys'>, size: SheetSize = 'a4'): Uint8Array {
+  const half = size === 'a5';
+  const page = new PdfPage(...(half ? A5 : A4));
+  const MARGIN = half ? 20 : MARGIN_A4;               // page margin
+  const S = half ? 0.75 : 1;                          // header scale
   const W = page.width - 2 * MARGIN;
-  const { entries, skipped } = sheetEntries(p);
+  const { entries: all, skipped } = sheetEntries(p);
+  // Drop the 4th decimal (always 0 then) when every frequency on the sheet is on the 25 kHz raster: more room for names.
+  const short = all.length > 0 && all.every((e) => [e.rx, e.tx].every((f) => f === 'Rx only' || on25k(f)));
+  const entries = all.map((e) => ({ ...e, rx: freqText(e.rx, short), tx: freqText(e.tx, short) }));
+  const freqEm = short ? FREQ_EM - 0.556 : FREQ_EM;
   const model = p.hw[1] === '1' ? 'FM91' : p.hw[1] === '2' ? 'FM92' : p.hw[1] === '3' ? 'FM93' : 'FM9?';
 
   // Legend boxes, side by side at the top right: head buttons (FM92) and scan-group colours.
   // Rows: [badge text, badge groups (null = plain), description, priority corner]. Header text goes to the left.
   const buttons = headButtons(p, a?.defaultKeys);
-  const boxRow = 12.5, BOX_GAP = 8;
+  const boxRow = 12.5 * S, BOX_GAP = 8 * S;
   type LegendRow = [string, number[] | null, string, boolean?, Colour?];   // 5th = badge fill (blue head keys)
   const boxes: [string, LegendRow[]][] = [];
   if (buttons) boxes.push(['Head buttons', buttons.map(([b, f]): LegendRow => [b, null, f, false, BLUE_KEYS.has(b) ? KEY_BLUE : undefined])]);
@@ -167,26 +188,27 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   let boxBottom = MARGIN;
   let bx = MARGIN + W;                                // right edge of the next box (laid out right to left)
   for (const [title, rows] of [...boxes].reverse()) {
-    const bw = Math.max(textWidth(title, 'Helvetica-Bold', 8) + 14,
-      ...rows.map(([, , d]) => 46 + textWidth(d, 'Helvetica', 8.5) + 8));
+    const bw = Math.max(textWidth(title, 'Helvetica-Bold', 8 * S) + 14 * S,
+      ...rows.map(([, , d]) => 46 * S + textWidth(d, 'Helvetica', 8.5 * S) + 8 * S));
     bx -= bw;
-    const h = 16 + rows.length * boxRow + 3;
+    const h = (16 + 3) * S + rows.length * boxRow;
     page.rect(bx, MARGIN, bw, h, 0.93);
-    page.text(bx + 7, MARGIN + 11, title, 'Helvetica-Bold', 8, 0.3);
+    page.text(bx + 7 * S, MARGIN + 11 * S, title, 'Helvetica-Bold', 8 * S, 0.3);
     rows.forEach(([label, scan, desc, pri, fill], i) => {
-      const ry = MARGIN + 16 + i * boxRow;
-      badge(page, bx + 6, ry + 1, 34, boxRow - 2, scan ?? [], label, 'Helvetica-Bold', 7.5, ry + 9, pri, fill, fill ? 0 : 1);
-      page.text(bx + 46, ry + 9, desc, 'Helvetica', 8.5);
+      const ry = MARGIN + 16 * S + i * boxRow;
+      badge(page, bx + 6 * S, ry + S, 34 * S, boxRow - 2 * S, scan ?? [], label, 'Helvetica-Bold', 7.5 * S, ry + 9 * S, pri, fill,
+        fill ? 0 : 1);
+      page.text(bx + 46 * S, ry + 9 * S, desc, 'Helvetica', 8.5 * S);
     });
     boxBottom = Math.max(boxBottom, MARGIN + h);
     bx -= BOX_GAP;
   }
-  const leftW = boxes.length ? bx - MARGIN - 6 : W;
+  const leftW = boxes.length ? bx - MARGIN - 6 * S : W;
 
   // Header: "FMxx Channel Sheet", then the job name and build details, wrapped to fit left of the boxes.
-  let y = MARGIN + 14;
-  page.text(MARGIN, y, fit(`${model} Channel Sheet`, 'Helvetica-Bold', 16, leftW), 'Helvetica-Bold', 16);
-  y += 9;                                             // space under the title, before the info line
+  let y = MARGIN + 14 * S;
+  page.text(MARGIN, y, fit(`${model} Channel Sheet`, 'Helvetica-Bold', 16 * S, leftW), 'Helvetica-Bold', 16 * S);
+  y += 9 * S;                                            // space under the title, before the info line
   // Same items and icons as WebFPP's status bar, plus the job, callsign and date. The image is described as on the
   // Firmware menu (not "Experimental"), in amber when it is a modified image.
   const fw = p.firmware ?? 'standard', exp = fw !== 'standard';
@@ -196,24 +218,24 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   info.push({ icon: 'antenna', text: `${entries.length}/${p.hw[1] === '1' ? 120 : 99} ch` });
   if (a?.builder) info.push({ icon: 'step', text: `${a.builder.step / 100} kHz` });
   info.push({ icon: 'chip', text: eprom(p.eprom).part }, { icon: 'calendar', text: p.date || today() });
-  y = infoLine(page, info, MARGIN, y, leftW);
+  y = infoLine(page, info, MARGIN, y, leftW, 9 * S);
   const comments = p.comments.map((c) => c.trim()).filter(Boolean);
   if (comments.length) {
-    y += 12;
-    page.text(MARGIN, y, fit(comments.join(' / '), 'Helvetica', 9, leftW), 'Helvetica', 9, 0.3);
+    y += 12 * S;
+    page.text(MARGIN, y, fit(comments.join(' / '), 'Helvetica', 9 * S, leftW), 'Helvetica', 9 * S, 0.3);
   }
   y = Math.max(y, boxBottom - 4);
-  y += 8;
-  page.line(MARGIN, y, MARGIN + W, y, 1);
-  y += 6;
+  y += 8 * S;
+  page.line(MARGIN, y, MARGIN + W, y, S);
+  y += 6 * S;
 
   // Footer
-  const footY = page.height - MARGIN + 10;
+  const footY = page.height - MARGIN + 10 * S;
   page.text(MARGIN, footY, `WebFPP ${VERSION_LABEL}, ${today()}${skipped ? `. ${skipped} row${skipped === 1 ? '' : 's'} with errors not shown.` : ''}`,
-    'Helvetica', 7, 0.4);
+    'Helvetica', 7 * S, 0.4);
 
   // Table
-  const L = sheetLayout(entries.length, W, footY - 12 - y);
+  const L = sheetLayout(entries.length, W, footY - 12 * S - y, freqEm, half ? 8.8 : 10);
   const colW = (W - GAP * (L.cols - 1)) / L.cols;
   const fs = L.fontSize;
   const base = L.lineH * 0.72;                       // baseline within a row
@@ -222,7 +244,7 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
     const part = entries.slice(c * L.perCol, (c + 1) * L.perCol);
     if (!part.length && c) break;
     const badgeW = (CH_EM - 0.6) * fs;
-    const x2 = x + CH_EM * fs, x3 = x2 + FREQ_EM * fs, x4 = x3 + (FREQ_EM + MARK_EM) * fs;
+    const x2 = x + CH_EM * fs, x3 = x2 + freqEm * fs, x4 = x3 + (freqEm + MARK_EM) * fs;
     page.rect(x, y, colW, L.lineH, 0.82);
     const hy = y + base;
     page.text(x + (badgeW - textWidth('Ch', 'Helvetica-Bold', fs)) / 2, hy, 'Ch', 'Helvetica-Bold', fs);
@@ -254,5 +276,5 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   }
   if (!entries.length) page.text(MARGIN, y + 30, 'No channels.', 'Helvetica', 12);
 
-  return page.toBytes(`${model} Channel Sheet (${p.name.trim() || 'NEWJOB'})`);
+  return page.toBytes(`${model} Channel Sheet${half ? ' (half A4)' : ''} (${p.name.trim() || 'NEWJOB'})`);
 }

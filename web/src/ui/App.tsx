@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { analyze } from '../core/analyze';
-import { cheatSheet, sheetEntries } from '../core/cheatsheet';
+import { SheetSize, cheatSheet, sheetEntries } from '../core/cheatsheet';
 import { BLUE_KEYS, headButtons } from '../core/codes';
 import { formatChannels } from '../core/channels';
 import { FM900Error, readChl, readJob, writeChl, writeJob } from '../core/fm900';
@@ -153,11 +153,13 @@ export function App() {
       fail(e);
     }
   };
-  const exportSheet = () => {
+  const [sheetDialog, setSheetDialog] = useState(false);
+  const exportSheet = (size: SheetSize) => {
     const { entries, skipped } = sheetEntries(project);
     if (!entries.length) return notify('No valid channels to put on the cheat sheet', true);
-    download(`${safeName(project.name)}-CH.pdf`, cheatSheet(project, a), 'application/pdf');
-    notify(`Saved ${safeName(project.name)}-CH.pdf${skipped ? ` (${skipped} row${skipped === 1 ? '' : 's'} with errors left out)` : ''}`);
+    const fname = `${safeName(project.name)}-CH${size === 'a5' ? '-A5' : ''}.pdf`;
+    download(fname, cheatSheet(project, a, size), 'application/pdf');
+    notify(`Saved ${fname}${skipped ? ` (${skipped} row${skipped === 1 ? '' : 's'} with errors left out)` : ''}`);
   };
   const saveJson = () =>
     download(`${safeName(project.name)}.fm900.json`, JSON.stringify(project, null, 1), 'application/json');
@@ -200,8 +202,8 @@ export function App() {
           <button class="icon tip" onClick={saveJson} data-tip="Save the whole project as a .json file" aria-label="Save project">
             <Icon name="save" /></button>
           <button class="icon tip" onClick={() => setExportDialog(true)} data-tip="Export: the channel list as CSV, or .JOB + .CHL files for the Original FPP" aria-label="Export"><Icon name="export" /></button>
-          <button class="icon tip" onClick={exportSheet} aria-label="Download channel cheat sheet (PDF)"
-            data-tip="Channel cheat sheet: a one-page A4 PDF of channel, Rx, Tx and name, with the head buttons and scan groups, to print and keep with the radio">
+          <button class="icon tip" onClick={() => setSheetDialog(true)} aria-label="Download channel cheat sheet (PDF)"
+            data-tip="Channel cheat sheet (PDF): full A4, or half A4 to stick on the side of the radio. Channel, Rx, Tx and name, with the head buttons and scan groups">
             <Icon name="pdf" /></button>
           <span class="sep" />
           <button class="icon tip" onClick={doUndo} disabled={!undo.current.length} data-tip="Undo (Ctrl+Z)" aria-label="Undo"><Icon name="undo" /></button>
@@ -260,6 +262,32 @@ export function App() {
         <span class="ver" title="WebFPP version (quote this when reporting a problem)">WebFPP {VERSION_LABEL}</span>
       </footer>
 
+      {sheetDialog && (
+        <div class="modal-bg" onClick={(e) => { if (e.target === e.currentTarget) setSheetDialog(false); }}>
+          <div class="modal exportdlg" role="dialog" aria-label="Channel cheat sheet">
+            <h2>Channel cheat sheet (PDF)</h2>
+            <div class="exportopt">
+              <div>
+                <b>Full A4</b>
+                <p class="hint">One A4 page: channel, Rx, Tx and name, with the radio details, head buttons and scan-group key.</p>
+              </div>
+              <button onClick={() => exportSheet('a4')}>Download A4</button>
+            </div>
+            <div class="exportopt">
+              <div>
+                <b>Half A4 (A5)</b>
+                <p class="hint">The same on half an A4 sheet (148 × 210 mm), to cut out and stick on the side of the radio.
+                  Smaller header and tighter rows.</p>
+              </div>
+              <button onClick={() => exportSheet('a5')}>Download half A4</button>
+            </div>
+            <p class="hint">On both, frequencies drop the last 0 when every channel is on the 25 kHz raster.</p>
+            <div class="actions">
+              <button class="primary" onClick={() => setSheetDialog(false)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
       {exportDialog && (
         <div class="modal-bg" onClick={(e) => { if (e.target === e.currentTarget) setExportDialog(false); }}>
           <div class="modal exportdlg" role="dialog" aria-label="Export">

@@ -3,6 +3,8 @@
 // Coordinates are PDF points from the top-left (y is flipped on output).
 
 export const A4: [number, number] = [595.28, 841.89];
+/** A5 = half an A4 sheet (148 x 210 mm), portrait. */
+export const A5: [number, number] = [419.53, 595.28];
 
 export type Font = 'Helvetica' | 'Helvetica-Bold' | 'Courier' | 'Courier-Bold';
 const FONTS: Font[] = ['Helvetica', 'Helvetica-Bold', 'Courier', 'Courier-Bold'];

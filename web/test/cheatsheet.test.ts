@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { analyze } from '../src/core/analyze';
-import { cheatSheet, sheetEntries, sheetLayout } from '../src/core/cheatsheet';
+import { cheatSheet, freqText, on25k, sheetEntries, sheetLayout } from '../src/core/cheatsheet';
 import { headButtons } from '../src/core/codes';
 import { F_PRI2, F_SCAN1, F_SCAN2, F_SCAN3, readChl, readJob } from '../src/core/fm900';
 import { pdfString, svgPathOps } from '../src/core/pdf';
@@ -43,9 +43,11 @@ describe('cheat sheet PDF', () => {
       const s = checkPdf(cheatSheet(p, analyze(p)));
       const { entries } = sheetEntries(p);
       expect(entries.length).toBe(p.rows.length);
+      const short = entries.every((e) => [e.rx, e.tx].every((f) => f === 'Rx only' || on25k(f)));
+      expect(short).toBe(path !== '80CHCB');                      // 80CHCB is on 12.5 kHz, the others on 25 kHz
       for (const e of entries) {
-        expect(s).toContain(`(${e.rx}) Tj`);
-        expect(s).toContain(`(${e.tx}) Tj`);
+        expect(s).toContain(`(${freqText(e.rx, short)}) Tj`);
+        expect(s).toContain(`(${freqText(e.tx, short)}) Tj`);
         expect(s).toContain(`(${e.num}) Tj`);
       }
       expect(s).toContain(`(Job ${p.name}`);
@@ -129,6 +131,28 @@ describe('cheat sheet PDF', () => {
     const arrow = svgPathOps(ICONS.duplex);
     const s = checkPdf(cheatSheet(p));
     expect(s.split(arrow).length - 1).toBe(1);
+  });
+
+  it('frequencies drop the 4th decimal only when every one is on the 25 kHz raster', () => {
+    expect(['146.5000', '146.5250', '477.0750'].every(on25k)).toBe(true);
+    expect(['476.4125', '146.4050', '146.5125'].some(on25k)).toBe(false);
+    const p = job('2MHAM/2MHAM');
+    p.rows = [{ num: '1', rx: '146.5', tx: '', flags: 0, ctcss: '', name: '' }, { num: '2', rx: '146.7', tx: '146.1', flags: 0, ctcss: '', name: '' }];
+    expect(latin1(cheatSheet(p))).toContain('(146.500) Tj');
+    p.rows.push({ num: '3', rx: '146.405', tx: '', flags: 0, ctcss: '', name: '' });   // one 5 kHz channel: all keep 4
+    const s = latin1(cheatSheet(p));
+    expect(s).toContain('(146.5000) Tj');
+    expect(s).toContain('(146.4050) Tj');
+  });
+
+  it('half A4 (A5) version: one A5 page, every channel, scaled header', () => {
+    for (const path of ['80CHCB', '2MHAM/2MHAM', '477/477']) {
+      const p = job(path);
+      const s = checkPdf(cheatSheet(p, analyze(p), 'a5'));
+      expect(s).toContain('/MediaBox [0 0 419.53 595.28]');
+      expect(s).toMatch(/\/F2 12 Tf [\d.]+ [\d.]+ Td \((FM91|FM92) Channel Sheet\) Tj/);
+      for (const e of sheetEntries(p).entries) expect(s).toContain(`(${e.num}) Tj`);
+    }
   });
 
   it('footer carries the WebFPP version from package.json', () => {
