@@ -192,20 +192,20 @@ export function App() {
           <span class="brand-text">WebFPP <small>Philips FM91 / FM92 EPROM builder</small></span>
         </div>
         <div class="file-actions">
-          <button class="icon" onClick={newProj} title="New project (keeps the current radio codes)" aria-label="New project">
+          <button class="icon tip" onClick={newProj} data-tip="New project (keeps the current radio codes)" aria-label="New project">
             <Icon name="new" /></button>
-          <button class="icon" onClick={async () => openFiles(await pickFiles('.json,.job,.chl,.csv,.txt,.bin,.JOB,.CHL,.BIN'))}
-            title="Open a project (.json), Original FPP job (.JOB + .CHL), channel list (.csv) or EPROM image (.BIN). You can also drop files on the page."
+          <button class="icon tip" onClick={async () => openFiles(await pickFiles('.json,.job,.chl,.csv,.txt,.bin,.JOB,.CHL,.BIN'))}
+            data-tip="Open a project (.json), Original FPP job (.JOB + .CHL), channel list (.csv) or EPROM image (.BIN). You can also drop files on the page."
             aria-label="Open"><Icon name="open" /></button>
-          <button class="icon" onClick={saveJson} title="Save the whole project as a .json file" aria-label="Save project">
+          <button class="icon tip" onClick={saveJson} data-tip="Save the whole project as a .json file" aria-label="Save project">
             <Icon name="save" /></button>
-          <button class="icon" onClick={() => setExportDialog(true)} title="Export: the channel list as CSV, or .JOB + .CHL files for the Original FPP" aria-label="Export"><Icon name="export" /></button>
-          <button class="icon" onClick={exportSheet} aria-label="Download channel cheat sheet (PDF)"
-            title="Channel cheat sheet: a one-page A4 PDF of channel, Rx, Tx and name, with the head buttons and scan groups, to print and keep with the radio">
+          <button class="icon tip" onClick={() => setExportDialog(true)} data-tip="Export: the channel list as CSV, or .JOB + .CHL files for the Original FPP" aria-label="Export"><Icon name="export" /></button>
+          <button class="icon tip" onClick={exportSheet} aria-label="Download channel cheat sheet (PDF)"
+            data-tip="Channel cheat sheet: a one-page A4 PDF of channel, Rx, Tx and name, with the head buttons and scan groups, to print and keep with the radio">
             <Icon name="pdf" /></button>
           <span class="sep" />
-          <button class="icon" onClick={doUndo} disabled={!undo.current.length} title="Undo (Ctrl+Z)" aria-label="Undo"><Icon name="undo" /></button>
-          <button class="icon" onClick={doRedo} disabled={!redo.current.length} title="Redo (Ctrl+Y or Ctrl+Shift+Z)" aria-label="Redo"><Icon name="redo" /></button>
+          <button class="icon tip" onClick={doUndo} disabled={!undo.current.length} data-tip="Undo (Ctrl+Z)" aria-label="Undo"><Icon name="undo" /></button>
+          <button class="icon tip" onClick={doRedo} disabled={!redo.current.length} data-tip="Redo (Ctrl+Y or Ctrl+Shift+Z)" aria-label="Redo"><Icon name="redo" /></button>
           <span class="sep" />
           <select class="theme" value={theme} aria-label="Colour theme" title="Colour theme"
             onChange={(e) => setTheme((e.target as HTMLSelectElement).value as Theme)}>

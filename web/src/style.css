@@ -91,7 +91,7 @@ small { color: var(--muted); font-weight: normal; }
 .app { display: flex; flex-direction: column; min-height: 100vh; }
 
 /* top bar */
-.topbar { background: var(--head); color: var(--head-ink); display: flex; flex-wrap: wrap; gap: 8px 16px;
+.topbar { position: relative; z-index: 6; background: var(--head); color: var(--head-ink); display: flex; flex-wrap: wrap; gap: 8px 16px;
   align-items: center; justify-content: space-between; padding: 10px 16px; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .logo { display: block; height: 40px; width: auto; border-radius: 4px; box-shadow: 0 0 0 1px var(--head-line); }
@@ -101,6 +101,14 @@ small { color: var(--muted); font-weight: normal; }
 .file-actions button { background: transparent; color: var(--head-ink); border-color: var(--head-line); }
 .file-actions button:hover:not(:disabled) { background: var(--head-hover); }
 .file-actions button.icon { display: inline-flex; align-items: center; justify-content: center; padding: 5px 7px; }
+/* Quick styled tooltips (top-bar icon buttons: data-tip instead of title, so there is no slow native tooltip as well).
+   Below the button, right-aligned to it; shown on hover and keyboard focus. */
+.tip { position: relative; }
+.tip::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: 0; width: max-content; max-width: 280px;
+  padding: 6px 9px; border-radius: 6px; background: var(--text); color: var(--surface); font: 400 12px/1.4 var(--sans);
+  text-align: left; white-space: normal; box-shadow: 0 4px 14px rgba(0,0,0,.25); pointer-events: none; z-index: 50;
+  opacity: 0; visibility: hidden; transition: opacity .12s ease .3s, visibility 0s linear .42s; }
+.tip:hover::after, .tip:focus-visible::after { opacity: 1; visibility: visible; transition: opacity .12s ease .3s, visibility 0s linear .3s; }
 .mdi { display: block; flex: none; }
 .file-actions select.theme { background: transparent; color: var(--head-ink); border-color: var(--head-line); padding: 5px 6px; cursor: pointer; }
 .file-actions select.theme option { background: var(--surface); color: var(--text); }
