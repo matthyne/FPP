@@ -125,27 +125,54 @@ const GAP = 14;              // between columns
 // badge = 3 digits + 0.3 em padding each side, then a 0.6 em gap; a frequency (4.17 em) + 1 em gap.
 // MARK_EM = extra room between Tx and Name for the duplex arrow (⇅, drawn centred in the gap).
 const PAD = 0.3, CH_EM = 3 * 0.556 + 2 * PAD + 0.6, FREQ_EM = 5.2, MARK_EM = 1.1, MIN_NAME_EM = 7;
+// Adaptive layout: names get up to NAME_CAP_EM (about 28 characters) before being cut; text up to FS_MAX points;
+// a row is LINE x the font (at least).
+const NAME_CAP_EM = 14, FS_MAX = 14, LINE = 1.3;
 
-/** Choose columns and font size so `n` records fit in a `height`-point tall, `width` wide area.
- *  `freqEm` = width of a frequency column (FREQ_EM, or 0.556 em less when frequencies are shown with 3 decimals);
- *  `minLineH` = the shortest row before another column is added (half A4: tighter, so ~55 channels stay in one column). */
-export function sheetLayout(n: number, width: number, height: number, freqEm = FREQ_EM, minLineH = 10): SheetLayout {
-  let cols = 1, perCol = 1, lineH = 14;
-  for (cols = 1; cols <= 3; cols++) {
-    perCol = Math.max(1, Math.ceil(n / cols));
-    lineH = Math.min(14, height / (perCol + 1));       // +1 = column heading
-    if (lineH >= minLineH || cols === 3) break;
+/** Layout inputs besides the record count and area, all in em except `minLineH`. */
+export interface LayoutOpts {
+  rxEm?: number;       // Rx column (frequency + gap): FREQ_EM, or one digit less with 3 decimals
+  txEm?: number;       // Tx column: as rxEm, or narrower when it shows the shift
+  nameEm?: number;     // longest name (measured), capped at NAME_CAP_EM
+  minLineH?: number;   // shortest row, in points (A4 10, half A4 8.8)
+}
+
+/** Adaptive layout: for 1, 2 and 3 columns, the biggest font that fits both the height (rows of LINE x font) and the
+ *  width (badge, Rx, Tx, arrow and a name column wide enough for the longest name, capped at NAME_CAP_EM, at least
+ *  MIN_NAME_EM). Keeps the biggest; more columns only when the text gets clearly (3%) bigger. Rows then spread up to
+ *  1.6 x the font. Never smaller than minLineH allows, except when 3 columns still don't fit. */
+export function sheetLayout(n: number, width: number, height: number, o: LayoutOpts = {}): SheetLayout {
+  const rxEm = o.rxEm ?? FREQ_EM, txEm = o.txEm ?? FREQ_EM, minLineH = o.minLineH ?? 10;
+  const needEm = Math.min(Math.max(o.nameEm ?? MIN_NAME_EM, MIN_NAME_EM), NAME_CAP_EM);
+  const fixedEm = CH_EM + rxEm + txEm + MARK_EM;
+  let best: SheetLayout | null = null;
+  for (let cols = 1; cols <= 3; cols++) {
+    const perCol = Math.max(1, Math.ceil(n / cols));
+    const colW = (width - GAP * (cols - 1)) / cols;
+    const rowH = height / (perCol + 1);                                  // +1 = column heading
+    const fontSize = Math.min(FS_MAX, rowH / LINE, colW / (fixedEm + needEm));
+    const L = { cols, perCol, lineH: Math.min(rowH, fontSize * 1.6), fontSize, nameW: colW - fixedEm * fontSize };
+    if (rowH < minLineH && cols < 3) continue;                           // rows too short: needs more columns
+    if (!best || fontSize > best.fontSize * 1.03) best = L;
   }
-  const colW = (width - GAP * (cols - 1)) / cols;
-  // Shrink if needed so a name still gets MIN_NAME_EM (about 13 characters).
-  const fontSize = Math.min(10, lineH * 0.8, colW / (CH_EM + 2 * freqEm + MARK_EM + MIN_NAME_EM));
-  const nameW = colW - (CH_EM + 2 * freqEm + MARK_EM) * fontSize;
-  return { cols, perCol, lineH, fontSize, nameW };
+  return best!;
 }
 
 /** Sheet size: 'a4' = full page; 'a5' = half A4 (148 x 210 mm), to stick on the side of the radio: narrower margins,
  *  the header scaled to 75% and tighter rows. Both sizes show frequencies with 3 decimals when all are on the 25 kHz raster. */
 export type SheetSize = 'a4' | 'a5';
+
+/** User options (PDF dialog tick boxes). */
+export interface SheetOpts {
+  landscape?: boolean;   // turn the page sideways when that gives bigger text (then usually two columns)
+  shift?: boolean;       // Tx column shows the shift from Rx (+0.6, –5) on duplex channels, blank on simplex
+}
+
+/** Tx shift from Rx in MHz, e.g. "+0.6", "–5", "+0.025" (en dash for minus: WinAnsi has no U+2212). */
+export function shiftText(rx: string, tx: string): string {
+  const d = Math.round((parseFloat(tx) - parseFloat(rx)) * 10000) / 10000;
+  return (d > 0 ? '+' : '\u2013') + String(Math.abs(d));
+}
 
 /** True when `f` (MHz, 4 decimals) is a whole multiple of 25 kHz. */
 export const on25k = (f: string) => /^\d+\.\d{4}$/.test(f) && Math.round(parseFloat(f) * 10000) % 250 === 0;
@@ -155,17 +182,32 @@ export function freqText(f: string, short: boolean): string {
   return short && on25k(f) ? f.slice(0, -1) : f;
 }
 
-export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'defaultKeys'>, size: SheetSize = 'a4'): Uint8Array {
+export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'defaultKeys'>, size: SheetSize = 'a4',
+  opts: SheetOpts = {}): Uint8Array {
+  const portrait = drawSheet(p, a, size, false, opts);
+  if (!opts.landscape) return portrait.bytes;
+  const land = drawSheet(p, a, size, true, opts);
+  return land.fontSize > portrait.fontSize * 1.03 ? land.bytes : portrait.bytes;
+}
+
+function drawSheet(p: Project, a: Pick<Analysis, 'img' | 'builder' | 'defaultKeys'> | undefined, size: SheetSize,
+  landscape: boolean, opts: SheetOpts): { bytes: Uint8Array; fontSize: number } {
   const half = size === 'a5';
-  const page = new PdfPage(...(half ? A5 : A4));
+  const [pw, ph] = half ? A5 : A4;
+  const page = landscape ? new PdfPage(ph, pw) : new PdfPage(pw, ph);
   const MARGIN = half ? 20 : MARGIN_A4;               // page margin
   const S = half ? 0.75 : 1;                          // header scale
   const W = page.width - 2 * MARGIN;
   const { entries: all, skipped } = sheetEntries(p);
   // Drop the 4th decimal (always 0 then) when every frequency on the sheet is on the 25 kHz raster: more room for names.
   const short = all.length > 0 && all.every((e) => [e.rx, e.tx].every((f) => f === 'Rx only' || on25k(f)));
-  const entries = all.map((e) => ({ ...e, rx: freqText(e.rx, short), tx: freqText(e.tx, short) }));
-  const freqEm = short ? FREQ_EM - 0.556 : FREQ_EM;
+  const entries = all.map((e) => ({ ...e, rx: freqText(e.rx, short),
+    tx: !opts.shift || e.tx === 'Rx only' ? freqText(e.tx, short) : e.duplex ? shiftText(e.rx, e.tx) : '' }));
+  const rxEm = short ? FREQ_EM - 0.556 : FREQ_EM;
+  const txHead = opts.shift ? 'Shift' : 'Tx MHz';
+  // Shift column: as wide as its widest text (or heading) plus a 1 em gap.
+  const txEm = opts.shift ? Math.max(textWidth(txHead, 'Helvetica-Bold', 1), ...entries.map((e) => textWidth(e.tx, 'Helvetica', 1))) + 1
+    : rxEm;
   const model = p.hw[1] === '1' ? 'FM91' : p.hw[1] === '2' ? 'FM92' : p.hw[1] === '3' ? 'FM93' : 'FM9?';
 
   // Legend boxes, side by side at the top right: head buttons (FM92) and scan-group colours.
@@ -235,7 +277,8 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
     'Helvetica', 7 * S, 0.4);
 
   // Table
-  const L = sheetLayout(entries.length, W, footY - 12 * S - y, freqEm, half ? 8.8 : 10);
+  const nameEm = Math.max(0, ...entries.map((e) => splitCallsigns(e.name).reduce((w, g) => w + textWidth(g.text, segFont(g), 1), 0)));
+  const L = sheetLayout(entries.length, W, footY - 12 * S - y, { rxEm, txEm, nameEm, minLineH: half ? 8.8 : 10 });
   const colW = (W - GAP * (L.cols - 1)) / L.cols;
   const fs = L.fontSize;
   const base = L.lineH * 0.72;                       // baseline within a row
@@ -244,12 +287,12 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
     const part = entries.slice(c * L.perCol, (c + 1) * L.perCol);
     if (!part.length && c) break;
     const badgeW = (CH_EM - 0.6) * fs;
-    const x2 = x + CH_EM * fs, x3 = x2 + freqEm * fs, x4 = x3 + (freqEm + MARK_EM) * fs;
+    const x2 = x + CH_EM * fs, x3 = x2 + rxEm * fs, x4 = x3 + (txEm + MARK_EM) * fs;
     page.rect(x, y, colW, L.lineH, 0.82);
     const hy = y + base;
     page.text(x + (badgeW - textWidth('Ch', 'Helvetica-Bold', fs)) / 2, hy, 'Ch', 'Helvetica-Bold', fs);
     page.text(x2, hy, 'Rx MHz', 'Helvetica-Bold', fs);
-    page.text(x3, hy, 'Tx MHz', 'Helvetica-Bold', fs);
+    page.text(x3, hy, txHead, 'Helvetica-Bold', fs);
     if (L.nameW > 0) page.text(x4, hy, 'Name', 'Helvetica-Bold', fs);
     part.forEach((e, i) => {
       const ry = y + (i + 1) * L.lineH;
@@ -276,5 +319,5 @@ export function cheatSheet(p: Project, a?: Pick<Analysis, 'img' | 'builder' | 'd
   }
   if (!entries.length) page.text(MARGIN, y + 30, 'No channels.', 'Helvetica', 12);
 
-  return page.toBytes(`${model} Channel Sheet${half ? ' (half A4)' : ''} (${p.name.trim() || 'NEWJOB'})`);
+  return { bytes: page.toBytes(`${model} Channel Sheet${half ? ' (half A4)' : ''} (${p.name.trim() || 'NEWJOB'})`), fontSize: L.fontSize };
 }

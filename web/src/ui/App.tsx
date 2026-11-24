@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { analyze } from '../core/analyze';
-import { SheetSize, cheatSheet, sheetEntries } from '../core/cheatsheet';
+import { SheetOpts, SheetSize, cheatSheet, sheetEntries } from '../core/cheatsheet';
 import { BLUE_KEYS, headButtons } from '../core/codes';
 import { formatChannels } from '../core/channels';
 import { FM900Error, readChl, readJob, writeChl, writeJob } from '../core/fm900';
@@ -154,11 +154,19 @@ export function App() {
     }
   };
   const [sheetDialog, setSheetDialog] = useState(false);
+  // Cheat-sheet tick boxes, remembered in this browser.
+  const [sheetOpts, setSheetOptsState] = useState<SheetOpts>(() => {
+    try { return JSON.parse(localStorage.getItem('fm900-web:sheet') ?? '{}'); } catch { return {}; }
+  });
+  const setSheetOpts = (o: SheetOpts) => {
+    setSheetOptsState(o);
+    try { localStorage.setItem('fm900-web:sheet', JSON.stringify(o)); } catch { /* private mode */ }
+  };
   const exportSheet = (size: SheetSize) => {
     const { entries, skipped } = sheetEntries(project);
     if (!entries.length) return notify('No valid channels to put on the cheat sheet', true);
     const fname = `${safeName(project.name)}-CH${size === 'a5' ? '-A5' : ''}.pdf`;
-    download(fname, cheatSheet(project, a, size), 'application/pdf');
+    download(fname, cheatSheet(project, a, size, sheetOpts), 'application/pdf');
     notify(`Saved ${fname}${skipped ? ` (${skipped} row${skipped === 1 ? '' : 's'} with errors left out)` : ''}`);
   };
   const saveJson = () =>
@@ -281,7 +289,16 @@ export function App() {
               </div>
               <button onClick={() => exportSheet('a5')}>Download half A4</button>
             </div>
-            <p class="hint">On both, frequencies drop the last 0 when every channel is on the 25 kHz raster.</p>
+            <div class="sheetopts">
+              <label><input type="checkbox" checked={!!sheetOpts.landscape}
+                onChange={(e) => setSheetOpts({ ...sheetOpts, landscape: (e.target as HTMLInputElement).checked })} />
+                Landscape when it gives bigger text <small>(e.g. about 30–70 channels as two columns)</small></label>
+              <label><input type="checkbox" checked={!!sheetOpts.shift}
+                onChange={(e) => setSheetOpts({ ...sheetOpts, shift: (e.target as HTMLInputElement).checked })} />
+                Show the Tx shift instead of the Tx frequency <small>(+0.6, –5; blank on simplex: more room for names)</small></label>
+            </div>
+            <p class="hint">Both sizes: the text is made as big as the page allows, and frequencies drop the last 0 when every
+              channel is on the 25 kHz raster.</p>
             <div class="actions">
               <button class="primary" onClick={() => setSheetDialog(false)}>Done</button>
             </div>

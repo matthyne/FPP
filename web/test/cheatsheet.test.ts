@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { analyze } from '../src/core/analyze';
-import { cheatSheet, freqText, on25k, sheetEntries, sheetLayout } from '../src/core/cheatsheet';
+import { cheatSheet, freqText, on25k, sheetEntries, sheetLayout, shiftText } from '../src/core/cheatsheet';
+import { EXAMPLES } from '../src/core/codes';
 import { headButtons } from '../src/core/codes';
 import { F_PRI2, F_SCAN1, F_SCAN2, F_SCAN3, readChl, readJob } from '../src/core/fm900';
 import { pdfString, svgPathOps } from '../src/core/pdf';
@@ -153,6 +154,28 @@ describe('cheat sheet PDF', () => {
       expect(s).toMatch(/\/F2 12 Tf [\d.]+ [\d.]+ Td \((FM91|FM92) Channel Sheet\) Tj/);
       for (const e of sheetEntries(p).entries) expect(s).toContain(`(${e.num}) Tj`);
     }
+  });
+
+  it('adaptive text: short lists get bigger text', () => {
+    expect(sheetLayout(20, 523, 700).fontSize).toBeGreaterThan(sheetLayout(60, 523, 700).fontSize);
+    expect(sheetLayout(20, 523, 700).fontSize).toBe(14);
+  });
+
+  it('options: landscape when it gives bigger text; Tx shift instead of the Tx frequency', () => {
+    const ex = EXAMPLES.find((e) => e.project)!.project!;               // 50 channels, long names
+    const a = analyze(ex);
+    expect(latin1(cheatSheet(ex, a))).toContain('/MediaBox [0 0 595.28 841.89]');
+    expect(latin1(cheatSheet(ex, a, 'a4', { landscape: true }))).toContain('/MediaBox [0 0 841.89 595.28]');
+    const few = { ...ex, rows: ex.rows.slice(0, 15) };                  // already big in portrait: stays portrait
+    expect(latin1(cheatSheet(few, analyze(few), 'a4', { landscape: true }))).toContain('/MediaBox [0 0 595.28 841.89]');
+    expect(shiftText('146.700', '146.100')).toBe('\u20130.6');
+    expect(shiftText('146.025', '146.625')).toBe('+0.6');
+    expect(shiftText('438.025', '433.025')).toBe('\u20135');
+    const s = checkPdf(cheatSheet(ex, a, 'a5', { shift: true, landscape: true }));
+    expect(s).toContain('(Shift) Tj');
+    expect(s).toContain('(+0.6) Tj');
+    expect(s).toContain('(\\2260.6) Tj');                                 // en dash in WinAnsi
+    expect(s).not.toContain('(Tx MHz) Tj');
   });
 
   it('footer carries the WebFPP version from package.json', () => {
