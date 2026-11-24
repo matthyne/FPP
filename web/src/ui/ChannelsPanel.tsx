@@ -108,7 +108,13 @@ export function ChannelsPanel({ p, a, update, notify, pendingImport, clearImport
   };
   const bulkFlags = (fn: (f: number) => number) =>
     setRows((rows) => rows.map((r, i) => (sel.has(i) ? { ...r, flags: fn(r.flags) } : r)));
-  const renumber = () => setRows((rows) => rows.map((r, i) => ({ ...r, num: String(i + 1) })));
+  const renumber = () => {
+    const changes = p.rows.filter((r, i) => r.num.trim() !== String(i + 1)).length;
+    if (!changes) return notify('The rows are already numbered 1, 2, 3… in order');
+    if (!window.confirm(`Renumber the rows 1, 2, 3… in their current order? This changes ${changes} channel number${changes === 1 ? '' : 's'}`
+      + ', and rows that share a number (duplicates, VOTE rings) get separate numbers. (Undo is available.)')) return;
+    setRows((rows) => rows.map((r, i) => ({ ...r, num: String(i + 1) })));
+  };
   const sortByNum = () => {
     if (!window.confirm('Sort rows by channel number? Row order decides scan-list order and duplicate/VOTE ring slots.')) return;
     setRows((rows) => [...rows].sort((x, y) => (parseInt(x.num, 10) || 0) - (parseInt(y.num, 10) || 0)));
