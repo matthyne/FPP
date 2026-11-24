@@ -124,7 +124,7 @@ sliding one character every 0.24 s by default (adjustable from 0.11 s to 1.01 s:
 "Speed" below; the blanks use `T_BLANK`, 19 ticks = 0.5 s), blanks for 0.5 s again, shows the channel
 number for 2 s, and repeats. 147.450 MHz on channel 3:
 
-    " 3" (2 s)   "  "   14   47   "7 "   " 4"   45   "  "   " 3" (2 s)   "  "   14 ...
+    " 3" (2 s)   "  "   14   47   "7 "   " 4"   45   50   "  "   " 3" (2 s)   "  "   14 ...
 
 * **Speed.** Each window shows for the number of 26.6 ms ticks in the byte
   `FQ_SPEED` at `$1977` (stored as ticks − 1), just before the Morse table.
@@ -141,10 +141,9 @@ number for 2 s, and repeats. 147.450 MHz on channel 3:
 
 * **Format.** The decimal point is shown as a space; the stock firmware only
   ever sends digits and space, so other characters may not exist on the head.
-  2 or 3 decimals: the 3rd is left off when it is 0 (147.450 → 147.45,
-  146.500 → 146.50; 146.425 keeps it), and 4 are shown when the 100 Hz digit
-  isn't 0 (477.0125). Below 100 MHz the string is just shorter
-  (77.500 → 77.50 → `77 "7 " " 5" 50`).
+  3 decimals on the 25 kHz raster (146.800, 147.450: trailing zeros kept), or
+  4 when the 100 Hz digit isn't 0, as on the 12.5 kHz raster (477.0125). Below
+  100 MHz the string is just shorter (77.500 → `77 "7 " " 5" 50 00`).
 * **When it stops.** It stops as soon as anything else is put on the display,
   and starts again (with the channel number) whenever the channel is shown
   again. That covers a channel change, scanning (the scan display is left
@@ -312,4 +311,5 @@ firmware (`stackdepth.py`, checked by `build.py`).
 | (2026-11-23) | INTRO: Morse ident 15 → 18 wpm, timed from the tick counter `$28`; soft timer `$58` is spare again. |
 | (2026-11-24) | FREQ: frequency windows every 0.24 s (`T_STEP` 18 → 8), blanks kept at 0.5 s (new `T_BLANK`). |
 | (2026-11-24) | Frequency table: a trailing 0 decimal is left off (147.450 → 147.45); `mkradio.py` and WebFPP's `fork.ts`. |
+| (2026-11-24) | Reverted: always 3 decimals on the 25 kHz raster (146.800), 4 on 12.5 kHz (477.0125). |
 | (2026-11-24) | Frequency display speed setting: window length read from `FQ_SPEED` (`$1977`, ticks − 1; default 8 = 0.24 s), set by `mkradio.py --step-ms` / WebFPP's Build-tab slider (0.11–1.01 s). |

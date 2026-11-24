@@ -91,10 +91,8 @@ export function freqNibbles(f100: number): number[] {
   const mhz = Math.floor(f100 / 10000), frac = f100 % 10000;
   if (mhz < 1 || mhz > 999) throw new Error(`frequency ${mhz}.${String(frac).padStart(4, '0')} MHz out of range`);
   let dec = String(frac).padStart(4, '0');
-  if (dec[3] === '0') {                     // 4 decimals only when the 100 Hz digit is used (12.5 kHz etc.)
-    dec = dec.slice(0, 3);
-    if (dec[2] === '0') dec = dec.slice(0, 2);  // and one trailing 0 less (147.450 -> 147.45, 146.500 -> 146.50)
-  }
+  // 3 decimals (25 kHz raster: 146.800); 4 only when the 100 Hz digit is used (12.5 kHz raster: 477.0125)
+  if (dec[3] === '0') dec = dec.slice(0, 3);
   const s = [...String(mhz)].map(Number).concat([0xF], [...dec].map(Number));
   while (s.length < 8) s.push(0xE);
   return s;

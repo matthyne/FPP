@@ -171,7 +171,7 @@ mo_w1:  txa
 ; each, sliding one character per step, blank for 0.5 s, then the channel
 ; number again for 2 s, and repeat, until something else is put on the display
 ; (channel change, scan, selcall, display off).
-; 147.450 MHz on channel 3: " 3" (2 s), "  ", 14, 47, "7 ", " 4", 45, "  ",
+; 147.450 MHz on channel 3: " 3" (2 s), "  ", 14, 47, "7 ", " 4", 45, 50, "  ",
 ; " 3" ... (the '.' is shown as a space; blank = two spaces).
 ;
 ; The firmware can't work out the frequency itself (the step and IF depend on
@@ -182,8 +182,8 @@ mo_w1:  txa
 ; Table: 4 arrays of 100 bytes (FQ0..FQ3, index = channel number 1-99).
 ; Byte k of a channel holds characters 2k (high nibble) and 2k+1 (low nibble):
 ;   0-9 = digit, $F = the decimal point (shown as a space), $E = end.
-; 147.450 -> 14 7F 45 EE ;  146.425 -> 14 6F 42 5E ;  477.0125 -> 47 7F 01 25 ;
-; 77.500 -> 77 F5 0E EE (mkradio.py leaves off a trailing 0 decimal, keeping 2).
+; 147.450 -> 14 7F 45 0E ;  146.425 -> 14 6F 42 5E ;  477.0125 -> 47 7F 01 25 ;
+; 77.500 -> 77 F5 00 EE (3 decimals on 25 kHz channels, 4 on 12.5 kHz).
 ; Byte 0 = 0 means "no entry" (a frequency never starts with 0).
 ;
 ; A window is only sent when the UART FIFO is empty and no keep-alive reply

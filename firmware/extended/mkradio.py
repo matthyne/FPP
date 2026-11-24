@@ -101,10 +101,8 @@ def freq_nibbles(f100):
     if not 1 <= mhz <= 999:
         raise ValueError('frequency %d.%04d MHz out of range' % (mhz, frac))
     dec = '%04d' % frac
-    if dec[3] == '0':                 # 4 decimals only when the 100 Hz digit is used (12.5 kHz etc.)
-        dec = dec[:3]
-        if dec[2] == '0':             # and one trailing 0 less (147.450 -> 147.45, 146.500 -> 146.50)
-            dec = dec[:2]
+    if dec[3] == '0':                 # 3 decimals (25 kHz raster: 146.800); 4 only when the 100 Hz digit
+        dec = dec[:3]                 # is used (12.5 kHz raster: 477.0125)
     s = [int(c) for c in str(mhz)] + [0xF] + [int(c) for c in dec]
     return s + [0xE] * (8 - len(s))
 

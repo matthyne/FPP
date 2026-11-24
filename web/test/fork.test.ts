@@ -44,10 +44,11 @@ describe('enhanced firmware', () => {
   });
 
   it('display windows', () => {
-    expect(windows(freqNibbles(1474500))).toEqual(['14', '47', '7 ', ' 4', '45']);              // 147.45
+    expect(windows(freqNibbles(1474500))).toEqual(['14', '47', '7 ', ' 4', '45', '50']);        // 147.450
+    expect(windows(freqNibbles(1468000))).toEqual(['14', '46', '6 ', ' 8', '80', '00']);        // 146.800: 25 kHz, 3 decimals
     expect(windows(freqNibbles(1464250))).toEqual(['14', '46', '6 ', ' 4', '42', '25']);        // 146.425
-    expect(windows(freqNibbles(4770125))).toEqual(['47', '77', '7 ', ' 0', '01', '12', '25']);  // 477.0125
-    expect(windows(freqNibbles(775000))).toEqual(['77', '7 ', ' 5', '50']);                     // 77.50
+    expect(windows(freqNibbles(4770125))).toEqual(['47', '77', '7 ', ' 0', '01', '12', '25']);  // 477.0125: 12.5 kHz, 4
+    expect(windows(freqNibbles(775000))).toEqual(['77', '7 ', ' 5', '50', '00']);               // 77.500
   });
 
   for (const job of ['2MHAM', 'SH', 'SHC', '477']) {
