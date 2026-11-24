@@ -56,7 +56,7 @@ export function HelpPanel() {
             1 s. The ident takes a few seconds (VK2FN about 4.5 s); keys pressed meanwhile are ignored.</li>
           <li><b>Ident + Rx freq.:</b> the start-up ident, plus: after the channel number has been on the head for 2 s, the head shows
             the channel's Rx frequency two characters at a time, 0.24 s each, with the display blanked for 0.5 s before and after it,
-            then the channel number again, in a loop. 147.450 MHz shows <code>(blank) 14 47 "7 " " 4" 45 50 (blank)</code> (the point
+            then the channel number again, in a loop. 147.450 MHz shows <code>(blank) 14 47 "7 " " 4" 45 (blank)</code>: a trailing 0 is left off (the point
             is shown as a space). It stops while transmitting, scanning or
             showing selcall digits, and whenever the channel changes it starts again.</li>
           <li><b>Both:</b> scanning ignores the handset hook. With the factory firmware, lifting the handset stops the scan, and

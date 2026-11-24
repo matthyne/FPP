@@ -124,7 +124,7 @@ sliding one character every 0.24 s (`T_STEP`, 9 ticks; the blanks use `T_BLANK`,
 19 ticks = 0.5 s), blanks for 0.5 s again, shows the channel
 number for 2 s, and repeats. 147.450 MHz on channel 3:
 
-    " 3" (2 s)   "  "   14   47   "7 "   " 4"   45   50   "  "   " 3" (2 s)   "  "   14 ...
+    " 3" (2 s)   "  "   14   47   "7 "   " 4"   45   "  "   " 3" (2 s)   "  "   14 ...
 
 * **Blank.** Two spaces (`$80 ' '`, `$82 ' '`), not the `$E5` display-off
   message, which belongs to the intermittent-display option. Transmitting
@@ -133,8 +133,10 @@ number for 2 s, and repeats. 147.450 MHz on channel 3:
 
 * **Format.** The decimal point is shown as a space; the stock firmware only
   ever sends digits and space, so other characters may not exist on the head.
-  3 decimals, or 4 when the 100 Hz digit isn't 0 (477.0125). Below 100 MHz the
-  string is just shorter (77.500 → `77 "7 " " 5" 50 00`).
+  2 or 3 decimals: the 3rd is left off when it is 0 (147.450 → 147.45,
+  146.500 → 146.50; 146.425 keeps it), and 4 are shown when the 100 Hz digit
+  isn't 0 (477.0125). Below 100 MHz the string is just shorter
+  (77.500 → 77.50 → `77 "7 " " 5" 50`).
 * **When it stops.** It stops as soon as anything else is put on the display,
   and starts again (with the channel number) whenever the channel is shown
   again. That covers a channel change, scanning (the scan display is left
@@ -301,3 +303,4 @@ firmware (`stackdepth.py`, checked by `build.py`).
 | (2026-11-23) | NOHOOK in both variants: scan ignores the handset hook (no off-hook scan stop, no continuous tone). |
 | (2026-11-23) | INTRO: Morse ident 15 → 18 wpm, timed from the tick counter `$28`; soft timer `$58` is spare again. |
 | (2026-11-24) | FREQ: frequency windows every 0.24 s (`T_STEP` 18 → 8), blanks kept at 0.5 s (new `T_BLANK`). |
+| (2026-11-24) | Frequency table: a trailing 0 decimal is left off (147.450 → 147.45); `mkradio.py` and WebFPP's `fork.ts`. |

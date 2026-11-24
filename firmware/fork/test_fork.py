@@ -117,12 +117,13 @@ class FreqEncoding(unittest.TestCase):
         return mkradio.windows(mkradio.freq_nibbles(int(round(mhz * 10000))))
 
     def test_users_example(self):
-        self.assertEqual(self.w(147.450), ['14', '47', '7 ', ' 4', '45', '50'])
+        self.assertEqual(self.w(147.450), ['14', '47', '7 ', ' 4', '45'])          # 147.45: trailing 0 dropped
+        self.assertEqual(self.w(146.425), ['14', '46', '6 ', ' 4', '42', '25'])    # 25 kHz, ends in 5: kept
 
     def test_four_decimals_and_short(self):
         self.assertEqual(self.w(477.0125), ['47', '77', '7 ', ' 0', '01', '12', '25'])
-        self.assertEqual(self.w(77.5), ['77', '7 ', ' 5', '50', '00'])
-        self.assertEqual(self.w(146.0), ['14', '46', '6 ', ' 0', '00', '00'])
+        self.assertEqual(self.w(77.5), ['77', '7 ', ' 5', '50'])                   # 77.50
+        self.assertEqual(self.w(146.0), ['14', '46', '6 ', ' 0', '00'])            # 146.00
 
 
 class FreqTable(unittest.TestCase):
@@ -332,11 +333,11 @@ class FreqFirmware(unittest.TestCase):
         self.assertEqual(self.task(c), '  ')                # blank, 0.5 s
         self.assertEqual(c.mem[0x57], 18)
         seq, timers = [], []
-        for _ in range(6):
+        for _ in range(5):
             seq.append(self.task(c))
             timers.append(c.mem[0x57])
-        self.assertEqual(seq, ['14', '47', '7 ', ' 4', '45', '50'])
-        self.assertEqual(timers, [8] * 6)                   # each window 0.24 s
+        self.assertEqual(seq, ['14', '47', '7 ', ' 4', '45'])   # 147.45
+        self.assertEqual(timers, [8] * 5)                   # each window 0.24 s
         self.assertEqual(self.task(c), '  ')                # blank, 0.5 s
         self.assertEqual(c.mem[0x57], 18)
         self.assertEqual(self.task(c), ' 3')                # channel again for 2 s
@@ -348,7 +349,7 @@ class FreqFirmware(unittest.TestCase):
         c = self.cpu(12)
         c.call(self.sym['show_channel'])
         self.assertEqual(self.shown(), '12')
-        self.assertEqual([self.task(c) for _ in range(9)], ['  ', '14', '46', '6 ', ' 0', '00', '00', '  ', '12'])
+        self.assertEqual([self.task(c) for _ in range(8)], ['  ', '14', '46', '6 ', ' 0', '00', '  ', '12'])   # 146.00
 
     def test_waits_for_keepalive_and_uart(self):
         c = self.cpu(3)
