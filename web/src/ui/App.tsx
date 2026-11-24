@@ -199,7 +199,7 @@ export function App() {
             aria-label="Open"><Icon name="open" /></button>
           <button class="icon" onClick={saveJson} title="Save the whole project as a .json file" aria-label="Save project">
             <Icon name="save" /></button>
-          <button onClick={() => setExportDialog(true)} title="Export the channels as CSV, or as .JOB + .CHL for the Original FPP">Export</button>
+          <button class="icon" onClick={() => setExportDialog(true)} title="Export: the channel list as CSV, or .JOB + .CHL files for the Original FPP" aria-label="Export"><Icon name="export" /></button>
           <button class="icon" onClick={exportSheet} aria-label="Download channel cheat sheet (PDF)"
             title="Channel cheat sheet: a one-page A4 PDF of channel, Rx, Tx and name, with the head buttons and scan groups, to print and keep with the radio">
             <Icon name="pdf" /></button>
