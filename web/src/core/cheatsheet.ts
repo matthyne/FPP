@@ -134,7 +134,7 @@ export interface LayoutOpts {
   rxEm?: number;       // Rx column (frequency + gap): FREQ_EM, or one digit less with 3 decimals
   txEm?: number;       // Tx column: as rxEm, or narrower when it shows the shift
   nameEm?: number;     // longest name (measured), capped at NAME_CAP_EM
-  minLineH?: number;   // shortest row, in points (A4 10, half A4 8.8)
+  minLineH?: number;   // shortest row, in points (A4 10, Mini (A5) 8.8)
 }
 
 /** Adaptive layout: for 1, 2 and 3 columns, the biggest font that fits both the height (rows of LINE x font) and the
@@ -158,7 +158,7 @@ export function sheetLayout(n: number, width: number, height: number, o: LayoutO
   return best!;
 }
 
-/** Sheet size: 'a4' = full page; 'a5' = half A4 (148 x 210 mm), to stick on the side of the radio: narrower margins,
+/** Sheet size: 'a4' = full page; 'a5' = "Mini (A5)", an A5 page (148 x 210 mm), to stick on the side of the radio: narrower margins,
  *  the header scaled to 75% and tighter rows. Both sizes show frequencies with 3 decimals when all are on the 25 kHz raster. */
 export type SheetSize = 'a4' | 'a5';
 
@@ -319,5 +319,5 @@ function drawSheet(p: Project, a: Pick<Analysis, 'img' | 'builder' | 'defaultKey
   }
   if (!entries.length) page.text(MARGIN, y + 30, 'No channels.', 'Helvetica', 12);
 
-  return { bytes: page.toBytes(`${model} Channel Sheet${half ? ' (half A4)' : ''} (${p.name.trim() || 'NEWJOB'})`), fontSize: L.fontSize };
+  return { bytes: page.toBytes(`${model} Channel Sheet${half ? ' (Mini A5)' : ''} (${p.name.trim() || 'NEWJOB'})`), fontSize: L.fontSize };
 }

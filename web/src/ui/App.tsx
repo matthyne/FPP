@@ -212,7 +212,7 @@ export function App() {
             <Icon name="save" /></button>
           <button class="icon tip" onClick={() => setExportDialog(true)} data-tip="Export: the channel list as CSV, or .JOB + .CHL files for the Original FPP" aria-label="Export"><Icon name="export" /></button>
           <button class="icon tip" onClick={() => setSheetDialog(true)} aria-label="Download channel cheat sheet (PDF)"
-            data-tip="Channel cheat sheet (PDF): full A4, or half A4 to stick on the side of the radio. Channel, Rx, Tx and name, with the head buttons and scan groups">
+            data-tip="Channel cheat sheet (PDF): full A4, or Mini (A5) to stick on the side of the radio. Channel, Rx, Tx and name, with the head buttons and scan groups">
             <Icon name="pdf" /></button>
           <span class="sep" />
           <button class="icon tip" onClick={doUndo} disabled={!undo.current.length} data-tip="Undo (Ctrl+Z)" aria-label="Undo"><Icon name="undo" /></button>
@@ -284,11 +284,11 @@ export function App() {
             </div>
             <div class="exportopt">
               <div>
-                <b>Half A4 (A5)</b>
-                <p class="hint">The same on half an A4 sheet (148 × 210 mm), to cut out and stick on the side of the radio.
+                <b>Mini (A5)</b>
+                <p class="hint">The same on an A5 page (148 × 210 mm), to print on A5 paper (or cut from A4) and stick on the side of the radio.
                   Smaller header and tighter rows.</p>
               </div>
-              <button onClick={() => exportSheet('a5')}>Download half A4</button>
+              <button onClick={() => exportSheet('a5')}>Download Mini (A5)</button>
             </div>
             <div class="sheetopts">
               <label><input type="checkbox" checked={!!sheetOpts.landscape}

@@ -146,7 +146,7 @@ describe('cheat sheet PDF', () => {
     expect(s).toContain('(146.4050) Tj');
   });
 
-  it('half A4 (A5) version: one A5 page, every channel, scaled header', () => {
+  it('Mini (A5) version: one A5 page, every channel, scaled header', () => {
     for (const path of ['80CHCB', '2MHAM/2MHAM', '477/477']) {
       const p = job(path);
       const s = checkPdf(cheatSheet(p, analyze(p), 'a5'));
