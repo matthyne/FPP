@@ -94,7 +94,7 @@ export class PdfPage {
         `/Resources << /Font << ${fontRefs} >> >> /Contents 4 0 R >>`,
       `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
       ...FONTS.map((f) => `<< /Type /Font /Subtype /Type1 /BaseFont /${f} /Encoding /WinAnsiEncoding >>`),
-      `<< /Title (${pdfString(title)}) /Producer (Web FPP) >>`,
+      `<< /Title (${pdfString(title)}) /Producer (WebFPP) >>`,
     ];
     // Everything above is ASCII, so string length = byte length for the xref offsets.
     let out = '%PDF-1.4\n';

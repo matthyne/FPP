@@ -87,7 +87,7 @@ describe('cheat sheet PDF', () => {
     expect(s).toContain('Channel Sheet \\(VK2-REPEATERS-AND-SIMPLEX-2026-A\\)');
   });
 
-  it('footer carries the Web FPP version from package.json', () => {
+  it('footer carries the WebFPP version from package.json', () => {
     expect(VERSION).toBe(JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8')).version);
     expect(latin1(cheatSheet(job('80CHCB')))).toContain(`WebFPP ${VERSION_LABEL.replace(/[()]/g, '\\$&')}`);
   });

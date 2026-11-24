@@ -17,7 +17,7 @@ No open-source C compiler targets the 6805. An STM32 can be programmed in C (or 
 1. **Adapter board, original firmware in emulation.** An STM32 board plugs into the 40-pin CPU socket, and the EPROM socket stays empty. A 6805 emulator on the STM32 runs the original master image and drives the real pins. If the radio works and the traces match stage 0, the hardware is proven. This stage is a test tool only: it runs Philips's code, so it isn't part of the open-source release.
 2. **Native C firmware.** Written from the documented behaviour (`../firmware/FIRMWARE.md`), not translated from the disassembly. It sits behind a small hardware layer: latches, synthesiser, ADC timing, serial link, NSC810. The same C also builds on a PC, where it is checked against the 6805 emulator running the original image.
 3. **Absorb old parts (optional).** Generate CTCSS with the DAC, decode selcall in software, and use the internal ADC instead of the single-slope comparator ADC.
-4. **New features.** Load channels over USB or the head link, using the same configuration block format (`../FM900_FORMAT.md` §4) that `fm900gen.py` and Web FPP build. Web FPP could program a radio directly over WebSerial.
+4. **New features.** Load channels over USB or the head link, using the same configuration block format (`../FM900_FORMAT.md` §4) that `fm900gen.py` and WebFPP build. WebFPP could program a radio directly over WebSerial.
 
 ## Hardware notes
 

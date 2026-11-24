@@ -25,7 +25,7 @@ export function enhancedProblem(b: Builder): string | null {
   if (m !== 'FM92R.BIN') {
     return `the modified firmware is for the FM92R only (remote head, no selcall); this hardware code selects ${m}`;
   }
-  if (!forkMaster('enhanced') || !forkMaster('intro')) return 'the modified firmware was not built into this copy of Web FPP';
+  if (!forkMaster('enhanced') || !forkMaster('intro')) return 'the modified firmware was not built into this copy of WebFPP';
   return null;
 }
 

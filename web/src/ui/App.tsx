@@ -252,7 +252,7 @@ export function App() {
         {a.img && a.builder && <span class="sbi" title="Synthesiser step (channel raster)"><Icon name="step" size={14} />{a.builder.step / 100} kHz</span>}
         <span title={`EPROM: ${eprom(project.eprom).size / 1024} KB (change it on the Build tab)`} class="sbi"><Icon name="chip" size={14} />{eprom(project.eprom).part}</span>
         <span class={`grow ${status ? 'bad' : 'ok'}`}>{status ? `⚠ ${status}` : '✓ ready to build'}</span>
-        <span class="ver" title="Web FPP version (quote this when reporting a problem)">Web FPP {VERSION_LABEL}</span>
+        <span class="ver" title="WebFPP version (quote this when reporting a problem)">WebFPP {VERSION_LABEL}</span>
       </footer>
 
       {jobDialog && (

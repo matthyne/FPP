@@ -21,7 +21,7 @@ python3 -m unittest test_fm92cap             # decoder self-test
 * Connect the analyser **ground to pin 20 (VSS)** before any signal lead. Watch for ground loops if the PC is mains-earthed and the radio runs from a bench supply.
 * The radio is **5 V logic**. Check that your analyser inputs accept 5 V, and set the threshold to about 1.5–2.5 V if it's adjustable.
 * **NSC810:** look beside the CPU for a second 40-pin chip marked NSC810 (IC415). Setup B also shows it: with no NSC810, nothing answers at `$80`–`$FF`.
-* Optional but useful: read the radio's EPROM into a `.BIN` (it's socketed under the screening can) and keep it with the captures. Web FPP's *Read image* tab shows its channels, so the synthesiser loads can be matched to them.
+* Optional but useful: read the radio's EPROM into a `.BIN` (it's socketed under the screening can) and keep it with the captures. WebFPP's *Read image* tab shows its channels, so the synthesiser loads can be matched to them.
 
 ## 2. Probe maps
 

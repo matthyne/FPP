@@ -17,7 +17,7 @@ The frequency of each slot is decoded from the slot's own Rx divider,
 f = N x step - IF, so it is what the radio actually tunes. It is shown to
 3 decimals (147.450), or 4 if the 100 Hz digit isn't 0 (477.0125).
 
-fm900gen on its own (and Web FPP) leaves the table empty: the radio then
+fm900gen on its own (and WebFPP) leaves the table empty: the radio then
 shows only the channel number, as stock firmware does.
 """
 import argparse, os, sys

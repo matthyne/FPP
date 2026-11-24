@@ -109,7 +109,7 @@ fq_c1:  add     #$30
 ; main loop isn't running, so no keep-alive poll ($E4) is sent and nothing can
 ; time out; keys pressed on the head meanwhile are ignored.
 ;
-; MO_TAB (filled by mkradio.py / Web FPP from the callsign text):
+; MO_TAB (filled by mkradio.py / WebFPP from the callsign text):
 ;   1 = dit, 3 = dah (then a 1-unit gap), $80 = end of letter (2 more units),
 ;   $81 = word space (6 more units), 0 = end.
 ; =============================================================================
@@ -328,7 +328,7 @@ fq_lo:  and     #$0f
         .endif
 
 ; ---- tables at fixed addresses, after all the code (filled per radio by
-; mkradio.py / Web FPP; their addresses are constants in those tools)
+; mkradio.py / WebFPP; their addresses are constants in those tools)
         .if INTRO
         .org    MO_MAGIC
         db      "MOR1"

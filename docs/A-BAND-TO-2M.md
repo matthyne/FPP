@@ -11,7 +11,7 @@ Many FM92s came out of CFA (about 162–163 MHz) and Victoria Police service and
 
 **Where this comes from.** No published guide covers exactly A-band → 2 m. The steps below come from two sources:
 
-* The programming side: this repository (`fm900gen.py`, Web FPP, `FM900_FORMAT.md`, `firmware/FIRMWARE.md`). The sample job `fm900/JOBS/2MHAM` is an A-band FM92R on 2 m, and the tools rebuild it byte-for-byte.
+* The programming side: this repository (`fm900gen.py`, WebFPP, `FM900_FORMAT.md`, `firmware/FIRMWARE.md`). The sample job `fm900/JOBS/2MHAM` is an A-band FM92R on 2 m, and the tools rebuild it byte-for-byte.
 * The alignment side: two sets of field notes. VK3BYY covers CFA 162 MHz sets taken to 2 m. VK2DOT and VK4KCS cover the FM92E 6 m conversion, which uses the same VCO, TP201 and PA procedures. Where they disagree, both values are given.
 
 See [Sources](#sources).
@@ -30,9 +30,9 @@ See [Sources](#sources).
 * **Insulated tuning tools that fit the slugs exactly**: ceramic or plastic, never metal.
 * Optional: a deviation meter, a SINAD meter, a frequency counter.
 * The programming software:
-  * **Web FPP** in a browser, or
+  * **WebFPP** in a browser, or
   * `fm900gen.py` (Python 3), or
-  * the original DOS FPP. The stock DOS FPP refuses out-of-band frequencies, which is why the "altered" FPP 3.0 circulated. Web FPP and `fm900gen.py` don't refuse them.
+  * the original DOS FPP. The stock DOS FPP refuses out-of-band frequencies, which is why the "altered" FPP 3.0 circulated. WebFPP and `fm900gen.py` don't refuse them.
 
 ---
 
@@ -64,7 +64,7 @@ Each fact below sets a digit of the 8-digit **hardware code**. A wrong digit giv
 | FM92L, A-band, 25 kHz, 21.4 MHz IF, CTCSS enc/dec | `92430200` |
 | The repository's 2 m sample (`2MHAM`) | `92440150` |
 
-**Read and keep the original EPROM first.** Do this with Web FPP's **Read** tab or any programmer.
+**Read and keep the original EPROM first.** Do this with WebFPP's **Read** tab or any programmer.
 
 * The image shows what the radio was (decode it to see the old channels).
 * It is your way back if something goes wrong.
@@ -95,7 +95,7 @@ The band digit h2 does more than label the radio. It chooses which side of the r
 | Tx VCO | 144–148 MHz | 144–148 MHz |
 | For comparison: the A-band set on 162 MHz (21.4 IF) | Rx LO ≈ 140.6, Tx ≈ 162 | – |
 | Image (Rx ∓ 2 × IF), 21.4 IF | 101.2–105.2 MHz | 186.8–190.8 MHz |
-| Verified in this repo | **Yes**: `2MHAM` and the Web FPP 2 m example | Builds fine, but no reference job |
+| Verified in this repo | **Yes**: `2MHAM` and the WebFPP 2 m example | Builds fine, but no reference job |
 
 * **Recommended: A-band coding.** It is what the repository's reference job uses, and the radio stays "A-band" as far as any later programmer is concerned. Both VCOs have to be pulled down by roughly 15–20 MHz.
 * **B-band coding** is what NERG did with CFA sets (VK3BYY's "NERG3/4" EPROMs).
@@ -119,7 +119,7 @@ The 15-digit software code sets options, not frequencies (`FM900_FORMAT.md` §3.
   * no voting
   * CTCSS per channel
   * no selcall
-* `110200201000000`, as in the Web FPP 2 m example: the same with a 3-minute Tx timer. Most hams want s3 = 0.
+* `110200201000000`, as in the WebFPP 2 m example: the same with a 3-minute Tx timer. Most hams want s3 = 0.
 * s5 = 3 gives operator-selectable power.
 
 On FM92 VHF only two power stages exist: 25 W and "low". FM900.EXE stores "L" as medium, and the tools copy that quirk.
@@ -128,13 +128,13 @@ On FM92 VHF only two power stages exist: 25 W and "low". FM900.EXE stores "L" as
 
 ### 3.3 Make the image
 
-**Web FPP (easiest).**
+**WebFPP (easiest).**
 
 1. On the **Radio** tab, choose *Start from an example → "2 Meters Channelised + Repeaters (VK2)"*. It loads an FM92R A-band project with 50 channels: 2 m simplex, the Sydney-area repeater and high-band repeater pairs, and two band-edge test channels (1 = 144.000, 99 = 148.000).
 2. Fix the hardware code for your set, e.g. `92430…` for an FM92L, or another IF or spacing.
 3. Edit the channels, then **Build** and download the `.bin`.
 
-Web FPP does not warn about frequencies outside 148–174 MHz. That is deliberate.
+WebFPP does not warn about frequencies outside 148–174 MHz. That is deliberate.
 
 **`fm900gen.py`.**
 
@@ -164,13 +164,13 @@ These commands were run for this guide.
 
 Programming rules (VK3BYY, from DOS-FPP experience):
 
-* Never leave Tx or Rx blank or `000.000` on a channel. For receive-only, Web FPP and `fm900gen.py` accept `X`. They build it as the original does: Tx-enable cleared.
+* Never leave Tx or Rx blank or `000.000` on a channel. For receive-only, WebFPP and `fm900gen.py` accept `X`. They build it as the original does: Tx-enable cleared.
 * Keep frequencies on the 5 kHz raster for 25 kHz sets. Off-raster channels force the 6.25 kHz step for the whole radio.
 
 ### 3.4 Burn and fit
 
 * Burn to a 2764/27C64, e.g. `minipro -p 2764 -w 2m.bin`.
-* For a 27128/27256/27512, pick the part in Web FPP's **EPROM** menu. It mirrors the 8 KB image into every bank, so the A13/A14 strapping doesn't matter (`firmware/FIRMWARE.md` §12).
+* For a 27128/27256/27512, pick the part in WebFPP's **EPROM** menu. It mirrors the 8 KB image into every bank, so the A13/A14 strapping doesn't matter (`firmware/FIRMWARE.md` §12).
 * **Disconnect DC before** swinging the boards out or pulling the EPROM. The EPROM area is live even when the radio is "off" (VK2DOT §7).
 * Fit the EPROM under its shield on the synthesiser/control board, then power up.
   * Channel digits should appear.
@@ -282,7 +282,7 @@ Always transmit into the dummy load.
   * receives a weak signal
 * Repeater channels: the Tx offset is correct. Fit a CTCSS board for repeaters that need a tone.
 * Refit the shields and lids. The VCO and front-end modules must be soldered and screwed to the ground plane.
-* Label the EPROM with the hardware and software codes, and keep the job or project file. Web FPP's Read tab can decode a radio's EPROM later, but the channel names are not stored in the radio.
+* Label the EPROM with the hardware and software codes, and keep the job or project file. WebFPP's Read tab can decode a radio's EPROM later, but the channel names are not stored in the radio.
 
 ---
 

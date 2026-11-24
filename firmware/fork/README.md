@@ -2,12 +2,12 @@
 
 An editable, re-assemblable source of the FM92R master firmware
 (`fm900/MASTERS/FM92R.BIN`), with new features added. It is built into
-modified masters, and `mkradio.py` or Web FPP turn those into radio EPROM
+modified masters, and `mkradio.py` or WebFPP turn those into radio EPROM
 images.
 
 **Experimental.** An image has been burned and worked on an FM92R
 (reported 2026-11-23), but this is still not guaranteed to work on every
-radio. Keep the factory EPROM. Web FPP shows an "Experimental firmware" note
+radio. Keep the factory EPROM. WebFPP shows an "Experimental firmware" note
 for these images.
 
 FM92R only (remote head, no selcall). Background: `../FIRMWARE.md`
@@ -30,7 +30,7 @@ FM92R only (remote head, no selcall). Background: `../FIRMWARE.md`
 
 One source, assembled with feature flags (`-D NAME=0/1`, set by `build.py`):
 
-| Master (`build/`) | Flags | Web FPP Firmware menu | `mkradio.py --variant` | What it does |
+| Master (`build/`) | Flags | WebFPP Firmware menu | `mkradio.py --variant` | What it does |
 |---|---|---|---|---|
 | (factory `FM92R.BIN`) | none | Factory (Original FPP) | – | stock |
 | `FM92R-intro.BIN` | INTRO + NOHOOK | Start-up ident (FM92R) | `intro` | "00" + Morse callsign at switch-on; scan ignores the hook |
@@ -62,11 +62,11 @@ frequency tables, and recomputes the checksums. It refuses hardware codes that
 don't select FM92R (FM92L, or FM92RS with selcall). `-v` lists what each
 channel will show.
 
-**Web FPP** (Build tab, Firmware menu and "Start-up Morse callsign") does the
+**WebFPP** (Build tab, Firmware menu and "Start-up Morse callsign") does the
 same in the browser:
 * `web/src/core/fork.ts` is a port of `mkradio.py`, and `web/test/fork.test.ts`
   checks the two give byte-identical images for every variant.
-* `web/scripts/gen-masters.mjs` runs `build.py` whenever Web FPP is built,
+* `web/scripts/gen-masters.mjs` runs `build.py` whenever WebFPP is built,
   run or tested, so changes here reach it automatically. If you change a
   table format or address, change `fork.ts` too.
 * Read image recognises the variants (by their table markers) and reads the
@@ -80,7 +80,7 @@ no Morse, and channel numbers only.
 
 At switch-on, right after the start-up message to the head (`$AA`) and
 before the channel is selected, the head shows `00`. Meanwhile the radio
-sends the callsign (`--callsign`, Web FPP's "Start-up Morse callsign") in
+sends the callsign (`--callsign`, WebFPP's "Start-up Morse callsign") in
 Morse on its beep tone, then starts normally and shows the channel. With no
 callsign, `00` stays for 1 s and there is no sound.
 
@@ -192,8 +192,8 @@ original instructions put back (tone on, scan parked) and with NOHOOK (neither).
 | Frequency display state | external RAM `$B8`–`$BD` | FREQ |
 | Tick counter (read only, bit 5 = 13.3 ms) | `$28` | INTRO |
 | Soft timer (27 ms) | `$57` (spare in stock) | FREQ |
-| Callsign table | `$1978` "MOR1" + 48 bytes at `$197C` | INTRO, filled by mkradio / Web FPP |
-| Frequency table | `$19AC` "FQT1" + 4 × 100 bytes at `$19B0` | FREQ, filled by mkradio / Web FPP |
+| Callsign table | `$1978` "MOR1" + 48 bytes at `$197C` | INTRO, filled by mkradio / WebFPP |
+| Frequency table | `$19AC` "FQT1" + 4 × 100 bytes at `$19B0` | FREQ, filled by mkradio / WebFPP |
 
 `$B6`–`$BD` lie in the unused gap `$A5`–`$BD` of the external RAM. Nothing in
 the stock firmware touches it, and it is inferred to be real RAM because the
@@ -290,9 +290,9 @@ firmware (`stackdepth.py`, checked by `build.py`).
 |---|---|
 | `d25d095`, `362db4a` | Fork created: `FM92R.asm` (re-assembles byte-identical), `asm6805.py`, `build.py`, tests. |
 | `8e4b883`, `339b421` | FREQ: Rx frequency on the head; `mkradio.py`; simulator; stack check. Found that `$82` is the left display digit; `patch_startup_msg.py` and FIRMWARE.md §11 had them swapped. |
-| `b93b311` | Web FPP: Firmware menu (Factory / Enhanced). |
-| `4eb17d1` | INTRO: start-up "00" + Morse callsign; two variants; Web FPP callsign field and three-way menu. |
-| `b99ce34`, `d624717` | Web FPP: "Experimental firmware" note on the Build and Read tabs. |
+| `b93b311` | WebFPP: Firmware menu (Factory / Enhanced). |
+| `4eb17d1` | INTRO: start-up "00" + Morse callsign; two variants; WebFPP callsign field and three-way menu. |
+| `b99ce34`, `d624717` | WebFPP: "Experimental firmware" note on the Build and Read tabs. |
 | `ca3f4b5` | What the factory firmware sends to the head at switch-on (FIRMWARE.md §6.1); start-up regression test. |
 | `4b694e9` | FREQ: 0.5 s blank before and after the frequency. |
 | (2026-11-23) | First hardware report: an image burned and worked on an FM92R. Still experimental. |

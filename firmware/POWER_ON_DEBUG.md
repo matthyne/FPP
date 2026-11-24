@@ -68,7 +68,7 @@ python3 -c "import sys;b=open(sys.argv[1],'rb').read()[:8192];print('1F66', 'OK'
 
 * A **bad 0x1F64** makes the firmware jump back to the reset code after the latch write. Usually PA5 is still high at that point, so the second pass switches the radio off. You get a blip or nothing.
 * A **bad 0x1F65 or 0x1F66** stops the radio within milliseconds.
-* **Bigger EPROMs (27128/27256/27512):** the CPU only sees 8 KB. Whatever bank A13 and up select must hold a valid image. Either mirror the image into every bank (the Web FPP **EPROM** menu does this), or check how those pins are strapped (`FIRMWARE.md` §12.3).
+* **Bigger EPROMs (27128/27256/27512):** the CPU only sees 8 KB. Whatever bank A13 and up select must hold a valid image. Either mirror the image into every bank (the WebFPP **EPROM** menu does this), or check how those pins are strapped (`FIRMWARE.md` §12.3).
 * **Rule the image out quickly:** program a known-good image, e.g. one of the reference `.BIN`s under `fm900/JOBS/`, or an image built for this radio's hardware code. If the relay then pulls in, the problem is your image.
 
 ### 3.4 The on/off wire

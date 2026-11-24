@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
 
-// Web FPP version: package.json "version" (bump it with every change to web/), plus the git
+// WebFPP version: package.json "version" (bump it with every change to web/), plus the git
 // commit the build came from, shown in the status bar and the cheat-sheet footer.
 const version: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
 let commit = '';

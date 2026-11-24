@@ -11,7 +11,7 @@
    self-consistent like the factory ones, checks its stack depth against the
    factory master, and writes build/<name>.BIN.
 
-Radio images: mkradio.py (or Web FPP), which also fill the callsign and
+Radio images: mkradio.py (or WebFPP), which also fill the callsign and
 frequency tables.
 """
 import argparse, os, sys

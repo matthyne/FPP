@@ -625,7 +625,7 @@ cat b0.bin b1.bin > rom_27128.bin                       # 16 KB
 cat b0.bin b1.bin b2.bin b3.bin > rom_27256.bin         # 32 KB
 ```
 
-**Simplest use, with no modifications:** on a converted board, pin 26 is often still tied to +5 V, which makes a 27128 read its *upper* half. If you just want to use a larger or cheaper EPROM, program the same image into every bank (`cat radio.bin radio.bin > rom.bin`). It then works however A13 and A14 are strapped. Web FPP's Build tab does this for you: pick the part in its **EPROM** menu. A **27C512** works the same way, with A15 on pin 1 (Vpp on the smaller parts, normally tied to +5 V), giving 8 mirrored banks.
+**Simplest use, with no modifications:** on a converted board, pin 26 is often still tied to +5 V, which makes a 27128 read its *upper* half. If you just want to use a larger or cheaper EPROM, program the same image into every bank (`cat radio.bin radio.bin > rom.bin`). It then works however A13 and A14 are strapped. WebFPP's Build tab does this for you: pick the part in its **EPROM** menu. A **27C512** works the same way, with A15 on pin 1 (Vpp on the smaller parts, normally tied to +5 V), giving 8 mirrored banks.
 
 #### Option A: external switch (no firmware change)
 
@@ -663,7 +663,7 @@ You'd have to confirm on the board that the CPU's PB7 pin is accessible and not 
 
 | § | Upgrade | Status |
 |---|---|---|
-| 13.0 | Start-up `00` + Morse callsign; Rx frequency on the head (FM92R) | **Implemented, in the experimental images only.** These are Web FPP's "Start-up ident" and "Ident + Rx freq." firmware, or `fork/mkradio.py`. The Factory image doesn't have them. Experimental: an image has been burned and worked on an FM92R (2026-11), but it is not guaranteed. |
+| 13.0 | Start-up `00` + Morse callsign; Rx frequency on the head (FM92R) | **Implemented, in the experimental images only.** These are WebFPP's "Start-up ident" and "Ident + Rx freq." firmware, or `fork/mkradio.py`. The Factory image doesn't have them. Experimental: an image has been burned and worked on an FM92R (2026-11), but it is not guaranteed. |
 | 13.1 | Duplex / talk-around key | **Not implemented.** Design only. |
 | 13.2 | Bank switching from a function key | **Not implemented.** Design only. |
 | 13.3 | PC / tablet control over the head link | **Not implemented.** Design only (needs no firmware change). |
@@ -671,7 +671,7 @@ You'd have to confirm on the board that the CPU's PB7 pin is accessible and not 
 
 ### 13.0 Implemented in the experimental images (FM92R fork)
 
-> **Status: implemented, experimental.** Only images built from the fork have these features: Web FPP's Firmware menu ("Start-up ident" or "Ident + Rx freq.") or `fork/mkradio.py`. The **Factory** image (Original FPP) doesn't. Nothing here has been tested on a radio yet.
+> **Status: implemented, experimental.** Only images built from the fork have these features: WebFPP's Firmware menu ("Start-up ident" or "Ident + Rx freq.") or `fork/mkradio.py`. The **Factory** image (Original FPP) doesn't. Nothing here has been tested on a radio yet.
 
 * **Start-up ident** (both experimental images). At switch-on the head shows `00` while the radio sends a Morse callsign (set when building) on its beep tone. `$29.7` enables the ~600 Hz tone that `uart_bit` makes on `$29.4`; the key beep uses the same tone. Then the channel is shown as usual.
 * **Rx frequency display** ("Ident + Rx freq." only). After 2 s on the channel number, the display is blanked for 0.5 s, then the head shows the channel's Rx frequency two characters at a time (147.450 → `14 47 7␣ ␣4 45 50`, 0.5 s each), blanks for 0.5 s again, then shows the channel again, in a loop.
@@ -855,9 +855,9 @@ So FM92RS recognises **one** code, its own. It no longer reads 0x1F96, 0x1F9F or
 
 ### 15.4 What this means for building an FM92RS image
 
-* `fm900gen.py` and Web FPP already select `FM92RS.BIN` for h5 = 3–5, and the generic option bytes (0x1F36, 0x1F37) are set as for FM92R.
+* `fm900gen.py` and WebFPP already select `FM92RS.BIN` for h5 = 3–5, and the generic option bytes (0x1F36, 0x1F37) are set as for FM92R.
 * Like FM900.EXE, they then clear the selcall tone memory (0x1F67 = `00`, 0x1F68–70 = `0F`, 0x1F71–79 = `00`, 0x1F7A = `00`, 0x1F84–8C = `00`; FM900_FORMAT.md §4.1). In FM900.EXE the selcall tone editor fills it in afterwards; that editor is not implemented here (§13.4). So an image built today has **no own code and no digit timing**. 0x1F7A = 0 means a zero-length code, so the decoder will not work as intended.
-* Until the editor is implemented, the selcall bytes have to come from the radio's current EPROM (read it with the Web FPP Read tab, or a programmer). The tools cannot merge them yet. If you copy 0x1F67–0x1FB6 across by hand, you **must** then recompute the 0x1F64 checksum (FM900_FORMAT.md §4.3). Otherwise `eprom_checksum` fails and the radio sits in a reset loop (§8).
+* Until the editor is implemented, the selcall bytes have to come from the radio's current EPROM (read it with the WebFPP Read tab, or a programmer). The tools cannot merge them yet. If you copy 0x1F67–0x1FB6 across by hand, you **must** then recompute the 0x1F64 checksum (FM900_FORMAT.md §4.3). Otherwise `eprom_checksum` fails and the radio sits in a reset loop (§8).
 
 ## 16. FM92R RAM map
 
