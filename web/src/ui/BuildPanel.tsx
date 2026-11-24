@@ -195,7 +195,7 @@ export function BuildPanel({ p, a, update, notify }: { p: Project; a: Analysis; 
           )}
           {fw !== 'standard' && (
             <label class="field">
-              <span class="lab labicon" title="Callsign the radio sends in Morse on its beep tone at switch-on (experimental firmware only)"><Icon name="bullhorn" size={14} />Start-up Morse callsign <small>(blank = none)</small></span>
+              <span class="lab labicon" title="Callsign the radio sends in Morse on its beep tone at switch-on (experimental firmware only)"><Icon name="bullhorn" size={14} />Start-up Ident Callsign (Morse) <small>(blank = none)</small></span>
               <input class={`mono ${morseOk ? '' : 'invalid'}`} value={p.callsign ?? ''} maxLength={12} placeholder="e.g. VK2FN"
                 onInput={(e) => update((q) => ({ ...q, callsign: (e.target as HTMLInputElement).value.toUpperCase() || undefined }))} />
             </label>

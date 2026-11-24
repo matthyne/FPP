@@ -62,7 +62,7 @@ frequency tables, and recomputes the checksums. It refuses hardware codes that
 don't select FM92R (FM92L, or FM92RS with selcall). `-v` lists what each
 channel will show.
 
-**WebFPP** (Build tab, Firmware menu and "Start-up Morse callsign") does the
+**WebFPP** (Build tab, Firmware menu and "Start-up Ident Callsign (Morse)") does the
 same in the browser:
 * `web/src/core/fork.ts` is a port of `mkradio.py`, and `web/test/fork.test.ts`
   checks the two give byte-identical images for every variant.
@@ -80,7 +80,7 @@ no Morse, and channel numbers only.
 
 At switch-on, right after the start-up message to the head (`$AA`) and
 before the channel is selected, the head shows `00`. Meanwhile the radio
-sends the callsign (`--callsign`, WebFPP's "Start-up Morse callsign") in
+sends the callsign (`--callsign`, WebFPP's "Start-up Ident Callsign (Morse)") in
 Morse on its beep tone, then starts normally and shows the channel. With no
 callsign, `00` stays for 1 s and there is no sound.
 
