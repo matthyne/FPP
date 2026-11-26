@@ -10,4 +10,6 @@ Third-party service manuals and notes used for the firmware analysis and the STM
 
 `A-BAND-TO-2M.md` is a step-by-step guide to converting an A-band FM92L/FM92R to 2 m (identify, program, VCO, front end, PA, deviation), compiled from these documents, this repository and a few web pages.
 
+`FM92R-ALIGNMENT.md` is a bench recipe for aligning the RX and TX of an FM92R (VCO, receiver, PA, deviation), including how to use a Marconi 2955, signal generator and spectrum analyser. It builds on `A-BAND-TO-2M.md` and the service-manual fault-finding limits.
+
 The scanned pages have no text layer. To read a schematic, render the page at 300 dpi (for example with PyMuPDF) and crop it.
