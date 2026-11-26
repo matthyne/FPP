@@ -107,8 +107,9 @@ The module pins are TTL-compatible.
 
 * **SK407 → front panel SK501 (FM93 local control):** 5 on/off, 7 Rx output, 8 PTT, 9/12 power ground, 11/13/15/17 PA3/PA2/PA1/PA0, 14 Rx PA input, 16 indicator latch, 18 mute adjust, 19 units latch, 20 tens latch.
 * **SK405 (FM92):** pins 1 and 3 carry the microphone cradle reed switch (VK2DOT §26).
-* **Handset socket (FM92E):** 1 cradle, 2 power ground, 3 microphone ground, 4 speaker, 5 microphone active, 6 Rx audio out, 7 PTT, 8 not used (VK2DOT §32).
-* **Remote head cable (FM92R), DB-15.** A custom multi-wire shielded cable, standard DB-15 male and female connectors (non-metric screw threads). VK3BYY lists the wires but not the pin numbers:
+* **Handset socket (FM92E, local head):** 8-pin DIN (the drawing shows 7 pins on the arc and pin 8 in the centre): 1 cradle, 2 power ground, 3 microphone ground, 4 speaker, 5 microphone active, 6 Rx audio out, 7 PTT, 8 not used (VK2DOT §32, viewed from the rear of the plug). This is the FM92E local-head socket: do not assume an FM92R's rear panel matches it.
+* **Speaker socket (FM92E):** 5-pin DIN: 1 cradle, 2 ground, 4 speaker, 3 and 5 not listed (VK2DOT §32).
+* **Remote head cable (FM92R), DB-15.** A custom multi-wire shielded cable, standard DB-15 male and female connectors (non-metric screw threads). VK3BYY lists the wires but not the pin numbers. VK2DOT §33 (`../docs/FM92E-Modification.pdf`, PDF page 68, a scanned drawing) gives the cable itself as a "Radio End Male DA-15" to "Control End Female DA-15" (standard 15-pin D-sub), **straight through** pin for pin 1–11, 14 and 15, with pins 12 and 13 unused and all shields joined to **pin 6** at both ends. Read from the drawing: pins 1+2 are a shielded pair, 3 and 4 are single shielded wires, 14+15 are a shielded pair, and 5, 7, 8, 9, 10 and 11 are unshielded. That matches VK3BYY's count (6 unshielded, 2 single shielded, 2 shielded pairs). Signal names per pin are still not documented:
 
   | Wire | Type | Notes |
   |---|---|---|
@@ -122,6 +123,8 @@ The module pins are TTL-compatible.
   | Rx audio out | single shielded | |
   | Microphone | shielded pair | |
   | Data / clock | shielded pair | the ~1200 baud 8E1 head link on CPU PB0, and very probably the 1.2 kHz clock on PB1 |
+
+  Inferred, not documented: the two single-shielded wires (Rx audio in and out) are pins 3 and 4; the six unshielded wires (power, ground, mute, speaker, PTT, on/off) are pins 5, 7, 8, 9, 10 and 11 in an unknown order; the mic and data/clock pairs are 1+2 and 14+15 in an unknown order. Settle it by continuity and by measuring the idle levels on a real head and radio.
 
   That is 12 conductors plus shields on 15 pins. VK3BYY adds that short lengths (under about 30 cm) of unshielded ribbon cable may work. The remote head has its own microprocessor, which must answer the radio's keep-alive poll or the radio switches off after about 3 s (`../firmware/FIRMWARE.md` §6.3).
 
